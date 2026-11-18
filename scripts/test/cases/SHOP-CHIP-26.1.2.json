@@ -1,0 +1,58 @@
+{
+  "case_id": "SHOP-CHIP-26.1.2",
+  "title": "筹码店开店链路（neoforge-26.1.2）：直调 ChipShopOpener.open(player) 后，服务端出现 CHIP_SHOP_OPEN 机器行、客户端 screen 落到 Shop 类界面、且没有 CHIP_SHOP_OPEN_DENIED。26.1.2 既没有 /astralshop 命令也没有 astral_shop_probe.js，只能走 Java 直调 + 日志行取证。",
+  "version": "26.1.2",
+  "side": "server",
+  "channel": "autojs",
+  "target": {
+    "type": "feature",
+    "ref": "chip-shop"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "取证面来源：neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/shop/ChipShopOpener.java:41 `public static void open(Player player)`、:64 打印 `[astral_dice] CHIP_SHOP_OPEN player={} offers={} purchased={} refreshes={}`、:130 `CHIP_SHOP_OPEN_DENIED holder={} reason={}`；菜单标题键 gui.astral_dice.chip_shop。\n\n为什么不判商品内容：offers 的具体数量取决于卡池/进度，属于 CARD-SHOP-26.1.2 的职责；本用例只判「点得开、没被拒」。\n\n清理：调用结束后客户端会停在商店界面，由用例外层 teardown 按 E/ESC 关闭（inject_key），不在本用例断言。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "open",
+      "timeout_ms": 20000,
+      "mode": "json",
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return null; } }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var ps = AutoJS.players();\n  if (ps === null || ps.length < 1) { throw new Error('端点: 世界内没有玩家，无法开店'); }\n  var p = ps[0];\n  var Op = C('com.merlinkitsune.astral_dice.shop.ChipShopOpener');\n  if (Op === null) { throw new Error('端点: ChipShopOpener 不可解析（类路径变更？）'); }\n  Op.open(p);\n  return { opened: true, player: String(p.getName().getString()) };\n})()"
+    },
+    {
+      "op": "await_state",
+      "side": "client",
+      "timeout_ms": 30000,
+      "interval_ms": 500,
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return null; } }\n  var mc = C('net.minecraft.client.Minecraft').getInstance();\n  var s = mc.screen;\n  if (s === null) { return false; }\n  return String(s).indexOf('Shop') >= 0;\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "open_call_ok",
+      "from": "open",
+      "expect": {
+        "opened": true
+      }
+    },
+    {
+      "type": "log",
+      "pattern": "CHIP_SHOP_OPEN player=",
+      "source": "latest",
+      "scope": "case"
+    },
+    {
+      "type": "absent",
+      "pattern": "CHIP_SHOP_OPEN_DENIED",
+      "source": "latest",
+      "scope": "case"
+    },
+    {
+      "type": "crash",
+      "scope": "case"
+    }
+  ]
+}

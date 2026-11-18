@@ -4,12 +4,36 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.78
+
+### This line
+
+- Merged `multi-main` 1.6.0-pre.1 into the development line. The five lines now pin StarEngine `1.2.0-pre.1` (the release cut of the same `next` commit that shipped as `26.4-SNAPSHOT.13`), and the release line's language fixes, tool gates, AutoJS test cases and docs come along. Version numbering stays on the `26.4-SNAPSHOT.N` development series.
+- Adopted the release line's final transfer-panel geometry: player-name column 42 -> 52 px (x=24..76) and the selected-target arrow 66 -> 78 (right edge 91, 2 px clear of the scrollbar thumb at 93), replacing the 50/77 values built in `26.4-SNAPSHOT.77`.
+- Branch policy: from this version on, `multi-dev-next` forks from `multi-main` as an independent development line for the next major release. Mainline bug fixes are made here directly instead of being merged back from the mainline.
+
+- Validation: five-line `assemble` exit 0 (`BUILD SUCCESSFUL in 11s` with `--offline`; 28 tasks: 18 executed / 5 from cache / 5 up-to-date; five `.78` jars, neo `classCount` 643 / forge 668, no `META-INF/jarjar/`). The first online run could not resolve `maven.neoforged.net` from this Windows host, so the check ran against the local Gradle cache and `mavenLocal()`; no live-client check in this batch.
+
 ## 26.4-SNAPSHOT.77
 
 ### This line
 
 - Widened the card-shop transfer player-name column from 42px to 50px (x=24..74) and moved the pink selected-target arrow from x=66 to x=77. The arrow's right edge is x=90, leaving a 3px gap to the scrollbar control at x=93; the row-hover fill doc now matches the actual (2,+0)-(93,+18) range.
 - Validation: five-line `assemble` exit 0 (`BUILD SUCCESSFUL in 28s`, 28 tasks: 23 executed / 5 up-to-date; five `.77` jars). No live-client visual check in this batch.
+
+## 1.6.0-pre.1 (2026-11-16)
+
+### This release
+
+- First pre-release of 1.6.0, folding the `26.4-SNAPSHOT.1`–`.76` development line into `multi-main`. The four release lines remain NeoForge 1.21.1, Forge 1.20.1, NeoForge 26.1.2 and Fabric 1.20.1; Fabric 1.21.1 stays on the P1 scaffolding line.
+- StarEngine 1.2.0-pre.1 on five platforms: content registries, wallet API, four-phase damage hooks, damage categories, attack/defense stat hooks, vendored GeckoLib and the new fabric-1.21.1 library line. All five main lines pin `1.2.0-pre.1`; the declared upper bound is `2.0.0`.
+- `AstralDiceApi` exposes content queries, wallet read/write/transfer, category-filtered damage hooks and `BASE`/`ADDITIVE`/`MULTIPLICATIVE`/`FINAL` attack/defense hooks. NeoForge 1.21.1 and Forge 1.20.1 install the damage classifiers and stat support; the other three lines compile without installing them.
+- Companion KubeJS addon `0.0.2` (separate repository): server-script bindings for content, wallet, damage and stat hooks, with the repository-root logo and a required `astral_dice` dependency `[1.6.0-pre.1,)`. Hooks are cleared on script reload and client scripts are rejected.
+- Brought the latest development assets and docs into `multi-main`: `images/`, six new `.bbmodel` sources, refreshed AGENTS/DSH rules, and the 1.5.1 release fixes (meito discount NPE, Forge 47.1.47 compatibility, four-line CurseForge upload).
+- Validation: five-line release build and the addon's two-line build passed; the NeoForge 1.21.1 and Forge 1.20.1 live KubeJS probes from `26.4-SNAPSHOT.76` cover content counts, freeze state, damage categories, wallet and damage/stat hook registration. That code path is unchanged in this release except for the version pins and the companion addon metadata.
+- Sign display names now follow the official wiki: the Z3000 sign reads `Z3000 Sign` / `ゼット3000のスタンド` (English wiki page name and `CharPlayable.nameJapanese`), while the Chinese name stays the community's `垃圾桶立牌` rather than the wiki character title, and the `mamushi_note` tooltips now name the Souri sign by its item names (`Amakawa Souri Sign` / `天川蒼鯉のスタンド`). `tools/sign_display_names.json` now lists 37 signs and `verify_sign_display_names` passes.
+
+- Transfer panel layout: the selected-row arrow moved right (TP_SELECT_X 66 -> 78, keeping 2px clear of the scrollbar thumb) and the player-name column widened from 42px to 52px; synchronized across all five lines.
 
 ## 26.4-SNAPSHOT.76
 

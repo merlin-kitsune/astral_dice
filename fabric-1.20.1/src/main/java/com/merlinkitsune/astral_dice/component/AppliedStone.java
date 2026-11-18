@@ -70,8 +70,8 @@ public record AppliedStone(String type, int uses, boolean temporary, String owne
         return com.merlinkitsune.astral_dice.combat.CardRegistry.defaultUses(type);
     }
 
-    // 卡牌费用:委托 CardRegistry(未注册类型回退 1)
-    public static int cost(String type) {
-        return com.merlinkitsune.astral_dice.combat.CardRegistry.cost(type, null);
+    // 卡牌费用:委托 CardRegistry(未注册类型回退 1)。必须传真实玩家:meito 折扣要读饰品栏。
+    public static int cost(net.minecraft.world.entity.player.Player player, String type) {
+        return com.merlinkitsune.astral_dice.combat.CardRegistry.cost(type, player);
     }
 }

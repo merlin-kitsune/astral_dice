@@ -1,0 +1,42 @@
+{
+  "case_id": "VERSION-GATE-fabric-1.21.1",
+  "title": "版本互通门槛（fabric-1.21.1）：产物内确有 network/VersionGate.class，启动日志 mod_version 为 1.6.0-pre.1+fabric_1.21.1，且无门槛拒绝行。",
+  "version": "fabric-1.21.1",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "version-gate"
+  },
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "note",
+      "text": "证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/network/VersionGate.java:60 打印 `[Astral Dice] 版本互通门槛(Version Gate):mod_version={} → 网络互通号={}`；mod_version 取 fabric-1.21.1/gradle.properties:25 `mod_version=1.6.0-pre.1+fabric_1.21.1`。\n\n与 fabric-1.20.1 的差别只在版本后缀：跨线复用同一正则会恒红（fabric_1.20.1 ≠ fabric_1.21.1）。fabric 两线的 starengine_version_range 也不参与本判据（那是依赖解析，不是门禁号）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "bytecode",
+      "pattern": "network/VersionGate\\.class$"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[Astral Dice\\] 版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+fabric_1\\.21\\.1",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "版本互通门槛.*(不兼容|拒绝)",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}

@@ -533,7 +533,11 @@ tasks.register("generateBuildInfo") {
                 gitDir = dotGit
             } else if (dotGit.isFile()) {
                 def txt = dotGit.text.trim()
-                if (txt.startsWith("gitdir:")) gitDir = new File(buildInfoGitRoot, txt.substring(7).trim())
+                if (txt.startsWith("gitdir:")) {
+                    def rawGitDir = txt.substring(7).trim()
+                    def candidate = new File(rawGitDir)
+                    gitDir = candidate.isAbsolute() ? candidate : new File(buildInfoGitRoot, rawGitDir)
+                }
             }
             if (gitDir != null) {
                 File commonDir = gitDir

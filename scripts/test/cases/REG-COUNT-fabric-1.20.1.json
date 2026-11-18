@@ -1,0 +1,64 @@
+{
+  "case_id": "REG-COUNT-fabric-1.20.1",
+  "title": "内容注册计数（fabric-1.20.1）：从运行中 JVM 的 BuiltInRegistries 数 astral_dice 命名空间的 item/block 数，并单独数 _sign 与 _chip 后缀；下限取数据包 tag 条目数（37 signs / 71 chips）。只判「注册面没有静默丢内容」。",
+  "version": "fabric-1.20.1",
+  "side": "server",
+  "channel": "autojs",
+  "target": {
+    "type": "feature",
+    "ref": "registry-count"
+  },
+  "steps": [
+    {
+      "op": "note",
+      "text": "下限来源：fabric-1.20.1/src/main/resources/data/astral_dice/tags/items/{signs,chips}.json 实测 signs=37、chips=71（python 计数 tag values 长度）。tag 只可能引用已注册物品 ⇒ 运行中同后缀条目数 < tag 条目数即为丢注册。\n\n为什么不数模型文件：assets/astral_dice/models/item 只有个位数 json，绝大多数物品走 blockstate/父模型，拿它当分母会误判。\n\n为什么必须运行时取值：本仓物品注册走生成链，静态 grep .register( 数不出真实条目。\n\n通道说明：fabric-1.20.1 线上 KubeJS 探针不可用，AutoJS 走 Rhino 内核；C() 先试 Java.loadClass，再退 Packages.java.lang.Class.forName。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "reg",
+      "timeout_ms": 30000,
+      "mode": "json",
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return Packages.java.lang.Class.forName(n); } }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var BR = C('net.minecraft.core.registries.BuiltInRegistries');\n  if (BR === null) { throw new Error('端点: BuiltInRegistries 不可读（本用例无法取证）'); }\n  var NS = 'astral_dice:';\n  function scan(reg, suffix){\n    var n = 0, it = reg.keySet().iterator();\n    while (it.hasNext()) {\n      var s = String(it.next());\n      if (s.indexOf(NS) !== 0) { continue; }\n      var p = s.substring(NS.length);\n      if (suffix === '' || (p.length > suffix.length && p.lastIndexOf(suffix) === p.length - suffix.length)) { n++; }\n    }\n    return n;\n  }\n  return { items: scan(BR.ITEM, ''), blocks: scan(BR.BLOCK, ''), signs: scan(BR.ITEM, '_sign'), chips: scan(BR.ITEM, '_chip') };\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "state",
+      "name": "namespace_present",
+      "from": "reg",
+      "expect": {
+        "items": {
+          "gte": 1
+        },
+        "blocks": {
+          "gte": 1
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "sign_items_not_lost",
+      "from": "reg",
+      "expect": {
+        "signs": {
+          "gte": 37
+        }
+      }
+    },
+    {
+      "type": "state",
+      "name": "chip_items_not_lost",
+      "from": "reg",
+      "expect": {
+        "chips": {
+          "gte": 71
+        }
+      }
+    },
+    {
+      "type": "crash",
+      "scope": "case"
+    }
+  ]
+}

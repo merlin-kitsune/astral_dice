@@ -1,0 +1,56 @@
+{
+  "case_id": "WALLET-CREDIT-fabric-1.20.1",
+  "title": "星币账本（fabric-1.20.1）：存 10 → 余额 +10，取 4 → 余额 -4，超额取 1 → 拒绝且余额零改动，测毕还原原余额。",
+  "version": "fabric-1.20.1",
+  "channel": "autojs",
+  "side": "server",
+  "target": {
+    "type": "feature",
+    "ref": "star-coin-wallet"
+  },
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "note",
+      "text": "证据（实读，非猜测）：\n- 读余额 com.merlinkitsune.starengine.economy.StarEngineEconomy.java:44 getBalance(Player)；存 :59 deposit；取 :66 withdraw（:73-78 先校验余额，不足即 false 且零改动）。\n- 钱包开关 fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/economy/StarCoinCurrency.java:71 isWalletEnabled()，默认值见 config/ModCommonConfig.java:152 define(\"enable_star_coin_wallet\", true)。\n- 账本注入：starengine common StarEnginePlatform.java:20 installStorage(...) + fabric-1.20.1 FabricEconomyStorage.java:90；故 isAvailable() 在 fabric 线应为 true，为 false 即前置库未生效（真缺陷，不是用例问题）。\n\n判据取「余额算术语义」而不是 UI：存取各一次验正路，超额取一次验拒绝分支且要求余额零改动；测完 setBalance 还原原值，避免污染后续用例。\n\n为什么只给 fabric-1.20.1：五线矩阵里唯一缺的一格（其余线的钱包已被 COMBAT/SHOP/CARD 用例间接覆盖）。"
+    },
+    {
+      "op": "eval_js",
+      "side": "server",
+      "save_as": "wallet",
+      "timeout_ms": 30000,
+      "mode": "json",
+      "code": "(function(){\n  function C(n){ try { return Java.loadClass(n); } catch (e) { return Packages.java.lang.Class.forName(n); } }\n  if (typeof AutoJS === 'undefined') { throw new Error('端点: server 侧 AutoJS 全局缺失（通道未注入）'); }\n  var ps = AutoJS.players();\n  if (ps === null || ps.length < 1) { throw new Error('端点: 世界内没有玩家'); }\n  var p = ps[0];\n  var Cur = C('com.merlinkitsune.astral_dice.economy.StarCoinCurrency');\n  var Eco = C('com.merlinkitsune.starengine.economy.StarEngineEconomy');\n  var enabled = Cur.isWalletEnabled();\n  var available = Eco.isAvailable();\n  var b0 = Number(Eco.getBalance(p));\n  var seedOk = Eco.setBalance(p, b0);\n  var depOk = Eco.deposit(p, 10);\n  var b1 = Number(Eco.getBalance(p));\n  var wdOk = Eco.withdraw(p, 4);\n  var b2 = Number(Eco.getBalance(p));\n  var poorOk = Eco.withdraw(p, b2 + 1);\n  var b3 = Number(Eco.getBalance(p));\n  Eco.setBalance(p, b0);\n  var restored = Number(Eco.getBalance(p)) === b0;\n  return { enabled: enabled, available: available, seedOk: seedOk, depOk: depOk, wdOk: wdOk,\n           poorOk: poorOk, restored: restored,\n           deltaDep: b1 - b0, deltaWd: b2 - b1, deltaPoor: b3 - b2 };\n})()"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "bytecode",
+      "pattern": "economy/StarCoinWalletActions\\.class$"
+    },
+    {
+      "type": "state",
+      "name": "wallet_ledger_roundtrip",
+      "from": "wallet",
+      "expect": {
+        "enabled": true,
+        "available": true,
+        "seedOk": true,
+        "depOk": true,
+        "wdOk": true,
+        "poorOk": false,
+        "restored": true,
+        "deltaDep": 10,
+        "deltaWd": -4,
+        "deltaPoor": 0
+      }
+    },
+    {
+      "type": "crash",
+      "scope": "case"
+    }
+  ]
+}

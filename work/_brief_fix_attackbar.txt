@@ -1,0 +1,37 @@
+你是一位 Minecraft Fabric 1.20.1 客户端 HUD 修复工程师。任务：修掉「攻击力条比另三线高出一行」的坐标缺陷，并做**实机取证**。
+
+不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出。
+动手前先加载 using-superpowers。
+
+仓库 `F:/MCProject/astral_dice_multiloader`，目标子项目 `fabric-1.20.1`。**只改 fabric 线**。先读定位报告 `work/recon/attack-icon-position.md`（已完成根因定位，含 `文件:行号` 证据）。
+
+## 已确证的根因（直接用，不必重新论证）
+- 攻击条：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/client/CombatPowerHud.java:115` `int y = height - gui.rightHeight;`
+- 每帧复位：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/platform/client/FabricClientBridges.java:134-135` 把 `ForgeGui.INSTANCE.rightHeight` 置为 `ForgeGui.RESET_RIGHT` = 59（`platform/client/gui/overlay/ForgeGui.java:57`），故 y = H-59。
+- 1.20.1 原版右列只占两行：饱食 H-39、氧气 H-49。Forge 侧攻击条拿 H-49（紧贴饱食度上方一行）。fabric 多留一行 ⇒ 攻击条比另三线高 10 GUI px。
+
+## 要做的修复（方案 C，已裁决）
+在 `CombatPowerHud.java` 的 ATTACK_OVERLAY 里改为按「原版是否占用了氧气行」动态选基准：
+- 原版会画气泡行时 ⇒ 基准 59（攻击条在气泡行之上，不遮气泡）；
+- 原版不画气泡行时 ⇒ 基准 49（攻击条紧贴饱食度上方一行，与另三线一致）。
+**硬要求**：判定条件必须与 1.20.1 原版 `Gui#renderPlayerHealth` 中决定「是否画气泡行」的条件**逐字等价** —— 去 `build/moddev/artifacts` 下带 Mojang 映射的反编译源码/字节码核实（不许凭记忆），把原版条件原文与行号写进报告。不要用「有氧气值」这类近似条件。
+同时更新 `platform/client/gui/overlay/ForgeGui.java` 类头注释（第 19-33 行那段「与 Forge 有意差一行」）为新实况，避免注释与代码矛盾。
+
+## 纪律
+- 保持 CRLF：用 python 读改写（`read(newline='')` → 归一 LF → 打补丁 → 写回 CRLF），改完核对纯 CRLF、裸 LF = 0。
+- 不动 `neoforge-26.1.2` / `neoforge-1.21.1` / `forge-1.20.1`；不动 `docs/agent/*`、`models/*`；不 commit / push / tag；不发 CurseForge。
+- 构建：`./gradlew.bat :fabric-1.20.1:build --console=plain -x pushToGame`，贴 BUILD 结果与产物大小。
+
+## 实机取证（必做，验收判据）
+1. 确认 25565 / 25585 无监听；`rm -f fabric-1.20.1/build/loom-cache/argFiles/runClient`，再跑 `./gradlew.bat :fabric-1.20.1:runClient --console=plain -PautojsTestMod=1 -PtestSodium=false -Pquickplay=testworld`（后台），等进世界。
+2. AutoJS 端点 `http://127.0.0.1:25585/mcp`，用 python POST JSON-RPC（`side=client`）读实况：`mc.getWindow().getGuiScaledHeight()`、`com.merlinkitsune.astral_dice.platform.client.gui.overlay.ForgeGui.INSTANCE.rightHeight`、`DiceCombatModifiers.attackPowerDisplayOf(player)` / `defensePowerOf(player)`。
+3. 用 `Screenshot.grab(mc.gameDirectory, mc.getMainRenderTarget(), Consumer)` 截图（**写入是异步的，grab 后等约 2 秒再复制，否则 0 字节**），至少三种状态：
+   - 陆地常态（无气泡行）：攻击条紧贴饱食度上方一行；
+   - 水下（气泡行存在）：攻击条在气泡行之上、不遮气泡 —— 需造出真实水下状态，并在 AutoJS 里读玩家 `getAirSupply()` / 眼睛是否在水中确认条件成立；
+   - 防御条对照（防御值 > 0 时）：仍在左列 H-49 那一行。
+   截图存 `work/shots/fabric-attackbar/`，文件名标明状态。
+4. 逐张做**像素级客观核验**：用内置 python（`C:/Users/xmace/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/python/python.exe`，有 Pillow）在截图里定位攻击条贴图（`assets/astral_dice/textures/gui/attack_full.png` / `attack_half.png`，9x9）的 y，与饱食度图标 y 比较：陆地态差值应正好一行（10 GUI px × guiScale），水下态应比气泡行高一行。给出像素坐标数字，不要只靠肉眼。
+5. 收尾：按 PID 精确停掉本次启动的客户端与 wrapper（不要杀早于本次启动的 GradleDaemon），确认 25565/25585 释放。
+
+## 输出
+报告 `F:/MCProject/astral_dice_multiloader/work/fix-fabric-attackbar-position.md`（中文）：改动摘要（`文件:行号`）、原版条件取证原文、构建结果、AutoJS 读数、截图与像素核验表、未确证项。最后一句话说清「陆地 / 水下两种状态的 y 是否都正确」。

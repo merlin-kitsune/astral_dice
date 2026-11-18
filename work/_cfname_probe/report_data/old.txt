@@ -1,0 +1,69 @@
+### old print_jobs_plan :974-988
+  974  def print_jobs_plan(jobs):
+  975      for j in jobs:
+  976          cl = j["_changelog"]
+  977          if cl:
+  978              cl_desc = f"{rel_display(cl)}（{len(_read_text(cl))} 字符）"
+  979          else:
+  980              cl_desc = "（无，留空）"
+  981          print(f"  {j['jar'].name}")
+  982          print(f"    版本 {j['ver']} | {j['loader']} | MC {j['mc']} | 类型 {j['releaseType']}")
+  983          print(f"    gameVersions = {j['gameVersions']}  {j['_detail']}")
+  984          print(f"    更新日志 = {cl_desc}")
+  985          print(f"    relations = {describe_relations(j['_relations'])}"
+  986                + (f"  [{j['_line']}]" if j.get("_line") else "  [未匹配到该线]"))
+  987  
+  988  
+
+### old upload_metadata :989-1000
+  989  def upload_metadata(args, job):
+  990      metadata = {
+  991          "displayName": args.display_name or job["jar"].name,
+  992          "releaseType": job["releaseType"],
+  993          "gameVersions": job["gameVersions"],
+  994          "changelogType": args.changelog_type,
+  995      }
+  996      if job["_changelog"]:
+  997          metadata["changelog"] = _read_text(job["_changelog"])
+  998      if job.get("_relations"):
+  999          metadata["relations"] = job["_relations"]
+ 1000      if args.manual_release:
+
+### old build_jobs :952-973
+  952  def build_jobs(args, binding, cat, offline):
+  953      jobs = []
+  954      for raw in args.jar:
+  955          jar = pathlib.Path(raw).resolve()
+  956          if not jar.is_file():
+  957              raise SystemExit(f"[ERR] 找不到 jar：{jar}")
+  958          ver, loader, mc = parse_jar(jar)
+  959          loader = args.loader or loader
+  960          mc = args.mc_version or mc
+  961          # 2026-10-25 rule: only P0 lines may be uploaded (P1 blocked by default)
+  962          guard_p0_only(loader, mc, jar, getattr(args, 'allow_p1', False))
+  963          rtype = args.release_type or infer_release_type(ver)
+  964          ids, detail = plan_ids(cat, mc, loader, offline)
+  965          line = find_line(binding, key=args.line, loader=loader, mc=mc)
+  966          rel = relations_payload(line, disabled=args.no_relations)
+  967          jobs.append({"jar": jar, "ver": ver, "loader": loader, "mc": mc,
+  968                       "releaseType": rtype, "gameVersions": ids, "_detail": detail,
+  969                       "_line": (line or {}).get("key"), "_relations": rel,
+  970                       "_changelog": pick_changelog(ver, args.changelog)})
+  971      return jobs
+  972  
+  973  
+
+### old displayName override :1325-1336
+ 1325                               "或用 --loader/--mc-version 唯一匹配一条线")
+ 1326          rel = relations_payload(line, disabled=args.no_relations)
+ 1327          metadata = {"fileID": args.update_file}
+ 1328          if rel:
+ 1329              metadata["relations"] = rel
+ 1330          if args.display_name:
+ 1331              metadata["displayName"] = args.display_name
+ 1332          if len(metadata) == 1 and not payload:
+ 1333              raise SystemExit(
+ 1334                  "[ERR] update-file 至少要有一个要改的字段：给 --display-name，或让该线声明 relations"
+ 1335                  "（CurseForge 会以 1014 'You must specify something to update' 拒绝空更新）")
+ 1336          print(f"项目 projectId = {project_id}（slug: {binding.get('slug')}，来源 {BINDING_FILE}）")
+

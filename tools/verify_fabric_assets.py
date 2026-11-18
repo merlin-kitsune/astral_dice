@@ -78,7 +78,13 @@ EXTRA_MODEL_ALLOW = {'astral_guide'}
 #   而 neoforge-1.21.1(ModCreativeTabs.java:87) / forge-1.20.1(:88) 也**同样**只有
 #   EFFECT_CARD_REPULSION ⇒ 三方同款口径，本线不算缺失。
 #   ⚠️ 若基线将来补齐（三条线都把 REPULSION 放进创造栏），这里要同步删掉，否则会漏报回归。
-CREATIVE_TAB_BASELINE_OMISSIONS = {'repulsion'}
+#   vacuum_piece（2026-11-16 补登）：抓钩的**渲染代理物品**，只在
+#   client/GrapplingHookRenderer.java:52-53 被 new ItemStack 用来逐节画管道/钩头
+#   （fabric-1.20.1 同 :52-53，fabric-1.21.1 同 :54-55），从未进入任何创造栏；
+#   五线 26.1.2/1.21.1/1.20.1 的 ModCreativeTabs 都不含它（grep ModItems.VACUUM_PIECE
+#   只命中 ModItems.java 与 renderer）⇒ 属设计如此，不是本线缺失。
+#   ⚠️ 若将来它变成可获取物品并进创造栏，这里要同步删掉。
+CREATIVE_TAB_BASELINE_OMISSIONS = {'repulsion', 'vacuum_piece'}
 
 # 手册里允许缺键的键（每条都要写明理由，否则视为缺陷）
 LANG_KEY_ALLOW = {

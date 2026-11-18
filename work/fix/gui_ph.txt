@@ -1,0 +1,809 @@
+  private void renderPlayerHealth(net.minecraft.client.gui.GuiGraphics);
+    Code:
+       0: aload_0
+       1: invokevirtual #1001               // Method getCameraPlayer:()Lnet/minecraft/world/entity/player/Player;
+       4: astore_2
+       5: aload_2
+       6: ifnonnull     10
+       9: return
+      10: aload_2
+      11: invokevirtual #1309               // Method net/minecraft/world/entity/player/Player.getHealth:()F
+      14: invokestatic  #1311               // Method net/minecraft/util/Mth.ceil:(F)I
+      17: istore_3
+      18: aload_0
+      19: getfield      #1313               // Field healthBlinkTime:J
+      22: aload_0
+      23: getfield      #585                // Field tickCount:I
+      26: i2l
+      27: lcmp
+      28: ifle          58
+      31: aload_0
+      32: getfield      #1313               // Field healthBlinkTime:J
+      35: aload_0
+      36: getfield      #585                // Field tickCount:I
+      39: i2l
+      40: lsub
+      41: ldc2_w        #1314               // long 3l
+      44: ldiv
+      45: ldc2_w        #1316               // long 2l
+      48: lrem
+      49: lconst_1
+      50: lcmp
+      51: ifne          58
+      54: iconst_1
+      55: goto          59
+      58: iconst_0
+      59: istore        4
+      61: invokestatic  #1322               // Method net/minecraft/Util.getMillis:()J
+      64: lstore        5
+      66: iload_3
+      67: aload_0
+      68: getfield      #1324               // Field lastHealth:I
+      71: if_icmpge     102
+      74: aload_2
+      75: getfield      #1327               // Field net/minecraft/world/entity/player/Player.invulnerableTime:I
+      78: ifle          102
+      81: aload_0
+      82: lload         5
+      84: putfield      #1329               // Field lastHealthTime:J
+      87: aload_0
+      88: aload_0
+      89: getfield      #585                // Field tickCount:I
+      92: bipush        20
+      94: iadd
+      95: i2l
+      96: putfield      #1313               // Field healthBlinkTime:J
+      99: goto          135
+     102: iload_3
+     103: aload_0
+     104: getfield      #1324               // Field lastHealth:I
+     107: if_icmple     135
+     110: aload_2
+     111: getfield      #1327               // Field net/minecraft/world/entity/player/Player.invulnerableTime:I
+     114: ifle          135
+     117: aload_0
+     118: lload         5
+     120: putfield      #1329               // Field lastHealthTime:J
+     123: aload_0
+     124: aload_0
+     125: getfield      #585                // Field tickCount:I
+     128: bipush        10
+     130: iadd
+     131: i2l
+     132: putfield      #1313               // Field healthBlinkTime:J
+     135: lload         5
+     137: aload_0
+     138: getfield      #1329               // Field lastHealthTime:J
+     141: lsub
+     142: ldc2_w        #1330               // long 1000l
+     145: lcmp
+     146: ifle          165
+     149: aload_0
+     150: iload_3
+     151: putfield      #1324               // Field lastHealth:I
+     154: aload_0
+     155: iload_3
+     156: putfield      #1333               // Field displayHealth:I
+     159: aload_0
+     160: lload         5
+     162: putfield      #1329               // Field lastHealthTime:J
+     165: aload_0
+     166: iload_3
+     167: putfield      #1324               // Field lastHealth:I
+     170: aload_0
+     171: getfield      #1333               // Field displayHealth:I
+     174: istore        7
+     176: aload_0
+     177: getfield      #128                // Field random:Lnet/minecraft/util/RandomSource;
+     180: aload_0
+     181: getfield      #585                // Field tickCount:I
+     184: ldc_w         #1334               // int 312871
+     187: imul
+     188: i2l
+     189: invokeinterface #1338,  3         // InterfaceMethod net/minecraft/util/RandomSource.setSeed:(J)V
+     194: aload_2
+     195: invokevirtual #1342               // Method net/minecraft/world/entity/player/Player.getFoodData:()Lnet/minecraft/world/food/FoodData;
+     198: astore        8
+     200: aload         8
+     202: invokevirtual #1347               // Method net/minecraft/world/food/FoodData.getFoodLevel:()I
+     205: istore        9
+     207: aload_0
+     208: getfield      #204                // Field screenWidth:I
+     211: iconst_2
+     212: idiv
+     213: bipush        91
+     215: isub
+     216: istore        10
+     218: aload_0
+     219: getfield      #204                // Field screenWidth:I
+     222: iconst_2
+     223: idiv
+     224: bipush        91
+     226: iadd
+     227: istore        11
+     229: aload_0
+     230: getfield      #209                // Field screenHeight:I
+     233: bipush        39
+     235: isub
+     236: istore        12
+     238: aload_2
+     239: getstatic     #1353               // Field net/minecraft/world/entity/ai/attributes/Attributes.MAX_HEALTH:Lnet/minecraft/world/entity/ai/attributes/Attribute;
+     242: invokevirtual #1357               // Method net/minecraft/world/entity/player/Player.getAttributeValue:(Lnet/minecraft/world/entity/ai/attributes/Attribute;)D
+     245: d2f
+     246: iload         7
+     248: iload_3
+     249: invokestatic  #1248               // Method java/lang/Math.max:(II)I
+     252: i2f
+     253: invokestatic  #1360               // Method java/lang/Math.max:(FF)F
+     256: fstore        13
+     258: aload_2
+     259: invokevirtual #1363               // Method net/minecraft/world/entity/player/Player.getAbsorptionAmount:()F
+     262: invokestatic  #1311               // Method net/minecraft/util/Mth.ceil:(F)I
+     265: istore        14
+     267: fload         13
+     269: iload         14
+     271: i2f
+     272: fadd
+     273: fconst_2
+     274: fdiv
+     275: ldc_w         #426                // float 10.0f
+     278: fdiv
+     279: invokestatic  #1311               // Method net/minecraft/util/Mth.ceil:(F)I
+     282: istore        15
+     284: bipush        10
+     286: iload         15
+     288: iconst_2
+     289: isub
+     290: isub
+     291: iconst_3
+     292: invokestatic  #1248               // Method java/lang/Math.max:(II)I
+     295: istore        16
+     297: iload         12
+     299: iload         15
+     301: iconst_1
+     302: isub
+     303: iload         16
+     305: imul
+     306: isub
+     307: bipush        10
+     309: isub
+     310: istore        17
+     312: iload         12
+     314: bipush        10
+     316: isub
+     317: istore        18
+     319: aload_2
+     320: invokevirtual #1366               // Method net/minecraft/world/entity/player/Player.getArmorValue:()I
+     323: istore        19
+     325: iconst_m1
+     326: istore        20
+     328: aload_2
+     329: getstatic     #1369               // Field net/minecraft/world/effect/MobEffects.REGENERATION:Lnet/minecraft/world/effect/MobEffect;
+     332: invokevirtual #1370               // Method net/minecraft/world/entity/player/Player.hasEffect:(Lnet/minecraft/world/effect/MobEffect;)Z
+     335: ifeq          353
+     338: aload_0
+     339: getfield      #585                // Field tickCount:I
+     342: fload         13
+     344: ldc           #56                 // float 5.0f
+     346: fadd
+     347: invokestatic  #1311               // Method net/minecraft/util/Mth.ceil:(F)I
+     350: irem
+     351: istore        20
+     353: aload_0
+     354: getfield      #139                // Field minecraft:Lnet/minecraft/client/Minecraft;
+     357: invokevirtual #370                // Method net/minecraft/client/Minecraft.getProfiler:()Lnet/minecraft/util/profiling/ProfilerFiller;
+     360: ldc_w         #1372               // String armor
+     363: invokeinterface #378,  2          // InterfaceMethod net/minecraft/util/profiling/ProfilerFiller.push:(Ljava/lang/String;)V
+     368: iconst_0
+     369: istore        21
+     371: iload         21
+     373: bipush        10
+     375: if_icmpge     489
+     378: iload         19
+     380: ifle          483
+     383: iload         10
+     385: iload         21
+     387: bipush        8
+     389: imul
+     390: iadd
+     391: istore        22
+     393: iload         21
+     395: iconst_2
+     396: imul
+     397: iconst_1
+     398: iadd
+     399: iload         19
+     401: if_icmpge     423
+     404: aload_1
+     405: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     408: iload         22
+     410: iload         17
+     412: bipush        34
+     414: bipush        9
+     416: bipush        9
+     418: bipush        9
+     420: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     423: iload         21
+     425: iconst_2
+     426: imul
+     427: iconst_1
+     428: iadd
+     429: iload         19
+     431: if_icmpne     453
+     434: aload_1
+     435: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     438: iload         22
+     440: iload         17
+     442: bipush        25
+     444: bipush        9
+     446: bipush        9
+     448: bipush        9
+     450: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     453: iload         21
+     455: iconst_2
+     456: imul
+     457: iconst_1
+     458: iadd
+     459: iload         19
+     461: if_icmple     483
+     464: aload_1
+     465: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     468: iload         22
+     470: iload         17
+     472: bipush        16
+     474: bipush        9
+     476: bipush        9
+     478: bipush        9
+     480: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     483: iinc          21, 1
+     486: goto          371
+     489: aload_0
+     490: getfield      #139                // Field minecraft:Lnet/minecraft/client/Minecraft;
+     493: invokevirtual #370                // Method net/minecraft/client/Minecraft.getProfiler:()Lnet/minecraft/util/profiling/ProfilerFiller;
+     496: ldc_w         #1374               // String health
+     499: invokeinterface #1377,  2         // InterfaceMethod net/minecraft/util/profiling/ProfilerFiller.popPush:(Ljava/lang/String;)V
+     504: aload_0
+     505: aload_1
+     506: aload_2
+     507: iload         10
+     509: iload         12
+     511: iload         16
+     513: iload         20
+     515: fload         13
+     517: iload_3
+     518: iload         7
+     520: iload         14
+     522: iload         4
+     524: invokevirtual #1381               // Method renderHearts:(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/world/entity/player/Player;IIIIFIIIZ)V
+     527: aload_0
+     528: invokevirtual #1383               // Method getPlayerVehicleWithHealth:()Lnet/minecraft/world/entity/LivingEntity;
+     531: astore        21
+     533: aload_0
+     534: aload         21
+     536: invokevirtual #1385               // Method getVehicleMaxHearts:(Lnet/minecraft/world/entity/LivingEntity;)I
+     539: istore        22
+     541: iload         22
+     543: ifne          755
+     546: aload_0
+     547: getfield      #139                // Field minecraft:Lnet/minecraft/client/Minecraft;
+     550: invokevirtual #370                // Method net/minecraft/client/Minecraft.getProfiler:()Lnet/minecraft/util/profiling/ProfilerFiller;
+     553: ldc_w         #1387               // String food
+     556: invokeinterface #1377,  2         // InterfaceMethod net/minecraft/util/profiling/ProfilerFiller.popPush:(Ljava/lang/String;)V
+     561: iconst_0
+     562: istore        23
+     564: iload         23
+     566: bipush        10
+     568: if_icmpge     752
+     571: iload         12
+     573: istore        24
+     575: bipush        16
+     577: istore        25
+     579: iconst_0
+     580: istore        26
+     582: aload_2
+     583: getstatic     #1390               // Field net/minecraft/world/effect/MobEffects.HUNGER:Lnet/minecraft/world/effect/MobEffect;
+     586: invokevirtual #1370               // Method net/minecraft/world/entity/player/Player.hasEffect:(Lnet/minecraft/world/effect/MobEffect;)Z
+     589: ifeq          599
+     592: iinc          25, 36
+     595: bipush        13
+     597: istore        26
+     599: aload_2
+     600: invokevirtual #1342               // Method net/minecraft/world/entity/player/Player.getFoodData:()Lnet/minecraft/world/food/FoodData;
+     603: invokevirtual #1393               // Method net/minecraft/world/food/FoodData.getSaturationLevel:()F
+     606: fconst_0
+     607: fcmpg
+     608: ifgt          642
+     611: aload_0
+     612: getfield      #585                // Field tickCount:I
+     615: iload         9
+     617: iconst_3
+     618: imul
+     619: iconst_1
+     620: iadd
+     621: irem
+     622: ifne          642
+     625: iload         24
+     627: aload_0
+     628: getfield      #128                // Field random:Lnet/minecraft/util/RandomSource;
+     631: iconst_3
+     632: invokeinterface #1396,  2         // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+     637: iconst_1
+     638: isub
+     639: iadd
+     640: istore        24
+     642: iload         11
+     644: iload         23
+     646: bipush        8
+     648: imul
+     649: isub
+     650: bipush        9
+     652: isub
+     653: istore        27
+     655: aload_1
+     656: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     659: iload         27
+     661: iload         24
+     663: bipush        16
+     665: iload         26
+     667: bipush        9
+     669: imul
+     670: iadd
+     671: bipush        27
+     673: bipush        9
+     675: bipush        9
+     677: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     680: iload         23
+     682: iconst_2
+     683: imul
+     684: iconst_1
+     685: iadd
+     686: iload         9
+     688: if_icmpge     713
+     691: aload_1
+     692: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     695: iload         27
+     697: iload         24
+     699: iload         25
+     701: bipush        36
+     703: iadd
+     704: bipush        27
+     706: bipush        9
+     708: bipush        9
+     710: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     713: iload         23
+     715: iconst_2
+     716: imul
+     717: iconst_1
+     718: iadd
+     719: iload         9
+     721: if_icmpne     746
+     724: aload_1
+     725: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     728: iload         27
+     730: iload         24
+     732: iload         25
+     734: bipush        45
+     736: iadd
+     737: bipush        27
+     739: bipush        9
+     741: bipush        9
+     743: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     746: iinc          23, 1
+     749: goto          564
+     752: iinc          18, -10
+     755: aload_0
+     756: getfield      #139                // Field minecraft:Lnet/minecraft/client/Minecraft;
+     759: invokevirtual #370                // Method net/minecraft/client/Minecraft.getProfiler:()Lnet/minecraft/util/profiling/ProfilerFiller;
+     762: ldc_w         #1398               // String air
+     765: invokeinterface #1377,  2         // InterfaceMethod net/minecraft/util/profiling/ProfilerFiller.popPush:(Ljava/lang/String;)V
+     770: aload_2
+     771: invokevirtual #1401               // Method net/minecraft/world/entity/player/Player.getMaxAirSupply:()I
+     774: istore        23
+     776: aload_2
+     777: invokevirtual #1404               // Method net/minecraft/world/entity/player/Player.getAirSupply:()I
+     780: iload         23
+     782: invokestatic  #1407               // Method java/lang/Math.min:(II)I
+     785: istore        24
+     787: aload_2
+     788: getstatic     #1413               // Field net/minecraft/tags/FluidTags.WATER:Lnet/minecraft/tags/TagKey;
+     791: invokevirtual #1417               // Method net/minecraft/world/entity/player/Player.isEyeInFluid:(Lnet/minecraft/tags/TagKey;)Z
+     794: ifne          804
+     797: iload         24
+     799: iload         23
+     801: if_icmpge     946
+     804: aload_0
+     805: iload         22
+     807: invokevirtual #1419               // Method getVisibleVehicleHeartRows:(I)I
+     810: iconst_1
+     811: isub
+     812: istore        25
+     814: iload         18
+     816: iload         25
+     818: bipush        10
+     820: imul
+     821: isub
+     822: istore        18
+     824: iload         24
+     826: iconst_2
+     827: isub
+     828: i2d
+     829: ldc2_w        #1301               // double 10.0d
+     832: dmul
+     833: iload         23
+     835: i2d
+     836: ddiv
+     837: invokestatic  #1421               // Method net/minecraft/util/Mth.ceil:(D)I
+     840: istore        26
+     842: iload         24
+     844: i2d
+     845: ldc2_w        #1301               // double 10.0d
+     848: dmul
+     849: iload         23
+     851: i2d
+     852: ddiv
+     853: invokestatic  #1421               // Method net/minecraft/util/Mth.ceil:(D)I
+     856: iload         26
+     858: isub
+     859: istore        27
+     861: iconst_0
+     862: istore        28
+     864: iload         28
+     866: iload         26
+     868: iload         27
+     870: iadd
+     871: if_icmpge     946
+     874: iload         28
+     876: iload         26
+     878: if_icmpge     912
+     881: aload_1
+     882: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     885: iload         11
+     887: iload         28
+     889: bipush        8
+     891: imul
+     892: isub
+     893: bipush        9
+     895: isub
+     896: iload         18
+     898: bipush        16
+     900: bipush        18
+     902: bipush        9
+     904: bipush        9
+     906: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     909: goto          940
+     912: aload_1
+     913: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     916: iload         11
+     918: iload         28
+     920: bipush        8
+     922: imul
+     923: isub
+     924: bipush        9
+     926: isub
+     927: iload         18
+     929: bipush        25
+     931: bipush        18
+     933: bipush        9
+     935: bipush        9
+     937: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     940: iinc          28, 1
+     943: goto          864
+     946: aload_0
+     947: getfield      #139                // Field minecraft:Lnet/minecraft/client/Minecraft;
+     950: invokevirtual #370                // Method net/minecraft/client/Minecraft.getProfiler:()Lnet/minecraft/util/profiling/ProfilerFiller;
+     953: invokeinterface #383,  1          // InterfaceMethod net/minecraft/util/profiling/ProfilerFiller.pop:()V
+     958: return
+
+  private void renderHearts(net.minecraft.client.gui.GuiGraphics, net.minecraft.world.entity.player.Player, int, int, int, int, float, int, int, int, boolean);
+    Code:
+       0: aload_2
+       1: invokestatic  #1436               // Method net/minecraft/client/gui/Gui$HeartType.forPlayer:(Lnet/minecraft/world/entity/player/Player;)Lnet/minecraft/client/gui/Gui$HeartType;
+       4: astore        12
+       6: bipush        9
+       8: aload_2
+       9: invokevirtual #1439               // Method net/minecraft/world/entity/player/Player.level:()Lnet/minecraft/world/level/Level;
+      12: invokevirtual #1443               // Method net/minecraft/world/level/Level.getLevelData:()Lnet/minecraft/world/level/storage/LevelData;
+      15: invokeinterface #1448,  1         // InterfaceMethod net/minecraft/world/level/storage/LevelData.isHardcore:()Z
+      20: ifeq          27
+      23: iconst_5
+      24: goto          28
+      27: iconst_0
+      28: imul
+      29: istore        13
+      31: fload         7
+      33: f2d
+      34: ldc2_w        #1449               // double 2.0d
+      37: ddiv
+      38: invokestatic  #1421               // Method net/minecraft/util/Mth.ceil:(D)I
+      41: istore        14
+      43: iload         10
+      45: i2d
+      46: ldc2_w        #1449               // double 2.0d
+      49: ddiv
+      50: invokestatic  #1421               // Method net/minecraft/util/Mth.ceil:(D)I
+      53: istore        15
+      55: iload         14
+      57: iconst_2
+      58: imul
+      59: istore        16
+      61: iload         14
+      63: iload         15
+      65: iadd
+      66: iconst_1
+      67: isub
+      68: istore        17
+      70: iload         17
+      72: iflt          340
+      75: iload         17
+      77: bipush        10
+      79: idiv
+      80: istore        18
+      82: iload         17
+      84: bipush        10
+      86: irem
+      87: istore        19
+      89: iload_3
+      90: iload         19
+      92: bipush        8
+      94: imul
+      95: iadd
+      96: istore        20
+      98: iload         4
+     100: iload         18
+     102: iload         5
+     104: imul
+     105: isub
+     106: istore        21
+     108: iload         8
+     110: iload         10
+     112: iadd
+     113: iconst_4
+     114: if_icmpgt     132
+     117: iload         21
+     119: aload_0
+     120: getfield      #128                // Field random:Lnet/minecraft/util/RandomSource;
+     123: iconst_2
+     124: invokeinterface #1396,  2         // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+     129: iadd
+     130: istore        21
+     132: iload         17
+     134: iload         14
+     136: if_icmpge     149
+     139: iload         17
+     141: iload         6
+     143: if_icmpne     149
+     146: iinc          21, -2
+     149: aload_0
+     150: aload_1
+     151: getstatic     #1454               // Field net/minecraft/client/gui/Gui$HeartType.CONTAINER:Lnet/minecraft/client/gui/Gui$HeartType;
+     154: iload         20
+     156: iload         21
+     158: iload         13
+     160: iload         11
+     162: iconst_0
+     163: invokevirtual #1458               // Method renderHeart:(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Gui$HeartType;IIIZZ)V
+     166: iload         17
+     168: iconst_2
+     169: imul
+     170: istore        22
+     172: iload         17
+     174: iload         14
+     176: if_icmplt     183
+     179: iconst_1
+     180: goto          184
+     183: iconst_0
+     184: istore        23
+     186: iload         23
+     188: ifeq          251
+     191: iload         22
+     193: iload         16
+     195: isub
+     196: istore        24
+     198: iload         24
+     200: iload         10
+     202: if_icmpge     251
+     205: iload         24
+     207: iconst_1
+     208: iadd
+     209: iload         10
+     211: if_icmpne     218
+     214: iconst_1
+     215: goto          219
+     218: iconst_0
+     219: istore        25
+     221: aload_0
+     222: aload_1
+     223: aload         12
+     225: getstatic     #1461               // Field net/minecraft/client/gui/Gui$HeartType.WITHERED:Lnet/minecraft/client/gui/Gui$HeartType;
+     228: if_acmpne     236
+     231: aload         12
+     233: goto          239
+     236: getstatic     #1464               // Field net/minecraft/client/gui/Gui$HeartType.ABSORBING:Lnet/minecraft/client/gui/Gui$HeartType;
+     239: iload         20
+     241: iload         21
+     243: iload         13
+     245: iconst_0
+     246: iload         25
+     248: invokevirtual #1458               // Method renderHeart:(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Gui$HeartType;IIIZZ)V
+     251: iload         11
+     253: ifeq          295
+     256: iload         22
+     258: iload         9
+     260: if_icmpge     295
+     263: iload         22
+     265: iconst_1
+     266: iadd
+     267: iload         9
+     269: if_icmpne     276
+     272: iconst_1
+     273: goto          277
+     276: iconst_0
+     277: istore        24
+     279: aload_0
+     280: aload_1
+     281: aload         12
+     283: iload         20
+     285: iload         21
+     287: iload         13
+     289: iconst_1
+     290: iload         24
+     292: invokevirtual #1458               // Method renderHeart:(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Gui$HeartType;IIIZZ)V
+     295: iload         22
+     297: iload         8
+     299: if_icmpge     334
+     302: iload         22
+     304: iconst_1
+     305: iadd
+     306: iload         8
+     308: if_icmpne     315
+     311: iconst_1
+     312: goto          316
+     315: iconst_0
+     316: istore        24
+     318: aload_0
+     319: aload_1
+     320: aload         12
+     322: iload         20
+     324: iload         21
+     326: iload         13
+     328: iconst_0
+     329: iload         24
+     331: invokevirtual #1458               // Method renderHeart:(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Gui$HeartType;IIIZZ)V
+     334: iinc          17, -1
+     337: goto          70
+     340: return
+
+  private void renderHeart(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.gui.Gui$HeartType, int, int, int, boolean, boolean);
+    Code:
+       0: aload_1
+       1: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+       4: iload_3
+       5: iload         4
+       7: aload_2
+       8: iload         7
+      10: iload         6
+      12: invokevirtual #1472               // Method net/minecraft/client/gui/Gui$HeartType.getX:(ZZ)I
+      15: iload         5
+      17: bipush        9
+      19: bipush        9
+      21: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+      24: return
+
+  private void renderVehicleHealth(net.minecraft.client.gui.GuiGraphics);
+    Code:
+       0: aload_0
+       1: invokevirtual #1383               // Method getPlayerVehicleWithHealth:()Lnet/minecraft/world/entity/LivingEntity;
+       4: astore_2
+       5: aload_2
+       6: ifnonnull     10
+       9: return
+      10: aload_0
+      11: aload_2
+      12: invokevirtual #1385               // Method getVehicleMaxHearts:(Lnet/minecraft/world/entity/LivingEntity;)I
+      15: istore_3
+      16: iload_3
+      17: ifne          21
+      20: return
+      21: aload_2
+      22: invokevirtual #1473               // Method net/minecraft/world/entity/LivingEntity.getHealth:()F
+      25: f2d
+      26: invokestatic  #1306               // Method java/lang/Math.ceil:(D)D
+      29: d2i
+      30: istore        4
+      32: aload_0
+      33: getfield      #139                // Field minecraft:Lnet/minecraft/client/Minecraft;
+      36: invokevirtual #370                // Method net/minecraft/client/Minecraft.getProfiler:()Lnet/minecraft/util/profiling/ProfilerFiller;
+      39: ldc_w         #1475               // String mountHealth
+      42: invokeinterface #1377,  2         // InterfaceMethod net/minecraft/util/profiling/ProfilerFiller.popPush:(Ljava/lang/String;)V
+      47: aload_0
+      48: getfield      #209                // Field screenHeight:I
+      51: bipush        39
+      53: isub
+      54: istore        5
+      56: aload_0
+      57: getfield      #204                // Field screenWidth:I
+      60: iconst_2
+      61: idiv
+      62: bipush        91
+      64: iadd
+      65: istore        6
+      67: iload         5
+      69: istore        7
+      71: iconst_0
+      72: istore        8
+      74: iconst_0
+      75: istore        9
+      77: iload_3
+      78: ifle          230
+      81: iload_3
+      82: bipush        10
+      84: invokestatic  #1407               // Method java/lang/Math.min:(II)I
+      87: istore        10
+      89: iload_3
+      90: iload         10
+      92: isub
+      93: istore_3
+      94: iconst_0
+      95: istore        11
+      97: iload         11
+      99: iload         10
+     101: if_icmpge     221
+     104: bipush        52
+     106: istore        12
+     108: iconst_0
+     109: istore        13
+     111: iload         6
+     113: iload         11
+     115: bipush        8
+     117: imul
+     118: isub
+     119: bipush        9
+     121: isub
+     122: istore        14
+     124: aload_1
+     125: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     128: iload         14
+     130: iload         7
+     132: bipush        52
+     134: iload         13
+     136: bipush        9
+     138: imul
+     139: iadd
+     140: bipush        9
+     142: bipush        9
+     144: bipush        9
+     146: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     149: iload         11
+     151: iconst_2
+     152: imul
+     153: iconst_1
+     154: iadd
+     155: iload         8
+     157: iadd
+     158: iload         4
+     160: if_icmpge     182
+     163: aload_1
+     164: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     167: iload         14
+     169: iload         7
+     171: bipush        88
+     173: bipush        9
+     175: bipush        9
+     177: bipush        9
+     179: invokevirtual #774                // Method net/minecraft/client/gui/GuiGraphics.blit:(Lnet/minecraft/resources/ResourceLocation;IIIIII)V
+     182: iload         11
+     184: iconst_2
+     185: imul
+     186: iconst_1
+     187: iadd
+     188: iload         8
+     190: iadd
+     191: iload         4
+     193: if_icmpne     215
+     196: aload_1
+     197: getstatic     #770                // Field GUI_ICONS_LOCATION:Lnet/minecraft/resources/ResourceLocation;
+     200: iload         14
+     202: iload         7
+     204: bipush        97
+     206: bipush        9
+     208: bipush        9

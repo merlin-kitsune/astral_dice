@@ -1,0 +1,76 @@
+# :600-607  display_path（显示路径统一正斜杠）
+  600  def display_path(p):
+  601      """展示用路径：统一成正斜杠。
+  602  
+  603      rel_display 在 Windows 上按 os.sep 渲染成反斜杠（str(Path) 的默认行为），而文档与
+  604      dry-run 样本一律写正斜杠 —— 同一个路径，这里只为输出口径一致、跨宿主可比。
+  605      """
+  606      return str(rel_display(p)).replace("\\", "/")
+  607  
+
+# :684-694  loader_display_label
+  684  def loader_display_label(loader):
+  685      """加载器显示名：fabric→Fabric / forge→Forge / neoforge→NeoForge；未知值回落为「首字母大写」。
+  686  
+  687      ⚠️ 只对已知三个做规范映射；未知值走 ``key[:1].upper() + key[1:]``（保留其余原样），
+  688      不用 ``str.capitalize()`` —— 后者会把 ``neoForge`` 之类的中间大小写也抹平，
+  689      而未知加载器本来就没有权威写法，抹平只会更失真。
+  690      """
+  691      key = str(loader or "").strip()
+  692      if key.lower() in LOADER_DISPLAY_LABELS:
+  693          return LOADER_DISPLAY_LABELS[key.lower()]
+  694      return key[:1].upper() + key[1:]
+
+# :697-710  default_display_name
+  697  def default_display_name(ver, loader, mc):
+  698      """推导 CF 站点显示名：``Astral Dice <版本> (<加载器> <MC>)``（2026-11-02 用户规则）。
+  699  
+  700      口径正本（样例即验收标准）：
+  701          astral_dice-1.5.0+fabric_1.20.1.jar        ⇒ Astral Dice 1.5.0 (Fabric 1.20.1)
+  702          astral_dice-1.5.0+neoforge_1.21.1.jar      ⇒ Astral Dice 1.5.0 (NeoForge 1.21.1)
+  703          astral_dice-1.5.0+forge_1.20.1.jar         ⇒ Astral Dice 1.5.0 (Forge 1.20.1)
+  704          astral_dice-1.5.0+neoforge_26.1.2.jar      ⇒ Astral Dice 1.5.0 (NeoForge 26.1.2)
+  705          astral_dice-1.5.0-hotfix+fabric_1.20.1.jar ⇒ Astral Dice 1.5.0-hotfix (Fabric 1.20.1)
+  706  
+  707      ``ver`` 用 parse_jar 解析出的版本（**不含** ``+<加载器>_<MC>`` 后缀）。
+  708      ``--display-name`` 显式给了就以它为准（见 build_jobs / upload_metadata）。
+  709      """
+  710      return "Astral Dice %s (%s %s)" % (ver, loader_display_label(loader), mc)
+
+# :713-720  is_mainline_version
+  713  def is_mainline_version(ver):
+  714      """主线版本判定（2026-11-02 用户规则）：``X.Y.0`` 且不含 ``-`` 后缀 ⇒ 默认附带 changelog。
+  715  
+  716      其它一律算小版本（补丁 / hotfix / 预发布）：
+  717          ``1.5.1``、``1.6.2``、``1.5.0-hotfix``、``1.3.7-beta.2``、``1.3.7-rc1`` ……
+  718      ⇒ 默认**不**在 CF 写 changelog。
+  719      """
+  720      return bool(MAINLINE_VERSION_RE.match(str(ver or "").strip()))
+
+# :723-748  decide_changelog
+  723  def decide_changelog(ver, explicit, disabled=False):
+  724      """决定本次是否附带 changelog，返回 ``(Path 或 None, 打印用说明行)``。
+  725  
+  726      规则（2026-11-02 用户规则，优先级从上到下）：
+  727        1. ``--no-changelog`` ⇒ 强制不附（与 ``--changelog`` 互斥，同时给直接报错）；
+  728        2. ``--changelog <文件>`` ⇒ 用户手动指定，任何版本都附（文件不存在仍报错）；
+  729        3. 主线版本（见 is_mainline_version）⇒ 自动取
+  730           ``release/<基础版本>/PLAYER_CHANGELOG*.md``；
+  731        4. 其它（小版本：补丁 / hotfix / 预发布）⇒ **不附** —— metadata 里
+  732           ``changelog`` 与 ``changelogType`` 两个字段都不出现。
+  733      """
+  734      if disabled and explicit:
+  735          raise SystemExit("[ERR] --no-changelog 与 --changelog 冲突：二者只能选一个")
+  736      if disabled:
+  737          return None, "CHANGELOG: skip (--no-changelog 强制不附 changelog)"
+  738      if explicit:
+  739          p = pick_changelog(ver, explicit)  # 内含「文件不存在就 SystemExit」
+  740          return p, "CHANGELOG: attach %s (显式 --changelog)" % display_path(p)
+  741      if is_mainline_version(ver):
+  742          p = pick_changelog(ver, None)
+  743          if p is not None:
+  744              return p, "CHANGELOG: attach %s (主线版本)" % display_path(p)
+  745          return None, ("CHANGELOG: skip (主线版本，但没有 release/%s/PLAYER_CHANGELOG*.md)"
+  746                        % str(ver).split("-")[0])
+  747      return None, ("CHANGELOG: skip (小版本更新不写 CF changelog: ver=%s, 用户 2026-11-02 规则)"
+  748                    % ver)

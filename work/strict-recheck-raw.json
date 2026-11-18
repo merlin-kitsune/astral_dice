@@ -1,0 +1,972 @@
+{
+ "log": {
+  "1.21.1": {
+   "case": "scripts/test/cases/RELEASE150-1.21.1.json",
+   "log": "run/1.21.1/logs/latest.log",
+   "window_start_line": 7561,
+   "total_lines": 12090,
+   "log_hits": [
+    {
+     "idx": 1,
+     "scope": "whole",
+     "pattern": "Astral Dice 1\\.5\\.0\\+neoforge_1\\.21\\.1",
+     "hit_count": 1,
+     "hit_lines": [
+      24
+     ],
+     "hit_platform": [
+      false
+     ],
+     "hit_text": [
+      "\t\tAstral Dice 1.5.0+neoforge_1.21.1 (astral_dice)"
+     ]
+    },
+    {
+     "idx": 2,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.21\\.1 gamemode=creative ",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 3,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* pos=100,-?[0-9]+,100 ",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 4,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* hp=20 ",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 5,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* item=astral_dice:abyss_reagent_chip",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 6,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.21\\.1 .* xp=30 ",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 7,
+     "scope": "case",
+     "pattern": "\\[REL150\\] .* slotted=[1-9][0-9]* ",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 8,
+     "scope": "case",
+     "pattern": "\\[REL150\\] .* chips=3 ",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 9,
+     "scope": "case",
+     "pattern": "\\[REL150\\] .* modver=1\\.5\\.0\\+",
+     "hit_count": 1,
+     "hit_lines": [
+      7710
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.763] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1"
+     ]
+    },
+    {
+     "idx": 10,
+     "scope": "case",
+     "pattern": "\\[REL150\\] chip id=astral_dice:abyss_reagent_chip count=3 name=(深渊试剂|Abyss Reagent) ",
+     "hit_count": 1,
+     "hit_lines": [
+      7751
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.828] [Render thread/INFO] [KubeJS Client/]: autojs-eval#28: [REL150] chip id=astral_dice:abyss_reagent_chip count=3 name=深渊试剂 tipn=7 path=screen"
+     ]
+    },
+    {
+     "idx": 11,
+     "scope": "case",
+     "pattern": "\\[REL150\\] tip i=0 text=.+",
+     "hit_count": 1,
+     "hit_lines": [
+      7752
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:20.828] [Render thread/INFO] [KubeJS Client/]: autojs-eval#29: [REL150] tip i=0 text=深渊试剂"
+     ]
+    },
+    {
+     "idx": 12,
+     "scope": "case",
+     "pattern": "\\[REL150\\] guide key=astral_dice\\.guide\\.entry\\.abyss_reagent_chip\\.1 text=.+",
+     "hit_count": 2,
+     "hit_lines": [
+      7743,
+      7759
+     ],
+     "hit_platform": [
+      false,
+      true
+     ],
+     "hit_text": [
+      "  console.info('[REL150] guide key=astral_dice.guide.entry.abyss_reagent_chip.1 text=' + guide);",
+      "[0211月2026 03:05:20.828] [Render thread/INFO] [KubeJS Client/]: autojs-eval#31: [REL150] guide key=astral_dice.guide.entry.abyss_reagent_chip.1 text=装备时治愈层数 +2；触发治愈回血时，获得「实际治疗量 ×2」的伤害吸收。"
+     ]
+    },
+    {
+     "idx": 13,
+     "scope": "case",
+     "pattern": "\\[REL150\\] inventory open=1",
+     "hit_count": 2,
+     "hit_lines": [
+      7785,
+      7795
+     ],
+     "hit_platform": [
+      false,
+      true
+     ],
+     "hit_text": [
+      "    console.info('[REL150] inventory open=1 hover=' + out.guiX + ',' + out.guiY + ' slot=' + out.slot + ' win=' + out.winX + ',' + out.winY);",
+      "[0211月2026 03:05:20.888] [Render thread/INFO] [KubeJS Client/]: autojs-eval#25: [REL150] inventory open=1 hover=399,322 slot=45 win=798,644"
+     ]
+    },
+    {
+     "idx": 14,
+     "scope": "case",
+     "pattern": "CHIP_SHOP_OPEN player=",
+     "hit_count": 1,
+     "hit_lines": [
+      7922
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:22.151] [Server thread/INFO] [com.merlinkitsune.astral_dice.shop.ChipShopOpener/]: [astral_dice] CHIP_SHOP_OPEN player=Dev offers=cursed_sword_chip+hand_fan_small_chip+sensor_chip purchased=0 refreshes=3"
+     ]
+    },
+    {
+     "idx": 15,
+     "scope": "case",
+     "pattern": "\\[REL150\\] screen=\\S*ChipShopScreen",
+     "hit_count": 1,
+     "hit_lines": [
+      8023
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:23.607] [Render thread/INFO] [KubeJS Client/]: autojs-eval#5: [REL150] screen=com.merlinkitsune.astral_dice.screen.ChipShopScreen"
+     ]
+    },
+    {
+     "idx": 16,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:dice ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      8204
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:25.647] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:dice ok=1 name=骰子"
+     ]
+    },
+    {
+     "idx": 17,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:attack_card_medium ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      8205
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:25.647] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:attack_card_medium ok=1 name=攻击(中)"
+     ]
+    },
+    {
+     "idx": 18,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:abyss_reagent_chip ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      8206
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:25.647] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:abyss_reagent_chip ok=1 name=深渊试剂"
+     ]
+    },
+    {
+     "idx": 19,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:jill_sign ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      8207
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:05:25.647] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:jill_sign ok=1 name=调酒师立牌"
+     ]
+    }
+   ],
+   "absent": [
+    {
+     "idx": 23,
+     "pattern": "Unknown or incomplete command|未知或不完整的命令|No player was found|没有找到玩家|No entity was found|没有与选择器匹配的实体",
+     "hit_count": 0,
+     "hit_lines": []
+    }
+   ]
+  },
+  "1.20.1": {
+   "case": "scripts/test/cases/RELEASE150-1.20.1.json",
+   "log": "run/1.20.1/logs/latest.log",
+   "window_start_line": 40377,
+   "total_lines": 44608,
+   "log_hits": [
+    {
+     "idx": 1,
+     "scope": "whole",
+     "pattern": "mod_version=1\\.5\\.0\\+forge_1\\.20\\.1",
+     "hit_count": 1,
+     "hit_lines": [
+      375
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:13:21.630] [modloading-worker-0/INFO] [astral_dice-version-gate/]: [Astral Dice] 版本互通门槛(Version Gate):mod_version=1.5.0+forge_1.20.1 → 网络互通号=1.5;正式版按二号位(major.minor)互通,含 SNAPSHOT 的构建只与完整版本串相同的快照互通。"
+     ]
+    },
+    {
+     "idx": 2,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.20\\.1 gamemode=creative ",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 3,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* pos=100,-?[0-9]+,100 ",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 4,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* hp=20 ",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 5,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* item=astral_dice:abyss_reagent_chip",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 6,
+     "scope": "case",
+     "pattern": "\\[REL150\\] ver=1\\.20\\.1 .* xp=30 ",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 7,
+     "scope": "case",
+     "pattern": "\\[REL150\\] .* slotted=[1-9][0-9]* ",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 8,
+     "scope": "case",
+     "pattern": "\\[REL150\\] .* chips=3 ",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 9,
+     "scope": "case",
+     "pattern": "\\[REL150\\] .* modver=1\\.5\\.0\\+",
+     "hit_count": 1,
+     "hit_lines": [
+      40514
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.379] [Server thread/INFO] [KubeJS Server/]: autojs-eval#23: [REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1"
+     ]
+    },
+    {
+     "idx": 10,
+     "scope": "case",
+     "pattern": "\\[REL150\\] chip id=astral_dice:abyss_reagent_chip count=3 name=(深渊试剂|Abyss Reagent) ",
+     "hit_count": 1,
+     "hit_lines": [
+      40553
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.432] [Render thread/INFO] [KubeJS Client/]: autojs-eval#32: [REL150] chip id=astral_dice:abyss_reagent_chip count=3 name=深渊试剂 tipn=7 path=screen"
+     ]
+    },
+    {
+     "idx": 11,
+     "scope": "case",
+     "pattern": "\\[REL150\\] tip i=0 text=.+",
+     "hit_count": 1,
+     "hit_lines": [
+      40554
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.432] [Render thread/INFO] [KubeJS Client/]: autojs-eval#33: [REL150] tip i=0 text=深渊试剂"
+     ]
+    },
+    {
+     "idx": 12,
+     "scope": "case",
+     "pattern": "\\[REL150\\] guide key=astral_dice\\.guide\\.entry\\.abyss_reagent_chip\\.1 text=.+",
+     "hit_count": 2,
+     "hit_lines": [
+      40550,
+      40561
+     ],
+     "hit_platform": [
+      false,
+      true
+     ],
+     "hit_text": [
+      "  console.info('[REL150] guide key=astral_dice.guide.entry.abyss_reagent_chip.1 text=' + guide);",
+      "[0211月2026 03:28:24.432] [Render thread/INFO] [KubeJS Client/]: autojs-eval#35: [REL150] guide key=astral_dice.guide.entry.abyss_reagent_chip.1 text=装备时治愈层数 +2；触发治愈回血时，获得「实际治疗量 ×2」的伤害吸收。"
+     ]
+    },
+    {
+     "idx": 13,
+     "scope": "case",
+     "pattern": "\\[REL150\\] inventory open=1",
+     "hit_count": 1,
+     "hit_lines": [
+      40593
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:24.501] [Render thread/INFO] [KubeJS Client/]: autojs-eval#28: [REL150] inventory open=1 hover=480,270"
+     ]
+    },
+    {
+     "idx": 14,
+     "scope": "case",
+     "pattern": "CHIP_SHOP_OPEN player=",
+     "hit_count": 1,
+     "hit_lines": [
+      40656
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:25.567] [Server thread/INFO] [com.merlinkitsune.astral_dice.shop.ChipShopOpener/]: [astral_dice] CHIP_SHOP_OPEN player=DevTester offers=target_chip+sandwich_low_chip+candy_chip purchased=0 refreshes=3"
+     ]
+    },
+    {
+     "idx": 15,
+     "scope": "case",
+     "pattern": "\\[REL150\\] screen=\\S*ChipShopScreen",
+     "hit_count": 1,
+     "hit_lines": [
+      40750
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:27.038] [Render thread/INFO] [KubeJS Client/]: autojs-eval#5: [REL150] screen=com.merlinkitsune.astral_dice.screen.ChipShopScreen"
+     ]
+    },
+    {
+     "idx": 16,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:dice ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      40915
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:28.580] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:dice ok=1 name=骰子"
+     ]
+    },
+    {
+     "idx": 17,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:attack_card_medium ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      40916
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:28.580] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:attack_card_medium ok=1 name=攻击(中)"
+     ]
+    },
+    {
+     "idx": 18,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:abyss_reagent_chip ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      40917
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:28.580] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:abyss_reagent_chip ok=1 name=深渊试剂"
+     ]
+    },
+    {
+     "idx": 19,
+     "scope": "case",
+     "pattern": "\\[REL150\\] sys id=astral_dice:jill_sign ok=1",
+     "hit_count": 1,
+     "hit_lines": [
+      40918
+     ],
+     "hit_platform": [
+      true
+     ],
+     "hit_text": [
+      "[0211月2026 03:28:28.580] [Server thread/INFO] [KubeJS Server/]: autojs-eval#9: [REL150] sys id=astral_dice:jill_sign ok=1 name=调酒师立牌"
+     ]
+    }
+   ],
+   "absent": [
+    {
+     "idx": 23,
+     "pattern": "Unknown or incomplete command|未知或不完整的命令|No player was found|没有找到玩家|No entity was found|没有与选择器匹配的实体",
+     "hit_count": 0,
+     "hit_lines": []
+    }
+   ]
+  }
+ },
+ "eval": [
+  {
+   "version": "1.21.1",
+   "slot": 8,
+   "from": "state",
+   "harness": "PASS",
+   "expect": {
+    "regex": "\\[REL150\\] ver=\\S+ gamemode=creative pos=100,-?[0-9]+,100 hp=20 .*item=astral_dice:abyss_reagent_chip"
+   },
+   "value": "\"[REL150] ver=1.21.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1\"",
+   "value_type": "str",
+   "strict": true,
+   "branches": [
+    {
+     "branch": "A-顶层操作符",
+     "op": "regex",
+     "result": true,
+     "why": "regex 作用于字符串"
+    }
+   ]
+  },
+  {
+   "version": "1.21.1",
+   "slot": 9,
+   "from": "chip",
+   "harness": "PASS",
+   "expect": {
+    "name": {
+     "regex": "^(深渊试剂|Abyss Reagent)"
+    }
+   },
+   "value": {
+    "ok": true,
+    "name": "深渊试剂",
+    "count": 3,
+    "tipn": 7,
+    "path": "screen"
+   },
+   "value_type": "dict",
+   "strict": true,
+   "branches": [
+    {
+     "branch": "B-字段级",
+     "field": "name",
+     "result": true,
+     "why": "regex 作用于字符串"
+    }
+   ]
+  },
+  {
+   "version": "1.21.1",
+   "slot": 10,
+   "from": "screen",
+   "harness": "PASS",
+   "expect": {
+    "screen": {
+     "regex": "ChipShopScreen$"
+    }
+   },
+   "value": {
+    "ok": true,
+    "screen": "com.merlinkitsune.astral_dice.screen.ChipShopScreen"
+   },
+   "value_type": "dict",
+   "strict": true,
+   "branches": [
+    {
+     "branch": "B-字段级",
+     "field": "screen",
+     "result": true,
+     "why": "regex 作用于字符串"
+    }
+   ]
+  },
+  {
+   "version": "1.20.1",
+   "slot": 8,
+   "from": "state",
+   "harness": "PASS",
+   "expect": {
+    "regex": "\\[REL150\\] ver=\\S+ gamemode=creative pos=100,-?[0-9]+,100 hp=20 .*item=astral_dice:abyss_reagent_chip"
+   },
+   "value": "\"[REL150] ver=1.20.1 gamemode=creative pos=100,108,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+forge_1.20.1\"",
+   "value_type": "str",
+   "strict": true,
+   "branches": [
+    {
+     "branch": "A-顶层操作符",
+     "op": "regex",
+     "result": true,
+     "why": "regex 作用于字符串"
+    }
+   ]
+  },
+  {
+   "version": "1.20.1",
+   "slot": 9,
+   "from": "chip",
+   "harness": "PASS",
+   "expect": {
+    "regex": "^[\"]?(深渊试剂|Abyss Reagent)[\"]?$"
+   },
+   "value": "\"深渊试剂\"",
+   "value_type": "str",
+   "strict": true,
+   "branches": [
+    {
+     "branch": "A-顶层操作符",
+     "op": "regex",
+     "result": true,
+     "why": "regex 作用于字符串"
+    }
+   ]
+  },
+  {
+   "version": "1.20.1",
+   "slot": 10,
+   "from": "screen",
+   "harness": "PASS",
+   "expect": {
+    "regex": "ChipShopScreen[\"]?$"
+   },
+   "value": "\"com.merlinkitsune.astral_dice.screen.ChipShopScreen\"",
+   "value_type": "str",
+   "strict": true,
+   "branches": [
+    {
+     "branch": "A-顶层操作符",
+     "op": "regex",
+     "result": true,
+     "why": "regex 作用于字符串"
+    }
+   ]
+  }
+ ],
+ "jar": {
+  "1.21.1": {
+   "jar": "astral_dice-1.5.0+neoforge_1.21.1.jar",
+   "bytes": 2611856,
+   "entries_with_dirs": 2016,
+   "entries_files_only": 1882,
+   "models": 158,
+   "recipes_plural": 0,
+   "recipes_singular": 125,
+   "signs": 32,
+   "toml_version": {
+    "META-INF/neoforge.mods.toml": "1.5.0+neoforge_1.21.1"
+   },
+   "candidates": [
+    [
+     "astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar",
+     2607086,
+     "2026-10-29 18:07:59"
+    ],
+    [
+     "astral_dice-1.5.0-rc.7+neoforge_1.21.1.jar",
+     2611872,
+     "2026-11-01 23:43:45"
+    ],
+    [
+     "astral_dice-1.5.0+neoforge_1.21.1.jar",
+     2611856,
+     "2026-11-02 01:50:00"
+    ]
+   ],
+   "picked_mtime": "2026-11-02 01:50:00"
+  },
+  "1.20.1": {
+   "jar": "astral_dice-1.5.0+forge_1.20.1.jar",
+   "bytes": 2660134,
+   "entries_with_dirs": 2032,
+   "entries_files_only": 1901,
+   "models": 158,
+   "recipes_plural": 125,
+   "recipes_singular": 0,
+   "signs": 32,
+   "toml_version": {
+    "META-INF/mods.toml": "1.5.0+forge_1.20.1"
+   },
+   "candidates": [
+    [
+     "astral_dice-1.5.0-rc.7+forge_1.20.1.jar",
+     2660152,
+     "2026-11-01 23:43:54"
+    ],
+    [
+     "astral_dice-1.5.0+forge_1.20.1.jar",
+     2660134,
+     "2026-11-02 01:50:06"
+    ]
+   ],
+   "picked_mtime": "2026-11-02 01:50:06"
+  }
+ },
+ "crash": {
+  "1.21.1": {
+   "exists": false
+  },
+  "1.20.1": {
+   "exists": true,
+   "files": [
+    [
+     "crash-2026-10-31_02.36.00-client.txt",
+     22939
+    ],
+    [
+     "crash-2026-10-31_02.37.25-client.txt",
+     22957
+    ],
+    [
+     "crash-2026-11-01_01.48.11-fml.txt",
+     12320
+    ],
+    [
+     "crash-2026-11-01_02.07.21-fml.txt",
+     14121
+    ],
+    [
+     "crash-2026-11-01_02.12.00-fml.txt",
+     14096
+    ]
+   ]
+  }
+ },
+ "shots": {
+  "1.21.1": {
+   "files": [
+    {
+     "name": "abyss_reagent_tooltip.png",
+     "bytes": 1698376,
+     "mtime": "2026-11-02 03:05:22.047",
+     "mtime_ts": 1793559922.047244
+    },
+    {
+     "name": "chip_shop_ui.png",
+     "bytes": 1873586,
+     "mtime": "2026-11-02 03:05:23.855",
+     "mtime_ts": 1793559923.855108
+    },
+    {
+     "name": "release150_guide.png",
+     "bytes": 3470595,
+     "mtime": "2026-11-02 03:05:25.637",
+     "mtime_ts": 1793559925.6374476
+    }
+   ],
+   "run_id": "20260926-230116",
+   "entry_total": 171,
+   "matching_entries": [
+    {
+     "file": "abyss_reagent_tooltip.png",
+     "tag": "abyss_reagent_tooltip",
+     "ts": 1793559849.656
+    },
+    {
+     "file": "chip_shop_ui.png",
+     "tag": "chip_shop_ui",
+     "ts": 1793559851.592
+    },
+    {
+     "file": "release150_guide.png",
+     "tag": "release150_guide",
+     "ts": 1793559853.464
+    },
+    {
+     "file": "abyss_reagent_tooltip.png",
+     "tag": "abyss_reagent_tooltip",
+     "ts": 1793559922.058
+    },
+    {
+     "file": "chip_shop_ui.png",
+     "tag": "chip_shop_ui",
+     "ts": 1793559923.861
+    },
+    {
+     "file": "release150_guide.png",
+     "tag": "release150_guide",
+     "ts": 1793559925.642
+    }
+   ]
+  },
+  "1.20.1": {
+   "files": [
+    {
+     "name": "abyss_reagent_tooltip.png",
+     "bytes": 1261572,
+     "mtime": "2026-11-02 03:24:47.923",
+     "mtime_ts": 1793561087.92365
+    },
+    {
+     "name": "chip_shop_ui.png",
+     "bytes": 3512368,
+     "mtime": "2026-11-02 03:22:17.571",
+     "mtime_ts": 1793560937.5718663
+    },
+    {
+     "name": "release150_guide.png",
+     "bytes": 846731,
+     "mtime": "2026-11-02 03:21:17.262",
+     "mtime_ts": 1793560877.262689
+    }
+   ],
+   "run_id": "20260926-230116",
+   "entry_total": 85,
+   "matching_entries": [
+    {
+     "file": "abyss_reagent_tooltip.png",
+     "tag": "abyss_reagent_tooltip",
+     "ts": 1793561109.0
+    },
+    {
+     "file": "chip_shop_ui.png",
+     "tag": "chip_shop_ui",
+     "ts": 1793561109.0
+    },
+    {
+     "file": "release150_guide.png",
+     "tag": "release150_guide",
+     "ts": 1793561109.0
+    }
+   ]
+  }
+ },
+ "window": {
+  "1.21.1": {
+   "offset_case": 1051236,
+   "offset_launch": 334538,
+   "anchor": {
+    "len": 1051236,
+    "ctime_ms": 1793559589055,
+    "mtime_ms": 1793559919215,
+    "prefix_len": 65536,
+    "prefix_sha": "a7ff0c8fc3fc78598632f96dea4ebd44d1ed71debcc606cc533e09e1ea1624f8"
+   },
+   "anchor_mtime": "2026-11-02 03:05:19.215",
+   "crash_baseline": []
+  },
+  "1.20.1": {
+   "offset_case": 6434375,
+   "offset_launch": 313700,
+   "anchor": {
+    "len": 6434375,
+    "ctime_ms": 1793560387948,
+    "mtime_ms": 1793561302994,
+    "prefix_len": 65536,
+    "prefix_sha": "697392ad6a8b9818afe27152456829a10a6209e9a6c0d5b1e030b09ad243a564"
+   },
+   "anchor_mtime": "2026-11-02 03:28:22.994",
+   "crash_baseline": [
+    "crash-2026-10-31_02.36.00-client.txt",
+    "crash-2026-10-31_02.37.25-client.txt",
+    "crash-2026-11-01_01.48.11-fml.txt",
+    "crash-2026-11-01_02.07.21-fml.txt",
+    "crash-2026-11-01_02.12.00-fml.txt"
+   ]
+  }
+ }
+}

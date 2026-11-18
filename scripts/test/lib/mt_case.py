@@ -1114,6 +1114,22 @@ class Runner:
         return verdict, code
 
 
+def case_version(path: str):
+    """按用例 JSON 内的 version 字段判定线别。
+
+    不能用文件名后缀 "-<version>.json" 过滤：version "1.21.1" 会把
+    AUTOJS-CHANNEL-fabric-1.21.1.json 也选中（fabric-1.21.1 以 -1.21.1.json 结尾），
+    导致 NeoForge 线跑 fabric 用例。
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    version = doc.get("version")
+    return version if isinstance(version, str) and version else None
+
+
 def load_cases(args) -> list[str]:
     if getattr(args, "case", None):
         return [args.case]
@@ -1121,7 +1137,7 @@ def load_cases(args) -> list[str]:
     files = [f for f in files if not os.path.basename(f).startswith(".mt_")
              and ".mt_results" not in f]
     if getattr(args, "version", None):
-        files = [f for f in files if f.endswith(f"-{args.version}.json")]
+        files = [f for f in files if case_version(f) == args.version]
     return files
 
 

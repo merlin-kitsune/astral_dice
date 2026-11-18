@@ -6,7 +6,7 @@
 `MisakiSignItem#getMeitoCost`），而卡面 64×64 素材右下角画着费用点 ⇒ 佩戴时货架卡面
 必须换成减费素材，否则玩家看到的费用点与真实结算不一致。
 
-判据（P0 两线 neoforge-1.21.1 / forge-1.20.1，逐条独立断言）：
+判据（D1-D4、D6 为 P0 两线 neoforge-1.21.1 / forge-1.20.1；D5 与 D7 覆盖四条发布线；逐条独立断言，\nD7 的正则自带变异自检，正则本身失效即判 GATE FAIL）：
 
 D1 源素材 images/shop/card+event/嘎呜切减费.png 存在，且 PNG 头解析为 64×64（卡面渲染按 64 缩放）。
 D2 两线 resources 里的 attack_card_meito_discount.png 与源素材**逐字节一致**（素材搬运不许改字节）。
@@ -19,7 +19,7 @@ D5 服务端减费口径仍在（MisakiSignItem 里
 D6 减费贴图名只被 CardShopScreen 引用（单一事实源），其它 java 文件不得硬编码。
 D7 「无玩家费用入口」彻底消失（2026-11-08 名刀 NPE 崩溃修复）：`AppliedStone.cost("...")`
    与 `CardRegistry.cost(..., null)` 形态一律不允许再出现——它们会把 null 玩家一路传到
-   Curios 查询里。P0 两线命中即失败；P1 三线尚未修（重做中）只计入告警，作为欠账登记。
+   Curios 查询里。四条发布线命中即失败；fabric-1.21.1（P1 脚手架，未发布）只计入告警，作为欠账登记。
 
 用法：python -B tools/verify_meito_discount_face.py [--quiet]
 退出码：0 = 全通过；1 = 有失败项。
@@ -30,9 +30,9 @@ import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LINES = ["neoforge-1.21.1", "forge-1.20.1"]
-# P1 三线（重做中）：D7 只告警不判失败，等 fabric/26.1.2 重做后并入 LINES
-P1_LINES = ["neoforge-26.1.2", "fabric-1.20.1", "fabric-1.21.1"]
+LINES = ["neoforge-1.21.1", "forge-1.20.1", "neoforge-26.1.2", "fabric-1.20.1"]
+# fabric-1.21.1 是 P1 脚手架、尚未发布：D7 只告警不判失败，等验收后并入 LINES
+P1_LINES = ["fabric-1.21.1"]
 ALL_LINES = LINES + P1_LINES
 
 SRC = os.path.join("images", "shop", "card+event", "嘎呜切减费.png")
@@ -53,6 +53,55 @@ def read(p):
 def read_bytes(p):
     with open(p, "rb") as f:
         return f.read()
+
+
+def strip_java_comments(text):
+    """把 // 与 /* */ 注释按原位替换为空格，保留换行与字符偏移（D7 逐行扫描用）。"""
+    out = list(text)
+    i, n = 0, len(text)
+    state = "code"
+    while i < n:
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if state == "code":
+            if c == "/" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                state, i = "line", i + 2
+                continue
+            if c == "/" and nxt == "*":
+                out[i] = out[i + 1] = " "
+                state, i = "block", i + 2
+                continue
+            if c == '"':
+                state = "str"
+            elif c == "'":
+                state = "char"
+        elif state == "str":
+            if c == "\\":
+                i += 2
+                continue
+            if c == '"':
+                state = "code"
+        elif state == "char":
+            if c == "\\":
+                i += 2
+                continue
+            if c == "'":
+                state = "code"
+        elif state == "line":
+            if c == "\n":
+                state = "code"
+            else:
+                out[i] = " "
+        else:  # block
+            if c == "*" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                state, i = "code", i + 2
+                continue
+            if c != "\n":
+                out[i] = " "
+        i += 1
+    return "".join(out)
 
 
 def png_size(data):
@@ -94,13 +143,13 @@ for line in LINES:
         failures.append("D3 %s: CardShopScreen 缺失" % line)
         continue
     src = read(p)
-    m = re.search(r"private ResourceLocation cardFaceTexture\(ItemStack stack\) \{(.*?)\n    \}", src, re.S)
+    m = re.search(r"private (?:ResourceLocation|Identifier) cardFaceTexture\(ItemStack stack\) \{(.*?)\n    \}", src, re.S)
     if not m:
         failures.append("D3 %s: 未定义 cardFaceTexture(ItemStack)" % line)
         body = ""
     else:
         body = m.group(1)
-    if "ResourceLocation face = cardFaceTexture(stack);" not in src:
+    if not re.search(r"(?:ResourceLocation|Identifier) face = cardFaceTexture\(stack\);", src):
         failures.append("D3 %s: drawCardFace 未改用 cardFaceTexture(stack)" % line)
     need = {
         "D4 只对名刀生效": "stack.is(ModItems.ATTACK_CARD_MEITO.get())",
@@ -196,7 +245,7 @@ for line in ALL_LINES:
                 continue
             fp = os.path.join(dirpath, fn)
             try:
-                text = read(fp)
+                text = strip_java_comments(read(fp))
             except UnicodeDecodeError:
                 continue
             d7_files += 1
@@ -210,9 +259,9 @@ for line in ALL_LINES:
                 else:
                     d7_debt.append(where)
 if not failures:
-    notes.append("D7 %d 个 java 文件无「无玩家费用调用」形态（P0 两线）" % d7_files)
+    notes.append("D7 %d 个 java 文件无「无玩家费用调用」形态（四条发布线）" % d7_files)
 if d7_debt:
-    notes.append("D7 欠账（P1 三线，重做中，暂不判失败）: " + ", ".join(d7_debt))
+    notes.append("D7 欠账（fabric-1.21.1，P1 脚手架，暂不判失败）: " + ", ".join(d7_debt))
 
 quiet = "--quiet" in sys.argv
 if not quiet:
@@ -223,4 +272,4 @@ if failures:
     for f in failures:
         print("  - " + f)
     sys.exit(1)
-print("GATE: PASS (D1-D6 两线全部满足；D7 五线扫描，P0 无残留、P1 仅登记欠账)")
+print("GATE: PASS (D1-D6 四条发布线全部满足；D7 五线扫描，四条发布线无残留，fabric-1.21.1 仅登记欠账)")

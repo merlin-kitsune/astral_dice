@@ -4,12 +4,36 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.78
+
+### 本线
+
+- 把 `multi-main` 1.6.0-pre.1 并入开发线：五线前置库统一钉 `1.2.0-pre.1`（它是 `next` 上同一个提交换名后的发布裁剪，原 `26.4-SNAPSHOT.13`），并一并带入发布线的语言修正、工具门禁、AutoJS 用例与文档。版本号仍留在 `26.4-SNAPSHOT.N` 开发序列。
+- 采用发布线定稿的转账面板布局：玩家名列宽 42 -> 52px（x=24..76），粉色选中箭头 66 -> 78（右缘 91，距 x=93 的滚动条滑块留 2px），取代 `26.4-SNAPSHOT.77` 构建的 50/77。
+- 分支定位：自本版本起 `multi-dev-next` 从 `multi-main` 分叉，作为下一大版本的独立开发线；主线中发现的 bug 直接在本线修复，不再从主线合并。
+
+- 验证：五线 `assemble` exit 0（带 `--offline`，`BUILD SUCCESSFUL in 11s`；28 tasks：18 executed / 5 from cache / 5 up-to-date；五枚 `.78` jar，neo `classCount` 643 / forge 668，无 `META-INF/jarjar/`）。首次在线构建在本机解析 `maven.neoforged.net` 失败，故本次验证走本地 Gradle 缓存与 `mavenLocal()`；本批未做实机检查。
+
 ## 26.4-SNAPSHOT.77
 
 ### 本线
 
 - 卡牌商店转账面板的玩家名列宽由 42px 加到 50px（x=24..74），粉色选中箭头由 x=66 右移到 x=77。箭头右缘 x=90，与 x=93 的滚动条控件保留 3px 间隙；行悬停底色注释同步改为实际的 (2,+0)-(93,+18)。
 - 验证：五线 `assemble` exit 0（`BUILD SUCCESSFUL in 28s`，28 tasks：23 executed / 5 up-to-date；五枚 `.77` jar）。本批未做实机视觉检查。
+
+## 1.6.0-pre.1 (2026-11-16)
+
+### 本次发布
+
+- 1.6.0 的首个预发布：把 `26.4-SNAPSHOT.1`–`.76` 开发线并入 `multi-main`。四条发布线仍是 NeoForge 1.21.1 / Forge 1.20.1 / NeoForge 26.1.2 / Fabric 1.20.1；Fabric 1.21.1 仍是 P1 脚手架。
+- StarEngine 1.2.0-pre.1 五平台：内容注册表、钱包 API、四阶段伤害钩子、伤害分类、攻击/防御属性钩子、内置 GeckoLib，以及新增的 fabric-1.21.1 库线。主模组五线统一钉 `1.2.0-pre.1`，版本上界改为 `2.0.0`。
+- `AstralDiceApi` 新增内容查询、钱包读写/转账、按分类过滤的伤害钩子，以及 `BASE`/`ADDITIVE`/`MULTIPLICATIVE`/`FINAL` 攻击/防御属性钩子。NeoForge 1.21.1 与 Forge 1.20.1 安装分类器与属性支持；其余三线只编译、不安装。
+- 配套 KubeJS 附属 `0.0.2`（独立仓库）：服务端脚本可注册/查询内容、读写钱包、注册伤害钩子与属性钩子；带仓库根 `logo.png`，并把 `astral_dice` 声明为必需前置 `[1.6.0-pre.1,)`。脚本重载时清空钩子，客户端脚本拒绝调用。
+- 把最新开发素材与文档带入 `multi-main`：`images/`、六个新增 `.bbmodel` 源文件、刷新后的 AGENTS/DSH 规则，以及 1.5.1 的发布修复（名刀减费 NPE、Forge 47.1.47 兼容、四线 CurseForge 上传）。
+- 验证：五线发布构建与附属双线构建通过；NeoForge 1.21.1 与 Forge 1.20.1 的实机 KubeJS 探针（来自 `26.4-SNAPSHOT.76`）覆盖内容计数、冻结状态、伤害分类、钱包与伤害/属性钩子注册。本次发布除版本 pin 与附属元数据外未改动该代码路径。
+- 立牌显示名对齐官方 wiki：Z3000 立牌为 `Z3000 Sign` / `ゼット3000のスタンド`（英文页名与 `CharPlayable.nameJapanese`），中文保留社区惯用「垃圾桶立牌」、不采用 wiki 职称「垃圾箱」；`mamushi_note` 两语文本改按 Souri 立牌物品名（`Amakawa Souri Sign` / `天川蒼鯉のスタンド`）指代。`tools/sign_display_names.json` 增至 37 条，`verify_sign_display_names` 通过。
+
+- 转账面板布局：选中行粉色箭头右移（TP_SELECT_X 66 -> 78，距滚动条滑块左缘留 2px），玩家名列可显示宽度由 42px 加宽到 52px；五线同步。
 
 ## 26.4-SNAPSHOT.76
 

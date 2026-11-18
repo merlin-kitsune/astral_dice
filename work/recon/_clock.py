@@ -1,0 +1,1 @@
+import time;print(int(time.time()), 1793617799-int(time.time()))

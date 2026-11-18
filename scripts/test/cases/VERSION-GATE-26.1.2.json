@@ -1,0 +1,42 @@
+{
+  "case_id": "VERSION-GATE-26.1.2",
+  "title": "版本互通门槛（neoforge-26.1.2）：产物内确有 network/VersionGate.class，启动日志 mod_version 为 1.6.0-pre.1+neoforge_26.1.2，且无门槛拒绝行。",
+  "version": "26.1.2",
+  "channel": "kubejs",
+  "target": {
+    "type": "feature",
+    "ref": "version-gate"
+  },
+  "steps": [
+    {
+      "op": "jar_stats",
+      "save_as": "jar"
+    },
+    {
+      "op": "note",
+      "text": "证据：neoforge-26.1.2/src/main/java/com/merlinkitsune/astral_dice/network/VersionGate.java 存在且打印同一门禁行（grep 版本互通门槛 命中）；mod_version 取 neoforge-26.1.2/gradle.properties:55 `mod_version=1.6.0-pre.1+neoforge_26.1.2`。\n\n为什么 26.1.2 单独建：该线 mod_version 后缀是 neoforge_26.1.2，跨线复用 1.21.1 的正则会在 26.1.2 恒红（后缀不匹配）。"
+    }
+  ],
+  "asserts": [
+    {
+      "type": "bytecode",
+      "pattern": "network/VersionGate\\.class$"
+    },
+    {
+      "type": "log",
+      "pattern": "\\[Astral Dice\\] 版本互通门槛\\(Version Gate\\):mod_version=1\\.6\\.0-pre\\.1\\+neoforge_26\\.1\\.2",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "absent",
+      "pattern": "版本互通门槛.*(不兼容|拒绝)",
+      "source": "latest",
+      "scope": "whole"
+    },
+    {
+      "type": "crash",
+      "scope": "whole"
+    }
+  ]
+}

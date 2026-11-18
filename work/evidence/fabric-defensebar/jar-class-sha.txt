@@ -1,0 +1,4 @@
+jar 2945258 1793618235.2248855
+  com/merlinkitsune/astral_dice/client/CombatPowerHud.class 09e9a2a728abe27e65f7f6d3
+  com/merlinkitsune/astral_dice/platform/client/FabricClientBridges.class 04072c7a91de7fd50d35909f
+  com/merlinkitsune/astral_dice/platform/client/gui/overlay/ForgeGui.class 98aa6f3e865e676b53f37a95

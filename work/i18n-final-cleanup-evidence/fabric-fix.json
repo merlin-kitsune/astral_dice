@@ -1,0 +1,28 @@
+{
+ "edits": [
+  {
+   "key": "tooltip.astral_dice.sign.parunan.active",
+   "line": 670,
+   "before": "  \"tooltip.astral_dice.sign.parunan.active\": \"套现\",",
+   "after": "  \"tooltip.astral_dice.sign.parunan.active\": \"网络购物\",",
+   "had_cr": true
+  },
+  {
+   "key": "tooltip.astral_dice.sign.fanny.active",
+   "line": 684,
+   "before": "  \"tooltip.astral_dice.sign.fanny.active\": \"麻烦制造者\",",
+   "after": "  \"tooltip.astral_dice.sign.fanny.active\": \"事件选择\",",
+   "had_cr": true
+  }
+ ],
+ "crlf_before": 1151,
+ "crlf_after": 1151,
+ "bare_lf_before": 0,
+ "bare_lf_after": 0,
+ "keycount": 1149,
+ "changed_keys": [
+  "tooltip.astral_dice.sign.parunan.active",
+  "tooltip.astral_dice.sign.fanny.active"
+ ],
+ "trailing": "'\"\\r\\n}\\r\\n'"
+}

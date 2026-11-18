@@ -1342,6 +1342,15 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 26. **CF 上传工具两处事实（2026-10-28，§4.1aq-6）**：① `tools/curseforge_upload.py` **只认 `--changelog` 显式路径** —— rc 版本的 `pick_changelog` 用 `base = ver.split("-")[0]`，永远匹配不到 `release/1.5.0-rc.5/`（既有坑 28；本批按显式路径上传，正文 49,242 字符）；② **多 jar = N 次 POST、非原子、不可幂等** —— 两件上传中途失败会在 CF 留半批文件，重传须先在作者后台手删（本批 2/2 HTTP 200 一次过，回读哈希逐字节一致）。
 
 27. **rc.6 收班状态与两处「验收次源不可用」口径（2026-10-29 20:5x，§4.1au）**：① 本地有 1 个 docs 提交（`8a6f4bb6`）**未 push**，等用户放行 —— push 会触发一次 CI，tag 已存在 ⇒ 只走「编辑 Release 说明 + `--clobber` 重传附件」，附件哈希不变（同 rc.5 的幂等实测）；② CF 本轮**只能以 Upload API 的 fileID 判成功** —— `api.cfwidget.com/1662159` 仍指 rc.5 `9349844`（滞后）、`mediafilez` / `edge.forgecdn.net` 的 `/files/<4位>/<3位>/<名>` 对新旧 fileID 一律 HEAD 403 / GET 404、`www.curseforge.com` 与其 `/api/v1/…/download` 全被 Cloudflare challenge；③ 顺手确认 `1.20.1` 两处 jar 口径不同是设计（`run/1.20.1/mods` = mojmap dev 件 `srg=0`，整合包 = reobf 件 `srg=21`）；④ `build/libs` 里 1.2.1…rc.5 历史 jar 未清（无害）；⑤ 坑：`tools.edit` 会把这两份文档**整文件转成 CRLF**（仓库存的是 LF）⇒ 大文件改写用 python 按行改、或改完立刻 `git ls-files --eol` 复核。
+28. **接管体检（2026-11-16）：合并完整性 / 五线编译 / 守门红点**（本轮实读，未改产品代码）
+    - **合并完整性**：`multi-main` 已含 `release/1.6.0-pre.1` 全量，`COPY-DEVNEXT=0`（无遗漏拷贝）；HEAD `01c52fd3`「merge: bring release/1.6.0-pre.1 into multi-main」。
+    - **五线编译**：`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1` 均 OK。
+    - **守门红点（2026-11-16 22:1x 复核）**：原 4 红已消 3 —— ① lang 百分号占位符 30 处已转义（check_lang_sync 0）/ ② CHANGELOG 标题全半角括号（parity 0）/ ③ meito 门禁为工具缺陷已修（Identifier + 注释剔除，GATE: PASS）；④ z3000 / Golden Koi 命名亦于 22:3x 按 wiki 裁决落地（第 29 条）⇒ **四红全消**。补充门禁里 fabric 创意栏白名单与资源完整性 26.1.2 旧装载路径两条亦属工具口径，已修并做变异反假绿。
+    - **jar 已重建（2026-11-16 22:33，含命名校正）**：五线均有 astral_dice-1.6.0-pre.1+<loader>.jar（neo/forge 由 :jar 产出；fabric 两线须 :remapJar，3,356,134 B / 3,382,619 B）；1.5.0 / 1.5.1 历史 jar 仍并存未清。
+    - **实机证据为空**：五线均无 `1.6.0-pre.1` 实机读数（本轮未开测）。
+    - **待裁决**：① 是否按 17 格矩阵开实机（一次一条线，端口 25585/25565/25575 互斥）② ~~z3000 / Golden Koi 三语命名口径~~（已按 wiki 裁决，见第 29 条）③ 是否 bump mod_version 后再重建并投放。
+
+29. **Z3000 立牌英日定名 + Souri 指代统一（2026-11-16 22:5x，用户 m00480 / m00576 裁决）**：按吉星派对 wiki 取证 —— 英文/日文用 `astralparty.miraheze.org` API 的页名 `Z3000`、`CharPlayable.nameJapanese=ゼット3000`；中文页 `wiki.biligame.com/starengine/Z3000` 职称写作「垃圾箱」，但玩家社区惯用「垃圾桶」，用户裁决 **zh 不改**（保留「垃圾桶立牌」）。落地：`tools/sign_display_names.json` 新增 `z3000`（zh 垃圾桶立牌 / en Z3000 Sign / ja ゼット3000のスタンド / wiki_page Z3000），37 条、updated 2026-11-16；五线 en/ja 的 `tooltip.astral_dice.sign.mamushi_note` 把表外昵称 `Golden Koi Sign` / 「金鯉のスタンド」改成物品名 `Amakawa Souri Sign` / 「天川蒼鯉のスタンド」（zh 的「金鲤立牌」本就与表一致，未动）。读数：`verify_sign_display_names` **GATE: PASS**（37 条 / 166,961 项检查，原 25 处红全消）、`check_lang_sync` 0、`verify_tooltip_format` checked=11220 OK、parity entries=1138/1138；五线 jar 22:5x 重建，jar 内「垃圾桶立牌」在、「垃圾箱立牌」0。commit `70c70805`（zh 名称按 m00576 同批回退）。
 
 ## 6 坑（本批新增，后续继续追加）
 
@@ -1352,6 +1361,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 5. **`withRefreshGranted` 不可是「重置」**（`min(MAX, left+1)`），且**死亡必须保留**（否则重生 = 变相补满）；forge 侧走 `AstralData` 白名单而非 `copyOnDeath`。
 6. **`MemberRecommendationChipItem` 只数主背包 + 副手**，不含 Curios 卡牌栏（与用户文案一致）。
 7. **备注区（`*_note` 键）回落码必须 `§d`**（`addSignNoteLines` 会把行内 `§7` 替换成 `§d`），否则踩 R0。
+8. **保留 mtime 的改写会让 git status 看不见改动**（2026-11-16 实测）：docs/agent/AGENTS-dsh.md 与 AGENTS-full.md 被改写后 size 不变、mtime 保持旧值，git diff / git diff-files / git add --dry-run 全报“无改动”，但 git hash-object 与 index blob 不同。判定法：git hash-object <f> 对比 git rev-parse :<f>；修复：touch <f> 后 git status 即可见（只改 mtime，不动内容）。
 8. **`ICuriosItemHandler#setEquippedCurio` 在 Curios 9.5.1（1.21.1）不触发 `onEquip`**（字节码只做 `setStackInSlot`）⇒ 装备类效果（星光发放 / 筹码槽扩容）必须**等 1–2 个 tick** 再读，否则读出「什么都没发生」的假阴性；1.20.1 的 Curios 5.x 反而当场生效。另：**1.20.1 `CuriosApi.getCuriosInventory` 返回 Forge `LazyOptional`（`.orElse(null)`），1.21.1 返回 `Optional`（`.get()`）**；`getStacksHandler` 在 1.20.1 也要 `.isPresent()/.get()`。
 9. **探针 `open` 会开店后立刻关**（否则 GUI 吞掉后续聊天命令）⇒ 要连点「星光兑换」必须在**同一次 AutoJS eval 内**顺序 `openkeep → exchange → close`（`performPrefixedCommand` 不走 GUI，不受影响）。
 10. **探针输出通道 = 聊天** ⇒ `run\<线>\logs\latest.log` 的 `[CHAT] AP_...`；`mcp__autojs__kubejs_log` 返回 0 entries 属正常，别据此判失败。
