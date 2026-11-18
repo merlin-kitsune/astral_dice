@@ -108,6 +108,24 @@
 - **诚实边界**：视图只读，附属不能回写内部上下文的「结果写入区」字段（targetEnhancement / attackCardSum / hasShadowStrike 等）；`DiceCombatFactor` 与法术两接口的 attacker 是 `Player`，类玩家宿主不在通道内；注册须在初始化阶段（内部表是普通 `ArrayList`）；**未做**「让生物发起远程 / 魔法攻击」的发起入口（P0-5 只解决识别与加成），本批未跑实机。
 - **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对产物含 7 个门面方法、7 个平台 default、`CombatApiAdapters` 与 9 个 `api/combat` 类。
 
+### 6.3 实机验收记录（B1 / B2，26.4-SNAPSHOT.86/.87，2026-11-18）
+
+- **环境**：`./gradlew.bat :neoforge-1.21.1:runClient -Pquickplay=probe --offline`（存档 probe），AutoJS `127.0.0.1:25585/mcp`，玩家 Dev（op）；探针全部在 server 侧 Rhino eval 里跑，直接调门面而非 GUI。
+- **B1 读数**（`astral_dice:nether_star_dice`）：`hasDiceTier=true`、`diceChipSlots=4`；空骰 `{star:0, cards:0, cardSlots:12, attackSlots:6, maxAttackCost:3, maxDefenseCost:3}`；`canEquipCard(attack_card_medium)=true`、`canEquipCard(defense_card_medium)=true`；两次 `equipCard` 均 `true`，装后 `cards=2`（`medium uses=10 def=false`、`defense_medium uses=150 def=true`）、`usedAttackCost=1`、`usedDefenseCost=1`、`starLevel` 仍 0；`unequipAllCards` 返回 2，`cards=0` 且两项费用归零，玩家背包 `attack_card_medium` 0→1（卡牌确实回到背包）。**B1 全部通过。**
+- **B2 注册锚点**：七个门面各注册一次，日志七条 `AP_COMBAT_API: registered=attack_modifier / defense_modifier / extra_damage_modifier / victim_damage_modifier / dice_combat_factor / spell_damage_matcher / spell_damage_modifier`。`SpellDamageModifier` 只有一个抽象方法（`apply`），Rhino 可直接传函数，不必 `Java.extend`。
+- **B2 行为断言**（每项都是门面注册后由游戏内真实事件消费）：
+
+  | 通道 | 注册的回调 | 触发方式 | 读数 |
+  |---|---|---|---|
+  | `VictimDamageModifier` | 目标带 tag `b2v` 返回 3.0 | `/damage 4 minecraft:generic` | 带标签掉 **12**、对照掉 **4**（恰好 ×3，覆盖任意来源） |
+  | `ExtraDamageModifier` | 目标带 tag `b2big` 返回 1000 | 玩家持钻石剑 + curios 骰子近战 | 骰战一击打死（掉 20），对照同条件掉 **1** |
+  | `DiceCombatFactor` | 目标带 tag `b2fac` 返回 `damage+1000` | 同上 | 骰战一击打死 |
+  | `AttackPowerModifier` | 目标带 tag `b2atk` 返回 `power+1000` | 先把 `attack_card_large` 用 `equipCard` 装进骰子（`cards=1`）再近战 | 骰战一击打死（B1/B2 互操作） |
+
+- **骰战确实发生**：攻击后玩家获得 `effect.astral_dice.dice_blessing`（`p.getActiveEffects()` 出现该描述 id），同一条件下掉血 5.41 / 1（骰点随机，故不用逐值对拍，用「+1000 必杀」这种不易被噪声淹没的信号）。
+- **未做行为断言的通道**（诚实边界）：`DefensePowerModifier`（需防御牌在受击侧骰战里结算）、`SpellDamageMatcher` / `SpellDamageModifier`（需第三方法术源）——只验证了注册锚点，未做行为断言。
+- **取证坑（下次直接用）**：Rhino 里 `player.level` 是属性不是方法（写 `p.level()` 报 `Cannot call property level ... it is "object"`）；1.21.1 的 `LivingEntity#hurt` 是 protected，脚本里只能改用 `/damage` 命令；白天僵尸会被晒死污染读数，改 `minecraft:husk`；`/attribute ... base set 200` 只改上限不改当前血量，需要用 `data merge entity ... {Health:200f}` 或直接按 20 血对拍。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点
