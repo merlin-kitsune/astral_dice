@@ -11,11 +11,21 @@ import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.combat.CombatApiAdapters;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeTargetsAdapter;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import net.minecraftforge.registries.RegistryObject;
+import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
+import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
+import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.player.Player;
 
 /** forge 平台实现（2026-11-18 门面桥接：类玩家注册 / 立牌激活 / 骰子祝福）。 */
 public final class ForgeAstralDicePlatform implements AstralDicePlatform {
@@ -78,9 +88,70 @@ public final class ForgeAstralDicePlatform implements AstralDicePlatform {
         CombatApiAdapters.registerSpellDamageMatcher(modifier);
     }
 
+    // ------------------------------------------------------------- B3 效果 / 星界事件
+
     @Override
-    public void registerSpellDamageModifier(SpellDamageModifier modifier) {
-        CombatApiAdapters.registerSpellDamageModifier(modifier);
+    public int astralEffectLevel(LivingEntity entity, String effectId) {
+        MobEffect effect = astralEffect(effectId);
+        MobEffectInstance instance = entity == null || effect == null ? null : entity.getEffect(effect);
+        return instance == null ? 0 : instance.getAmplifier() + 1;
+    }
+
+    @Override
+    public int astralEffectRemainingTicks(LivingEntity entity, String effectId) {
+        MobEffect effect = astralEffect(effectId);
+        MobEffectInstance instance = entity == null || effect == null ? null : entity.getEffect(effect);
+        return instance == null ? 0 : instance.getDuration();
+    }
+
+    @Override
+    public boolean applyAstralEffect(LivingEntity entity, String effectId, int durationTicks, int amplifier) {
+        MobEffect effect = astralEffect(effectId);
+        if (entity == null || effect == null || durationTicks <= 0) {
+            return false;
+        }
+        entity.addEffect(new MobEffectInstance(effect, durationTicks, amplifier, false, false, true));
+        return true;
+    }
+
+    @Override
+    public Set<String> astralEffectIds() {
+        Set<String> ids = new LinkedHashSet<>();
+        for (RegistryObject<MobEffect> holder : ModEffects.ALL) {
+            ids.add(holder.getId().toString());
+        }
+        return ids;
+    }
+
+    @Override
+    public AstralEvent findAstralEvent(String eventId) {
+        ResourceLocation id = ResourceLocation.tryParse(eventId);
+        return id == null ? null : AstralEventRegistry.get(id).orElse(null);
+    }
+
+    @Override
+    public boolean triggerAstralEvent(Player triggerer, Player tierOwner, String eventId, AstralEventTrigger source) {
+        ResourceLocation id = ResourceLocation.tryParse(eventId);
+        if (triggerer == null || id == null) {
+            return false;
+        }
+        AstralEventTrigger effective = source == null ? AstralEventTrigger.CUSTOM : source;
+        return tierOwner == null
+                ? AstralEventDispatcher.trigger(triggerer, id, effective)
+                : AstralEventDispatcher.trigger(triggerer, tierOwner, id, effective);
+    }
+
+    private static MobEffect astralEffect(String effectId) {
+        ResourceLocation id = ResourceLocation.tryParse(effectId);
+        if (id == null) {
+            return null;
+        }
+        for (RegistryObject<MobEffect> candidate : ModEffects.ALL) {
+            if (candidate.getId().equals(id)) {
+                return candidate.get();
+            }
+        }
+        return null;
     }
 }
 

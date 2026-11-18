@@ -14,12 +14,19 @@ import com.merlinkitsune.astral_dice.api.combat.DiceCombatFactor;
 import com.merlinkitsune.astral_dice.api.combat.ExtraDamageModifier;
 import com.merlinkitsune.astral_dice.api.combat.SpellDamageMatcher;
 import com.merlinkitsune.astral_dice.api.combat.SpellDamageModifier;
+import com.merlinkitsune.astral_dice.api.combat.CombatResolutionListener;
+import com.merlinkitsune.astral_dice.api.combat.CombatResolutionListeners;
 import com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier;
 import com.merlinkitsune.astral_dice.api.data.DiceLoadout;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeWallet;
+import com.merlinkitsune.astral_dice.choice.CardChoiceManager;
+import com.merlinkitsune.astral_dice.choice.CardChoiceType;
 import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
+import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
+import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.CardItem;
 import com.merlinkitsune.astral_dice.item.card.CardUseService;
@@ -29,6 +36,7 @@ import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatform;
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
+import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatforms;
 import com.merlinkitsune.starengine.api.combat.damage.DamageHook;
@@ -49,6 +57,8 @@ import com.merlinkitsune.starengine.api.economy.WalletRegistry;
 import com.merlinkitsune.starengine.target.TargetType;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
@@ -801,6 +811,121 @@ public final class AstralDiceApi {
         }
         requirePlatform("registerSpellDamageModifier").registerSpellDamageModifier(modifier);
         LOGGER.info("AP_COMBAT_API: registered={}", "spell_damage_modifier");
+    }
+
+    // ----------------------------------------------------- 选择器 / 选卡 / 效果（B3）
+
+    /** 让玩家进入「选目标」状态；已有会话或参数非法返回 false。 */
+    public static boolean startTargetSelection(ServerPlayer player, String actionId) {
+        return player != null && actionId != null && TargetSelectionManager.start(player, actionId);
+    }
+
+    /** 该玩家是否正在选目标。 */
+    public static boolean isSelectingTarget(Player player) {
+        return player != null && TargetSelectionManager.isSelecting(player);
+    }
+
+    /** 当前选目标会话的 token（喂给 {@link #confirmTargetSelection}）；没有会话返回 -1。 */
+    public static int targetSelectionToken(Player player) {
+        return player == null ? -1 : TargetSelectionManager.sessionTokenForTests(player);
+    }
+
+    /**
+     * 把玩家选中的实体回传给会话。
+     *
+     * <p>服务端会自己校验 token / 目标可见性 / 距离；不匹配的调用什么都不改。
+     */
+    public static void confirmTargetSelection(ServerPlayer player, int token, int targetId) {
+        if (player != null) {
+            TargetSelectionManager.confirm(player, token, targetId);
+        }
+    }
+
+    /** 取消选目标会话（按 token）。 */
+    public static void cancelTargetSelection(ServerPlayer player, int token) {
+        if (player != null) {
+            TargetSelectionManager.cancel(player, token);
+        }
+    }
+
+    /** 打开「选卡」界面（槽位数 = 必须放满数）；返回会话 token，&lt;0 表示被拒。 */
+    public static int startCardChoice(ServerPlayer player, int slotCount, CardChoiceType type,
+                                      Consumer<List<ItemStack>> callback) {
+        return startCardChoice(player, slotCount, slotCount, type, callback);
+    }
+
+    /** 打开「变长下限」选卡界面：{@code slotCount} 个槽、确认时至少放 {@code minSlots} 张。 */
+    public static int startCardChoice(ServerPlayer player, int slotCount, int minSlots, CardChoiceType type,
+                                      Consumer<List<ItemStack>> callback) {
+        if (player == null || type == null || callback == null) {
+            return -1;
+        }
+        return CardChoiceManager.start(player, slotCount, minSlots, type, callback);
+    }
+
+    /** 注册一条星界事件（内容冻结前调用；id 重复时以库侧校验结果为准）。 */
+    public static void registerAstralEvent(AstralEvent event) {
+        if (event == null) {
+            return;
+        }
+        AstralEventRegistry.register(event);
+        LOGGER.info("AP_EVENT_API: registered={}", event.id());
+    }
+
+    /** 按 id 查一条已登记的星界事件；未登记返回 {@code null}。 */
+    public static AstralEvent astralEvent(String eventId) {
+        if (eventId == null || eventId.isEmpty()) {
+            return null;
+        }
+        return requirePlatform("astralEvent").findAstralEvent(eventId);
+    }
+
+    /** 按 id 触发一条星界事件（不带归因方）。 */
+    public static boolean triggerAstralEvent(Player triggerer, String eventId, AstralEventTrigger source) {
+        return triggerAstralEvent(triggerer, null, eventId, source);
+    }
+
+    /** 按 id 触发一条星界事件；{@code tierOwner} 可空。触发器不在事件允许集合内时返回 false。 */
+    public static boolean triggerAstralEvent(Player triggerer, Player tierOwner, String eventId,
+                                             AstralEventTrigger source) {
+        if (triggerer == null || eventId == null || eventId.isEmpty()) {
+            return false;
+        }
+        return requirePlatform("triggerAstralEvent").triggerAstralEvent(triggerer, tierOwner, eventId, source);
+    }
+
+    /** 注册骰战结算完成回调（玩家路径与注册生物近战路径各发一次）。 */
+    public static void registerCombatResolutionListener(CombatResolutionListener listener) {
+        if (listener == null) {
+            return;
+        }
+        CombatResolutionListeners.register(listener);
+        LOGGER.info("AP_COMBAT_API: registered={}", "combat_resolution_listener");
+    }
+
+    /** 读本模组效果的层数（amplifier + 1）；没有该效果返回 0。 */
+    public static int effectLevel(LivingEntity entity, String effectId) {
+        return entity == null || effectId == null || effectId.isEmpty()
+                ? 0
+                : requirePlatform("effectLevel").astralEffectLevel(entity, effectId);
+    }
+
+    /** 读本模组效果的剩余时长（tick）；没有该效果返回 0。 */
+    public static int effectRemainingTicks(LivingEntity entity, String effectId) {
+        return entity == null || effectId == null || effectId.isEmpty()
+                ? 0
+                : requirePlatform("effectRemainingTicks").astralEffectRemainingTicks(entity, effectId);
+    }
+
+    /** 施加本模组效果；id 不识别或 {@code durationTicks <= 0} 时返回 false。 */
+    public static boolean applyAstralEffect(LivingEntity entity, String effectId, int durationTicks, int amplifier) {
+        return entity != null && effectId != null && !effectId.isEmpty()
+                && requirePlatform("applyAstralEffect").applyAstralEffect(entity, effectId, durationTicks, amplifier);
+    }
+
+    /** 当前登记的全部本模组效果 id（完整字符串）。 */
+    public static Set<String> astralEffectIds() {
+        return requirePlatform("astralEffectIds").astralEffectIds();
     }
 
     // ------------------------------------------------------------------ 收口

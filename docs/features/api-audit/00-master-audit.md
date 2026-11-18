@@ -126,6 +126,15 @@
 - **未做行为断言的通道**（诚实边界）：`DefensePowerModifier`（需防御牌在受击侧骰战里结算）、`SpellDamageMatcher` / `SpellDamageModifier`（需第三方法术源）——只验证了注册锚点，未做行为断言。
 - **取证坑（下次直接用）**：Rhino 里 `player.level` 是属性不是方法（写 `p.level()` 报 `Cannot call property level ... it is "object"`）；1.21.1 的 `LivingEntity#hurt` 是 protected，脚本里只能改用 `/damage` 命令；白天僵尸会被晒死污染读数，改 `minecraft:husk`；`/attribute ... base set 200` 只改上限不改当前血量，需要用 `data merge entity ... {Health:200f}` 或直接按 20 血对拍。
 
+### 6.4 B3 落地记录（26.4-SNAPSHOT.88，2026-11-18）
+
+- **新 common 契约**：`api/combat/CombatResolutionView`（record：attacker/target/finalDamage/landingDamage/extraDamage/diceStack/starLevel，空栈归一为 `ItemStack.EMPTY`）与 `CombatResolutionListener`（`onResolution(view)`）；`CombatResolutionListeners` 负责注册与派发，`CopyOnWriteArrayList` 保存监听器，`ThreadLocal` 重入闸门阻止监听器在自身回调里再触发自己，异常只记 `AP_COMBAT_API: combat_resolution_listener failed`。
+- **门面新增 16 个方法**：目标选择五个（`startTargetSelection` / `isSelectingTarget` / `targetSelectionToken` / `confirmTargetSelection` / `cancelTargetSelection`）；选卡两个（槽位数、最小槽位数两个重载，返回 token，拒绝返回 `-1`）；事件四个（`registerAstralEvent` / `astralEvent` / `triggerAstralEvent` 带与不带星级拥有者）；结算监听一个；效果四个（`effectLevel` / `effectRemainingTicks` / `applyAstralEffect` / `astralEffectIds`）。效果、事件查找与事件触发经 `AstralDicePlatform` 六个新 default 落到五线平台实现。
+- **五线差异与垫片**：`ModEffects.ALL` 在 neo 两线是 `DeferredHolder`、forge/fabric-1.20.1 是 `net.minecraftforge.registries.RegistryObject` / 平台自己的 `platform.registry.RegistryObject`、fabric-1.21.1 走 `Effects.holder(...)`；事件 id 解析在 26.1.2 用 `Identifier.tryParse`、其余用 `ResourceLocation.tryParse`。平台实现里对 holder 统一走 `Holder<MobEffect>` 接口（neo 两线需要一次 `(Holder<MobEffect>) (Holder<?>)` 强转）。
+- **结算触发点**：两条骰战路径（玩家攻击与生物攻击）的额外加伤在旧代码里是块内局部变量，B3 在其外层新增 `extraSettled` / `g6ExtraSettled` 快照，随后在赐福与攻击牌耐久步之后 `fire` 一次；玩家路径的 `landingDamage` 取各线已有落地量（neo `landing`、forge/fabric `applied`、26.1.2 直接用 `finalDmg`），生物路径现算 `finalDmg - min(finalDmg, absorption)`（26.1.2 同样直接用 `finalDmg`）。
+- **诚实边界**：结算视图是只读快照，不能改伤害；监听器只在骰战触发，原生伤害不触发；目标选择 / 选卡只暴露 token，不提供界面控制；`triggerAstralEvent` 仍受内部派发器冷却与资格约束；`startTargetSelection` 等需要 `ServerPlayer`。
+- **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物均含 16 个 B3 门面方法。**实机断言未跑**（下一步：目标选择一次、选卡一次、效果层数读数、结算监听器读 final/extra/landing）。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点

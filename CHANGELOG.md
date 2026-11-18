@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.88
+
+### This line
+
+- Selection / card-choice / event / effect facade (B3 of the API-coverage plan): `AstralDiceApi` gains `startTargetSelection`, `isSelectingTarget`, `targetSelectionToken`, `confirmTargetSelection`, `cancelTargetSelection`; `startCardChoice` (slot-count overload and min-slot overload, both returning a session token, `-1` when refused); `registerAstralEvent`, `astralEvent`, `triggerAstralEvent` (with and without a tier owner); `registerCombatResolutionListener`; `effectLevel`, `effectRemainingTicks`, `applyAstralEffect` and `astralEffectIds`. Effect-id resolution, event lookup and event triggering go through six new `AstralDicePlatform` default methods implemented on all five lines, so addons no longer walk `ModEffects.ALL` or call `AstralEventDispatcher` directly.
+- New read-only `api/combat/CombatResolutionView` (attacker, target, final damage, landing damage, settled extra damage, dice stack, star level) and `CombatResolutionListener`; both dice-battle paths — player attack and creature attack — fire it after the extra-damage settlement and attack-card durability step, behind a re-entrancy guard so a listener cannot nest-fire itself.
+- Honest boundaries: the resolution view is a post-settlement snapshot and cannot rewrite damage; `registerCombatResolutionListener` fires only for dice battles, not arbitrary vanilla damage; the selection/choice API requires a `ServerPlayer` and only exposes session tokens (the UI stays client-side); `triggerAstralEvent` follows the internal dispatcher, so cooldown and eligibility rules remain internal.
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL; `javap` confirmed all 16 B3 facade methods in every built artifact, and each line's `DiceCombatEvents` now has both resolution fire sites.
+
 ## 26.4-SNAPSHOT.87
 
 ### This line

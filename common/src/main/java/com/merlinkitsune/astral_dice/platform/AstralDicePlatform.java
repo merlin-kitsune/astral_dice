@@ -8,7 +8,13 @@ import com.merlinkitsune.astral_dice.api.combat.SpellDamageMatcher;
 import com.merlinkitsune.astral_dice.api.combat.SpellDamageModifier;
 import com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
+import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+
+import java.util.Set;
+
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -93,5 +99,41 @@ public interface AstralDicePlatform {
 
     /** 法伤加成修饰器。各线实现负责转调 {@code CombatApiAdapters}（内部上下文类型各线各一份）。 */
     default void registerSpellDamageModifier(SpellDamageModifier modifier) {
+    }
+
+    // ------------------------------------------------------------- B3 效果 / 星界事件
+
+    /** 读本模组效果的层数（amplifier + 1）；没有该效果返回 0。{@code effectId} 为完整 id 字符串。 */
+    default int astralEffectLevel(LivingEntity entity, String effectId) {
+        return 0;
+    }
+
+    /** 读本模组效果的剩余时长（tick）；没有该效果返回 0。 */
+    default int astralEffectRemainingTicks(LivingEntity entity, String effectId) {
+        return 0;
+    }
+
+    /** 施加本模组效果；id 不识别或 {@code durationTicks <= 0} 时返回 false。 */
+    default boolean applyAstralEffect(LivingEntity entity, String effectId, int durationTicks, int amplifier) {
+        return false;
+    }
+
+    /** 当前登记的全部本模组效果 id（完整字符串）。 */
+    default Set<String> astralEffectIds() {
+        return Set.of();
+    }
+
+    /** 按 id 查一条星界事件；未登记返回 {@code null}。 */
+    default AstralEvent findAstralEvent(String eventId) {
+        return null;
+    }
+
+    /**
+     * 按 id 触发一条星界事件；{@code tierOwner} 可空（空走不带归因方的那条重载）。
+     *
+     * <p>返回是否真的触发；源不合法 / 事件未登记 / 触发器不在该事件的允许集合内都会返回 false。
+     */
+    default boolean triggerAstralEvent(Player triggerer, Player tierOwner, String eventId, AstralEventTrigger source) {
+        return false;
     }
 }

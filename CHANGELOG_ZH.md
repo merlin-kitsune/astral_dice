@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.88
+
+### 本线
+
+- 选择器 / 选卡 / 事件 / 效果门面（API 覆盖计划的 B3 批）：`AstralDiceApi` 新增 `startTargetSelection`、`isSelectingTarget`、`targetSelectionToken`、`confirmTargetSelection`、`cancelTargetSelection`；`startCardChoice`（槽位数重载与最小槽位重载，均返回会话 token，被拒绝时返回 `-1`）；`registerAstralEvent`、`astralEvent`、`triggerAstralEvent`（带/不带星级拥有者两个重载）；`registerCombatResolutionListener`；`effectLevel`、`effectRemainingTicks`、`applyAstralEffect`、`astralEffectIds`。效果 id 解析、事件查找与触发经六个新增 `AstralDicePlatform` default 方法落到五线实现，附属不必再遍历 `ModEffects.ALL` 或直接调用 `AstralEventDispatcher`。
+- 新增只读 `api/combat/CombatResolutionView`（攻击方、目标、最终伤害、落地量、已结算额外加伤、骰子物品栈、星级）与 `CombatResolutionListener`；骰战两条路径 —— 玩家攻击与生物攻击 —— 都在额外加伤结算、攻击牌耐久步之后触发它，并带重入闸门，监听器不能自我嵌套触发。
+- 诚实边界：结算视图是结算后的快照，不能回写伤害；`registerCombatResolutionListener` 只在骰战触发，不覆盖任意原版伤害；选择器 / 选卡 API 需要 `ServerPlayer`，且只暴露会话 token（界面仍在客户端）；`triggerAstralEvent` 走内部派发器，冷却与资格判断仍在内部。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物均含 16 个 B3 门面方法，且五线 `DiceCombatEvents` 都有玩家 / 生物两个结算触发点。
+
 ## 26.4-SNAPSHOT.87
 
 ### 本线

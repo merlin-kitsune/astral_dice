@@ -2,6 +2,8 @@ package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
+import com.merlinkitsune.astral_dice.api.combat.CombatResolutionListeners;
+import com.merlinkitsune.astral_dice.api.combat.CombatResolutionView;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -979,8 +981,10 @@ public class DiceCombatEvents {
         // 攻击力快照 —— 即「严格排除」),改为命中落地后按**独立伤害类型**单独结算(额外加伤)。
         // 复用大当家溅射的既有范式:主目标此刻正处在自己这次伤害事件内部(原版 hurt 已先写
         // invulnerableTime/lastHurt),不临时清零无敌帧就会被"无敌帧内不更低伤害被丢弃"整段吞掉。
+        int extraSettled = 0;
         if (!player.level().isClientSide()) {
             int extraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(ctx);
+            extraSettled = extraDamage;
             if (extraDamage > 0) {
                 int savedInvulnerable = target.invulnerableTime;
                 beginAoe();
@@ -1092,6 +1096,9 @@ public class DiceCombatEvents {
         if (!player.level().isClientSide() && triggeredBlessing) {
             consumeAttackCardDurabilityOnce(player, diceStack, enhancement);
         }
+
+        CombatResolutionListeners.fire(new CombatResolutionView(player, target, finalDmg,
+                applied, extraSettled, diceStack, enhancement == null ? 0 : enhancement.starLevel()));
     }
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
@@ -1345,8 +1352,10 @@ public class DiceCombatEvents {
         // === G6(2026-11-08):参与者的「额外加伤」通道(星光/星币/治愈点三项) ===
         // 玩家路径在 onLivingDamagePre 里按 ctx 结算 astral_dice:extra_damage;参与者原先只吃攻击力修饰器,
         // 连带「手电筒-爆闪」这类走本通道的筹码对注册生物整段失效(2026-11-08 实机发现)。此处按同一口径补结算。
+        int g6ExtraSettled = 0;
         if (g6Ctx != null && !target.level().isClientSide()) {
             int g6ExtraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(g6Ctx);
+            g6ExtraSettled = g6ExtraDamage;
             if (g6ExtraDamage > 0) {
                 int savedInvulnerable = target.invulnerableTime;
                 beginAoe();
@@ -1372,6 +1381,10 @@ public class DiceCombatEvents {
             mob.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
                     GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
         }
+
+        float mobLanding = finalDmg - Math.min(finalDmg, target.getAbsorptionAmount());
+        CombatResolutionListeners.fire(new CombatResolutionView(mob, target, finalDmg, mobLanding,
+                g6ExtraSettled, attackerDie, g6Ctx == null || g6Ctx.enhancement == null ? 0 : g6Ctx.enhancement.starLevel()));
     }
 
     // ============================================================================================
