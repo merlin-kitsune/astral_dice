@@ -18,6 +18,7 @@ import com.merlinkitsune.astral_dice.api.combat.CombatResolutionListener;
 import com.merlinkitsune.astral_dice.api.combat.CombatResolutionListeners;
 import com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier;
 import com.merlinkitsune.astral_dice.api.data.DiceLoadout;
+import com.merlinkitsune.astral_dice.api.data.DiceTierView;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeWallet;
@@ -104,11 +105,25 @@ public final class AstralDiceApi {
     // ---------------------------------------------------------------- 骰面阶级
 
     /**
-     * 注册一个骰子阶层并绑定实际物品：这是附属新增可玩骰子的入口。
+     * 注册一个骰子阶层并绑定实际物品，返回只读视图：这是附属新增可玩骰子的推荐入口。
      *
-     * <p>同时写入主模组 {@link DiceTierRegistry}（筹码栏 / 卡牌栏 / 星愿铁砧识别）
-     * 与 StarEngine 的全局描述符表。{@code chipSlots} 返回该星级下的**绝对筹码格数**。
+     * <p>同时写入主模组 {@link DiceTierRegistry}（筹码栏 / 卡牌栏 / 星愿铁砧识别）。
+     * {@code chipSlots} 返回该星级下的**绝对筹码格数**，不是每级增量。
      */
+    public static DiceTierView registerDiceTierView(
+            String id, Supplier<Item> item, int cardSlots, IntUnaryOperator chipSlots) {
+        com.merlinkitsune.astral_dice.item.dice.DiceTier tier =
+                new com.merlinkitsune.astral_dice.item.dice.DiceTier(id, item, chipSlots, cardSlots);
+        DiceTierRegistry.register(tier);
+        return new DiceTierView(id, cardSlots, chipSlots);
+    }
+
+    /**
+     * @deprecated 返回的是内部类型 {@code item.dice.DiceTier}（带注册期才需要的 {@code Supplier<Item>}，
+     *     且与 StarEngine 的同名类分属两个包）；请改用
+     *     {@link #registerDiceTierView(String, Supplier, int, IntUnaryOperator)}。本方法保留到下个大版本。
+     */
+    @Deprecated
     public static com.merlinkitsune.astral_dice.item.dice.DiceTier registerDiceTier(
             String id, Supplier<Item> item, int cardSlots, IntUnaryOperator chipSlots) {
         com.merlinkitsune.astral_dice.item.dice.DiceTier tier =
@@ -118,21 +133,40 @@ public final class AstralDiceApi {
     }
 
     /**
-     * 只注册骰子描述符（不绑定物品）。
-     *
-     * <p>它不会让主模组的 {@code DiceCurioItem} / 铁砧识别该骰子；需要可玩物品时请用
-     * {@link #registerDiceTier(String, Supplier, int, IntUnaryOperator)}。
+     * @deprecated 只注册 StarEngine 描述符、不绑定物品，也没有卡牌栏 / 筹码栏语义；
+     *     需要可玩骰子请用 {@link #registerDiceTierView(String, Supplier, int, IntUnaryOperator)}。
      */
+    @Deprecated
     public static DiceTier registerDiceTier(String id, int cardSlots, IntUnaryOperator chipSlots) {
         return DiceTiers.register(id, cardSlots, chipSlots);
     }
 
-    /** 按 id 取骰面阶级;不存在返回 {@code null}。 */
+    /** 按 id 取可玩骰子的只读视图;未注册返回 {@code null}。 */
+    public static DiceTierView diceTierView(String id) {
+        com.merlinkitsune.astral_dice.item.dice.DiceTier tier = DiceTierRegistry.get(id);
+        return tier == null ? null : new DiceTierView(tier.id(), tier.cardSlots(), tier.chipSlots());
+    }
+
+    /** 全部已注册可玩骰子的只读视图(快照,不受后续注册影响)。 */
+    public static List<DiceTierView> diceTierViews() {
+        return DiceTierRegistry.all().stream()
+                .map(tier -> new DiceTierView(tier.id(), tier.cardSlots(), tier.chipSlots()))
+                .toList();
+    }
+
+    /**
+     * @deprecated 返回 StarEngine 的 {@code DiceTier}，与 {@link DiceTierView} 同名不同包；
+     *     请改用 {@link #diceTierView(String)}。
+     */
+    @Deprecated
     public static DiceTier diceTier(String id) {
         return DiceTiers.get(id);
     }
 
-    /** 全部已注册骰面阶级(库侧返回快照,不受后续注册影响)。 */
+    /**
+     * @deprecated 同上；请改用 {@link #diceTierViews()}。
+     */
+    @Deprecated
     public static List<DiceTier> diceTiers() {
         return DiceTiers.all();
     }

@@ -25,8 +25,8 @@
 | # | 结论 | 证据 | 影响 |
 |---|---|---|---|
 | S1 | **注册面有、消费面不认**：registerSign / registerChip 只写 StarEngine 的 Signs / Chips 表，本线**零处读取**这两张表 | 全仓 Signs. / Chips. 共 17 处命中，**全部在 AstralDiceApi.java 自身**（:117 :122 :130 :135 :156 :161 :166 :171 :181 :617…） | 附属注册立牌/筹码描述符后**不会生效**；立牌冷却实际由 item/sign/BaseSignItem.java:401 activeCooldownBaseTicks(Player) 决定，描述符里的 activeCooldownTicks 无人读 |
-| S2 | **门面泄漏内部类型**：5 参 registerDiceTier 返回 com.merlinkitsune.astral_dice.item.dice.DiceTier（非 api 包）；diceTier(id) 返回的却是 StarEngine 的同名异类 | AstralDiceApi.java:85-86、:104；common/.../item/dice/DiceTier.java:26 是 record | 两个 DiceTier 同名不同包，addon 极易混用；且 DiceTier 携带 Supplier<Item>，不适合作为稳定契约 |
-| S3 | **五线可直连性不齐**：CardUseService（2/5，仅 neo-1.21.1 + forge-1.20.1）、ChipEquip（2/5）、SignHooks（3/5）、OpenCardInventoryPayload（2/5） | 五线 glob 实测 | 这四类**不能**写进 common/api 直连；卡牌使用/筹码装配/立牌回调必须走平台 default 或先在缺线补齐 |
+| S2 | **门面泄漏内部类型**（B6 已收口，见 §6.10）：5 参 registerDiceTier 返回 com.merlinkitsune.astral_dice.item.dice.DiceTier（非 api 包）；diceTier(id) 返回的却是 StarEngine 的同名异类 | AstralDiceApi.java:85-86、:104；common/.../item/dice/DiceTier.java:26 是 record | 两个 DiceTier 同名不同包，addon 极易混用；且 DiceTier 携带 Supplier<Item>，不适合作为稳定契约 |
+| S3 | **五线可直连性不齐**（B6 已收口：ChipEquip 补满五线，SignHooks 声明仅三线，见 §6.10）：CardUseService（2/5，仅 neo-1.21.1 + forge-1.20.1）、ChipEquip（2/5）、SignHooks（3/5）、OpenCardInventoryPayload（2/5） | 五线 glob 实测 | 这四类**不能**写进 common/api 直连；卡牌使用/筹码装配/立牌回调必须走平台 default 或先在缺线补齐 |
 | S4 | **玩家发物品走不通**：giveItemTo 对真玩家恒 false，且绕过中央漏斗 ResourceConversion.giveItem | target/PlayerLikeTargets.java:167 if (receiver instanceof Player) return false;；resource/ResourceConversion.java:58-65 | addon 给玩家发星币只能自己 inventory.add，不会自动入袋，与模组内所有发币路径分叉 |
 | S5 | **第三方骰子没有原生 tooltip**：判据是 13 个 ModItems.*_DICE 的硬编码 stack.is(...) 串联 | event/ModTooltipHandler.java:348-353 | 经 registerDiceTier 注册的骰子星级/费用/石子提示全丢；换成 hasDiceTier(stack) 即可，零签名变更 |
 | S6 | **门面零侧别契约**：common 全包 isClientSide / Dist.CLIENT / assertServer / LogicalSide **0 命中** | 实测 grep | refreshDiceChipSlots（改 Curios 槽位）、giveCardTo、钱包四方法都是服务端语义，既无 javadoc 也无校验，addon 易在客户端误调 |
@@ -184,6 +184,14 @@
 - 未覆盖：客户端 HUD / 按键注册循环这次以**空注册表**启动（环境里没有在 mod 构造期注册的测试 addon），所以适配器 lambda 的真实显示与按键出现在控制菜单里没有截图取证；专用服务器未启动，`api/client` 类不引用任何客户端类型（只依赖 `Object`）作为静态保证。
 - 取证坑：`AstralHudLayers.register` 对空白 id 是**抛异常**而不是返回 false，探针必须 try/catch；Rhino 的 `JSON.stringify` 会丢掉返回 `undefined` 的字段，注册方法若无返回值就不会出现在结果里。
 
+### 6.10 B6 落地记录（26.4-SNAPSHOT.91，2026-11-18）
+
+- **S2 收口**：新增 `api/data/DiceTierView`（record：id / cardSlots / chipSlots 为 `IntUnaryOperator`，方法 `chipSlotsAt(int)`；构造期拒绝空白 id、负格数与空函数）；门面新增 `registerDiceTierView(String, Supplier<Item>, int, IntUnaryOperator)`、`diceTierView(String)`、`diceTierViews()`。旧 5 参 / 4 参 `registerDiceTier`、`diceTier`、`diceTiers` 全部保留并标 `@Deprecated` —— Java 不能仅靠返回类型重载，直接改返回类型会打断所有现存 addon。
+- **S3 收口（ChipEquip）**：补 fabric-1.20.1 / fabric-1.21.1 / neoforge-26.1.2 三份 `item/chip/ChipEquip`，判据统一为 Curios `chip` 槽 + `BaseChipItem`；fabric 两线走兼容层静态 `CuriosApi.getStacksHandler(entity, "chip")`，26.1.2 走官方 `CuriosApi.getCuriosInventory(...).get().getStacksHandler("chip")`。
+- **S3 收口（声明不补线）**：`SignHooks` / `SignHookDispatcher` 只存在于三条有立牌子系统的线（neo-1.21.1 / forge-1.20.1 / neo-26.1.2），**正式声明仅这三线可用**；fabric 两线不提供立牌子系统，单独补 SignHooks 等于引入半个立牌实现。立牌行为扩展继续建议用既有 `registerDamageHook` / `registerCombatStatHook` 组合。`CardUseService` 已在 B1 补满五线；`OpenCardInventoryPayload` 已被 B5 的平台 seam 取代，不再是门面可达面。
+- **兼容性**：所有旧签名保留（`javap` 五份产物均可查到 5 参 `registerDiceTier`、`diceTier`、`diceTiers`），deprecation 只产生编译警告；无注册表或数据格式变更。
+- **验证**：五线 `assemble --offline` BUILD SUCCESSFUL（`work/assemble-b6a.log`，28 tasks）；产物同时含 `DiceTierView` 与三新方法；`ChipEquip` 五线均有同名类。未跑实机（本批无运行期行为变化，纯类型/补线整理）。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点
@@ -191,7 +199,7 @@
 1. **先做哪批**：建议 B1（TLMDice 正卡在这里），其次 B2。
 2. **Signs / Chips 表要不要接到消费面**（§2 S1）：现在注册描述符不生效。接到消费面是**改行为**不只是补 API，需要单独设计（冷却来源、价格来源、权重来源三处都要定）。
 3. **第三方内容物扩展点**：立牌/筹码行为只能靠子类化内部 BaseSignItem / BaseChipItem。要不要在 api/ 出正式基类或行为接口（SignBehavior / ChipBehavior）？这决定「注册面有、消费面不认」是补消费面还是补行为面。
-4. **类型整理是否接受破坏性变更**：registerDiceTier 返回 DiceTierView、两个同名 DiceTier 收敛（§2 S2）。
+4. **类型整理是否接受破坏性变更**：已裁决为**非破坏**——新增 `DiceTierView` 与 view 方法，旧方法保留并 `@Deprecated`（§6.10，26.4-SNAPSHOT.91）。
 
 ## 8. 抽查复核记录（本文件 §2/§3 的证据都重新验证过）
 

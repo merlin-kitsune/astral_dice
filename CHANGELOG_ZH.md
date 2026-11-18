@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.91
+
+### 本线
+
+- 类型整理（API 覆盖计划的 B6 批，S2/S3）：新增 `api/data/DiceTierView`（id / 卡牌栏格数 / 星级→筹码格数，`chipSlotsAt(int)`），门面新增 `registerDiceTierView(...)`、`diceTierView(String)`、`diceTierViews()`。旧 `registerDiceTier`（5 参与 4 参）、`diceTier`、`diceTiers` 全部保留并标 `@Deprecated`，源码兼容，删除推迟到下个大版本。
+- 缺线补齐（S3）：`item/chip/ChipEquip` 此前只有 neoforge-1.21.1 与 forge-1.20.1，本批补 fabric-1.20.1 / fabric-1.21.1 / neoforge-26.1.2（fabric 走兼容层静态 `getStacksHandler`，26.1.2 走 `getCuriosInventory → getStacksHandler`，判据同为 `chip` 槽 + `BaseChipItem`）。
+- 正式声明不补线：`item/sign/SignHooks` 与 `SignHookDispatcher` 是立牌分发体系的一部分（十个嵌套接口 + 硬编码优先级），fabric 两线没有立牌子系统，单独补一套等于引入半个立牌实现；`CardUseService` 已在 B1 补满五线；`OpenCardInventoryPayload` 在 B5 已由平台 seam 取代。
+- 诚实边界：`DiceTierView` 只读，不带物品栈与持久化语义，也没有改名 / 注销能力；`diceTierViews()` 只覆盖「可玩骰子」（绑定物品的那张表），不含只注册 StarEngine 描述符的条目；旧方法标 `@Deprecated` 只是编译期提示，不改变运行期行为。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物同时含新方法（`registerDiceTierView` / `diceTierView` / `diceTierViews`）与旧签名（5 参 `registerDiceTier`、`diceTier`、`diceTiers`）；`ChipEquip` 在五线均存在同名类。
+
 ## 26.4-SNAPSHOT.90
 
 ### 本线

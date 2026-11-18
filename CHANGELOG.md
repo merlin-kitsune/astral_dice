@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.91
+
+### This line
+
+- Type cleanup (B6 of the API-coverage plan, S2/S3): new `api/data/DiceTierView` (id, card slots, star → chip slots with `chipSlotsAt(int)`), and the facade gains `registerDiceTierView(...)`, `diceTierView(String)` and `diceTierViews()`. The old `registerDiceTier` (both arities), `diceTier` and `diceTiers` stay and are marked `@Deprecated` — source compatible, removal deferred to the next major version.
+- Missing-line coverage (S3): `item/chip/ChipEquip` used to exist only in neoforge-1.21.1 and forge-1.20.1; this batch adds fabric-1.20.1, fabric-1.21.1 and neoforge-26.1.2 (fabric uses the shim's static `getStacksHandler`, 26.1.2 uses `getCuriosInventory → getStacksHandler`; both inspect the `chip` slot for `BaseChipItem`).
+- Declared out of scope: `item/sign/SignHooks` plus `SignHookDispatcher` belong to the sign-dispatch subsystem (ten nested interfaces and a hard-coded priority list); the two fabric lines have no sign subsystem, so porting it would mean shipping half a sign implementation. `CardUseService` was already filled in during B1, and `OpenCardInventoryPayload` was superseded by the platform seam in B5.
+- Honest boundaries: `DiceTierView` is read-only and carries no item stack or persistence semantics, and cannot rename or unregister a tier; `diceTierViews()` covers only playable dice (the item-bound table), not entries registered as bare StarEngine descriptors; `@Deprecated` is a compile-time hint only and changes no runtime behaviour.
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL; `javap` confirmed every artifact carries both the new methods (`registerDiceTierView` / `diceTierView` / `diceTierViews`) and the old signatures (5-arg `registerDiceTier`, `diceTier`, `diceTiers`); `ChipEquip` exists in all five lines.
+
 ## 26.4-SNAPSHOT.90
 
 ### This line
