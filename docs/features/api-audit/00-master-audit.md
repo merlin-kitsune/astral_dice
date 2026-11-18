@@ -165,6 +165,25 @@
 - **发币漏斗（通过）**：`giveItemToPlayer(p, 苹果×3)` 返回 `true`，背包出现 3 个苹果；`giveItemToPlayer(p, 星币×5)` 返回 `true`，钱包 21→26（`walletDelta=5`），背包里星币数量为 0 —— 星币确实走了「吸收进钱包」而不是进包。
 - **诚实边界**：本轮只断言了 neoforge-1.21.1 的 server 侧；其它四线只做到编译与 `javap` 核对，未逐线进游戏。手枪伤害开关的读数只证明「读到配置」，没有触发枪弹伤害做行为断言。
 
+### 6.8 B5 落地记录（26.4-SNAPSHOT.90，2026-11-18）
+
+- 新契约（common）：`api/client/AstralHudLayer`（函数式，`render(Object graphics, float partialTick)`）、`AstralHudLayers`（字符串 id、拒绝空/重复、`pathOf`、`registered()` 有序快照、`Registration` record）、`AstralKeyBindings`（`Request(id, defaultKeyCode)`、`translationKey()` 取 path）。
+- 平台 seam：`AstralDicePlatform.openCardInventory(ServerPlayer)` default 返回 `false`；五线实现转发本线 `screen/ModMenuTypes.openCardInventory`。neo 两条线原本只有 payload handler，已把逻辑搬进 `ModMenuTypes` 并让 handler 转调；forge 1.20.1 与两条 fabric 原本是 `void`，改为 `boolean`（未佩戴骰子提示并返回 `false`）。
+- 客户端注册：五线 `client/ModClientEvents` 在既有 GUI 注册方法末尾追加 HUD 循环（锚 `CROSSHAIR`），在既有按键注册方法末尾追加按键循环；1.20.1 形状用 `IGuiOverlay` lambda，1.21.1 用 `LayeredDraw.Layer`，26.1.2 用 `GuiLayer`。
+- 门面：新增 `openCardInventory`；新增私有 `requireServer(String, Entity)`；类 javadoc 增加「侧别」段。已加守卫：`giveCardTo` / `giveItemTo` / `refreshDiceChipSlots` / `walletDeposit` / `walletWithdraw` / `walletTransfer` / `playerLikeWalletWithdraw` / `playerLikeWalletDeposit` / `openCardInventory`。
+- 五线差异与垫片：common 不能引用 `GuiGraphics` / `GuiGraphicsExtractor` / `Identifier`，故 HUD id 用 `String`；1.20.1 的 overlay id 只接受 path、命名空间由 Forge 拼 `modid`，故五线统一取 path；26.1.2 的按键分类用 `KeyBindingSetup.CATEGORY`，其余三线用字符串 `key.categories.astral_dice`。
+- 诚实边界：`render` 的 graphics 参数是 `Object`，附属必须按本线强转；HUD 只有准星一个锚点，不能选择插在其它原版层之间；注册必须早于客户端 setup；晚注册只记录不显示；附属按键翻译键为 `key.astral_dice.<path>`，lang 需自带；卡牌商店按 P1 裁决不出面。
+- 验收状态：五线 `assemble --offline` 通过，产物含三个 `api/client` 类与 `openCardInventory`；客户端启动 + 一次界面打开见 §6.9。
+
+### 6.9 实机验收记录（B5，26.4-SNAPSHOT.90，2026-11-18）
+
+- 环境：neoforge-1.21.1 dev 客户端、存档 probe、玩家 Dev、AutoJS 两端 available（server/client 均 scripts loaded）。
+- 界面打开：已佩戴 `astral_dice:nether_star_dice` 时 `openCardInventory(player)` 返回 `true`，`player.containerMenu` 为 `com.merlinkitsune.astral_dice.screen.CardInventoryMenu`；把骰子槽清空后同一调用返回 `false`（走「未佩戴骰子」提示分支）；恢复骰子后槽位内容读回仍为 `astral_dice:nether_star_dice`。
+- 注册表：`AstralHudLayers.registered()` 起始 0，连续两次 `register("b5_test", ...)` 后仍为 1（重复被拒）；空白 id 抛 `IllegalArgumentException: id must not be blank`；`pathOf("other_mod:foo")` 返回 `foo`。`AstralKeyBindings` 注册 `b5_key` 两次后 size 为 1，`translationKey()` 为 `key.astral_dice.b5_key`。
+- 侧别守卫（client 侧 eval）：`walletDeposit(player, 1)` 抛 `IllegalStateException: AstralDiceApi.walletDeposit is server-side only`；`giveItemTo(player, apple)` 抛同形式 `... giveItemTo is server-side only`。
+- 未覆盖：客户端 HUD / 按键注册循环这次以**空注册表**启动（环境里没有在 mod 构造期注册的测试 addon），所以适配器 lambda 的真实显示与按键出现在控制菜单里没有截图取证；专用服务器未启动，`api/client` 类不引用任何客户端类型（只依赖 `Object`）作为静态保证。
+- 取证坑：`AstralHudLayers.register` 对空白 id 是**抛异常**而不是返回 false，探针必须 try/catch；Rhino 的 `JSON.stringify` 会丢掉返回 `undefined` 的字段，注册方法若无返回值就不会出现在结果里。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点

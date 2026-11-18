@@ -44,18 +44,24 @@ public class ModMenuTypes {
             MENU_TYPES.register("card_choice", () -> IForgeMenuType.create(CardChoiceMenu::new));
 
     /** 服务端打开卡牌栏(原 OpenCardInventoryPayload 的服务端逻辑;需佩戴骰子)。 */
-    public static void openCardInventory(ServerPlayer serverPlayer) {
+    /**
+     * 服务端打开卡牌栏（原 {@code OpenCardInventoryPayload} 的服务端逻辑；需佩戴骰子）。
+     *
+     * @return 是否打开了界面；未佩戴骰子时已向玩家提示并返回 false
+     */
+    public static boolean openCardInventory(ServerPlayer serverPlayer) {
         var curios = CuriosCompat.getCuriosInventory(serverPlayer);
         if (curios.isEmpty() || curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isEmpty()) {
             com.merlinkitsune.astral_dice.network.ModNetwork.sendToPlayer(serverPlayer,
                     new com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage(
                             Component.translatable("msg.astral_dice.no_dice_equipped").withStyle(net.minecraft.ChatFormatting.RED),
                             com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
-            return;
+            return false;
         }
         serverPlayer.openMenu(new SimpleMenuProvider(
                 (containerId, inventory, player) -> new CardInventoryMenu(containerId, inventory),
                 Component.translatable("gui.astral_dice.card_inventory")
         ));
+        return true;
     }
 }

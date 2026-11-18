@@ -11,6 +11,10 @@ import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
+import com.merlinkitsune.astral_dice.api.client.AstralHudLayers;
+import com.merlinkitsune.astral_dice.api.client.AstralKeyBindings;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import com.merlinkitsune.astral_dice.platform.client.event.RegisterGuiOverlaysEvent;
@@ -57,6 +61,12 @@ public class ModClientEvents {
                 "defense_bar", CombatPowerHud.DEFENSE_OVERLAY);
         event.registerAbove(VanillaGuiOverlay.FOOD_LEVEL.id(),
                 "attack_bar", CombatPowerHud.ATTACK_OVERLAY);
+
+        // 附属注册的 HUD 图层（B5）；本线沿用 1.20.1 形状的 overlay id（只接受 path）。
+        for (AstralHudLayers.Registration registration : AstralHudLayers.registered()) {
+            event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), AstralHudLayers.pathOf(registration.id()),
+                    (gui, graphics, partialTick, width, height) -> registration.layer().render(graphics, partialTick));
+        }
     }
 
     @SubscribeEvent
@@ -97,6 +107,12 @@ public class ModClientEvents {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
         // 目标选择器不注册键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单（强力胶式语义）
+
+        // 附属注册的按键（B5）；翻译键 key.astral_dice.<id>，分类沿用本线既有分类。
+        for (AstralKeyBindings.Request request : AstralKeyBindings.registered()) {
+            event.register(new KeyMapping(request.translationKey(), InputConstants.Type.KEYSYM,
+                    request.defaultKeyCode(), "key.categories.astral_dice"));
+        }
     }
 
     public static class DamageNumberOverlay implements IGuiOverlay {

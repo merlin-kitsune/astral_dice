@@ -88,6 +88,10 @@ import org.slf4j.LoggerFactory;
  * 附属模组不要自行提前冻结,否则后续脚本注册会被拒绝;{@code /reload} 也不能再新增内容。
  *
  * <p>本类的全部方法都是静态且无状态的,可在任意线程调用(并发语义继承库侧实现)。
+ *
+ * <p><b>侧别</b>:标注「服务端」的方法只在逻辑服务端有效 —— 客户端调用会抛
+ * {@link IllegalStateException}(由 {@code requireServer} 守卫)。注册类方法不受此限制,
+ * 客户端也会用到查询类方法。
  */
 public final class AstralDiceApi {
 
@@ -226,8 +230,9 @@ public final class AstralDiceApi {
         return wallet != null && wallet.balance(entity) >= amount;
     }
 
-    /** 向该实体钱包存入；金额必须为正，失败返回 false。 */
+    /** 向该实体钱包存入（服务端）；金额必须为正，失败返回 false。 */
     public static boolean walletDeposit(LivingEntity entity, long amount) {
+        requireServer("walletDeposit", entity);
         if (amount <= 0) {
             return false;
         }
@@ -235,8 +240,9 @@ public final class AstralDiceApi {
         return wallet != null && wallet.deposit(entity, amount);
     }
 
-    /** 从该实体钱包取出；金额必须为正，失败返回 false。 */
+    /** 从该实体钱包取出（服务端）；金额必须为正，失败返回 false。 */
     public static boolean walletWithdraw(LivingEntity entity, long amount) {
+        requireServer("walletWithdraw", entity);
         if (amount <= 0) {
             return false;
         }
@@ -250,6 +256,7 @@ public final class AstralDiceApi {
      * <p>库侧没有原子转账原语，因此这是**尽力而为**的两步操作；退回也失败时只记录日志并返回 false。
      */
     public static boolean walletTransfer(LivingEntity from, LivingEntity to, long amount) {
+        requireServer("walletTransfer", from);
         if (from == null || to == null || from == to || amount <= 0) {
             return false;
         }
@@ -402,6 +409,7 @@ public final class AstralDiceApi {
      * 的既有约定一致，也是附属「女仆发牌给玩家」这条路的前提。
      */
     public static boolean giveCardTo(ServerPlayer giver, LivingEntity receiver, ItemStack card) {
+        requireServer("giveCardTo", receiver);
         return receiver != null && card != null
                 && PlayerLikeTargets.giveCard(giver, receiver, card);
     }
@@ -415,6 +423,7 @@ public final class AstralDiceApi {
      * 背包满会在漏斗内就地掉地，不会静默丢失。
      */
     public static boolean giveItemTo(LivingEntity receiver, ItemStack stack) {
+        requireServer("giveItemTo", receiver);
         return receiver != null && stack != null && PlayerLikeTargets.giveItem(receiver, stack);
     }
 
@@ -516,8 +525,19 @@ public final class AstralDiceApi {
         return CardUseService.useCardFor(user, card);
     }
 
+    /**
+     * 为玩家打开卡牌栏（服务端）；未佩戴骰子时推送 actionbar 提示并返回 false。
+     *
+     * <p>客户端调用会抛 {@link IllegalStateException}；界面 id / 骰子槽解析由平台层决定。
+     */
+    public static boolean openCardInventory(ServerPlayer player) {
+        requireServer("openCardInventory", player);
+        return player != null && requirePlatform("openCardInventory").openCardInventory(player);
+    }
+
     /** 实体装备变化后刷新筹码格数（类玩家宿主必须由附属在换装时调用）。 */
     public static void refreshDiceChipSlots(LivingEntity holder) {
+        requireServer("refreshDiceChipSlots", holder);
         if (holder != null) {
             DiceCurioItem.refreshChipSlotCountForEntity(holder);
         }
@@ -626,6 +646,7 @@ public final class AstralDiceApi {
 
     /** 类玩家生物扣款；余额不足 / 无钱包返回 {@code false} 且无副作用。 */
     public static boolean playerLikeWalletWithdraw(LivingEntity holder, int amount) {
+        requireServer("playerLikeWalletWithdraw", holder);
         if (amount <= 0) {
             return false;
         }
@@ -635,6 +656,7 @@ public final class AstralDiceApi {
 
     /** 类玩家生物退款；默认钱包不支持时返回 {@code false}。 */
     public static boolean playerLikeWalletDeposit(LivingEntity holder, int amount) {
+        requireServer("playerLikeWalletDeposit", holder);
         if (amount <= 0) {
             return false;
         }
@@ -703,6 +725,12 @@ public final class AstralDiceApi {
             }
         }
         return false;
+    }
+
+    private static void requireServer(String operation, Entity holder) {
+        if (holder != null && holder.level().isClientSide()) {
+            throw new IllegalStateException("AstralDiceApi." + operation + " is server-side only");
+        }
     }
 
     private static AstralDicePlatform requirePlatform(String operation) {

@@ -1,17 +1,13 @@
 package com.merlinkitsune.astral_dice.network;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
-import com.merlinkitsune.astral_dice.screen.CardInventoryMenu;
+import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleMenuProvider;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
-import top.theillusivec4.curios.api.CuriosApi;
 
 public record OpenCardInventoryPayload() implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<OpenCardInventoryPayload> TYPE =
@@ -30,18 +26,7 @@ public record OpenCardInventoryPayload() implements CustomPacketPayload {
     public static void handle(OpenCardInventoryPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer serverPlayer) {
-                var curios = CuriosApi.getCuriosInventory(serverPlayer);
-                if (curios.isEmpty() || curios.get().findFirstCurio(DiceCurioItem::isDiceItem).isEmpty()) {
-                    net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
-                            new com.merlinkitsune.astral_dice.network.ActionBarPayload(
-                                    Component.translatable("msg.astral_dice.no_dice_equipped").withStyle(net.minecraft.ChatFormatting.RED),
-                                    com.merlinkitsune.starengine.component.GameplayConstants.ACTIONBAR_DURATION_TICKS));
-                    return;
-                }
-                serverPlayer.openMenu(new SimpleMenuProvider(
-                        (containerId, inventory, player) -> new CardInventoryMenu(containerId, inventory),
-                        Component.translatable("gui.astral_dice.card_inventory")
-                ));
+                ModMenuTypes.openCardInventory(serverPlayer);
             }
         });
     }

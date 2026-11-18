@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.platform;
 
+import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
+import net.minecraft.server.level.ServerPlayer;
 import com.merlinkitsune.astral_dice.api.combat.AttackPowerModifier;
 import com.merlinkitsune.astral_dice.api.combat.DefensePowerModifier;
 import com.merlinkitsune.astral_dice.api.combat.DiceCombatFactor;
@@ -198,6 +200,13 @@ public final class FabricAstralDicePlatform implements AstralDicePlatform {
     @Override
     public int actionBarFadeTicks() {
         return ModCommonConfig.ACTIONBAR_FADE_TICKS;
+    }
+
+    // ------------------------------------------------------------- B5 客户端面 / 界面入口
+
+    @Override
+    public boolean openCardInventory(ServerPlayer player) {
+        return ModMenuTypes.openCardInventory(player);
     }
 }
 

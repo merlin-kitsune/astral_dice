@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.90
+
+### 本线
+
+- 客户端面门面（API 覆盖计划的 B5 批）：`AstralDiceApi.openCardInventory(ServerPlayer)` 在服务端打开卡牌界面，走与按键路径相同的「是否佩戴骰子」检查，返回是否真的打开。新增 `api/client` 包：`AstralHudLayer`（`render(Object graphics, float partialTick)`）、`AstralHudLayers`（字符串 id、拒绝重复、`pathOf`、有序快照）、`AstralKeyBindings`（id + 默认 GLFW 键码，`translationKey()`）。
+- 五线客户端启动时都消费这两个注册表：HUD 循环挂在既有的 GUI 层 / overlay 注册里，附属图层统一锚在准星之上；按键循环挂在既有的按键注册里，每个请求创建一个 `KeyMapping`。
+- 服务端侧别策略（P0-10）：门面类 javadoc 标注哪些调用是服务端语义；新增私有 `requireServer` 守卫，客户端实体调用 `giveCardTo`、`giveItemTo`、`refreshDiceChipSlots`、`walletDeposit`、`walletWithdraw`、`walletTransfer`、`playerLikeWalletWithdraw`、`playerLikeWalletDeposit`、`openCardInventory` 时抛 `IllegalStateException`。
+- 诚实边界：HUD 渲染签名用 `Object`，因为 1.20.1/1.21.1 是 `GuiGraphics`、26.1.2 是 `GuiGraphicsExtractor`，附属必须强转本线类型；HUD 与按键注册必须发生在 mod 构造期、早于客户端 setup，晚注册只记录不显示；1.20.1 的 overlay id 只接受 path（命名空间固定为本模组），所以五线统一按 path 注册；附属按键需要自带 `key.astral_dice.<path>` 的 lang；商店按既有裁决不出面。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对门面含 `openCardInventory`，五份产物均含三个 `api/client` 类。实机 dev 客户端：佩戴骰子时 `openCardInventory` 返回 `true` 并打开 `CardInventoryMenu`，清空骰子槽后返回 `false`；HUD 与按键注册表拒绝重复与空白 id；客户端调用 `walletDeposit` / `giveItemTo` 抛服务端专用 `IllegalStateException`。
+
 ## 26.4-SNAPSHOT.89
 
 ### 本线

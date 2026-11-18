@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.90
+
+### This line
+
+- Client-side facade (B5 of the API-coverage plan): `AstralDiceApi.openCardInventory(ServerPlayer)` opens the card screen on the server, after the same "dice equipped?" check the keybind path uses, and returns whether the screen opened. New `api/client` package: `AstralHudLayer` (`render(Object graphics, float partialTick)`), `AstralHudLayers` (string ids, duplicate rejection, `pathOf`, ordered snapshot) and `AstralKeyBindings` (id plus default GLFW key code, `translationKey()`).
+- All five clients now consume those registries during startup: the HUD loop runs inside the existing GUI-layer/overlay registration and anchors addon layers above the crosshair; the key loop runs inside the existing key-mapping registration and creates one `KeyMapping` per request.
+- Server-side policy (P0-10): the facade class javadoc now marks which calls are server-only, and a private `requireServer` guard throws `IllegalStateException` when a client-side entity calls `giveCardTo`, `giveItemTo`, `refreshDiceChipSlots`, `walletDeposit`, `walletWithdraw`, `walletTransfer`, `playerLikeWalletWithdraw`, `playerLikeWalletDeposit` or `openCardInventory`.
+- Honest boundaries: the HUD render signature takes `Object` because 1.20.1/1.21.1 use `GuiGraphics` while 26.1.2 uses `GuiGraphicsExtractor` — addons must cast to their line's type; HUD and key registration must happen during mod construction, before client setup, and late registrations are recorded but never shown; 1.20.1 overlay ids accept a path only (the namespace is fixed to this mod), so all lines register by path; addon keys need their own `key.astral_dice.<path>` lang entry; the card shop stays unexposed by decision.
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL; `javap` confirmed `openCardInventory` on the facade and the three `api/client` classes in every built artifact. Dev client: `openCardInventory` returned `true` and opened `CardInventoryMenu` with a dice equipped, `false` after clearing the dice slot; HUD and key registries rejected duplicates and blank ids; client-side calls to `walletDeposit` / `giveItemTo` threw the server-only `IllegalStateException`.
+
 ## 26.4-SNAPSHOT.89
 
 ### This line

@@ -13,6 +13,7 @@ import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
 
 import java.util.Set;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -190,5 +191,17 @@ public interface AstralDicePlatform {
     /** actionbar 消息淡出时长（tick）。未接线返回 0。 */
     default int actionBarFadeTicks() {
         return 0;
+    }
+
+    // ------------------------------------------------------------- B5 客户端面 / 界面入口
+
+    /**
+     * 为玩家打开卡牌栏（服务端）。
+     *
+     * <p>未佩戴骰子时由实现方向玩家推送 actionbar 提示且不打开界面。
+     * 返回是否真的打开了界面；未接线返回 false。
+     */
+    default boolean openCardInventory(ServerPlayer player) {
+        return false;
     }
 }
