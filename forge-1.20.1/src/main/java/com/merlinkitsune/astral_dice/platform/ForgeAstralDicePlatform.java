@@ -10,7 +10,10 @@ import com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.combat.CombatApiAdapters;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeTargetsAdapter;
+import com.merlinkitsune.astral_dice.config.ModCommonConfig;
+import com.merlinkitsune.astral_dice.economy.StarCoinCurrency;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
+import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import net.minecraftforge.registries.RegistryObject;
 import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
 import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
@@ -152,6 +155,52 @@ public final class ForgeAstralDicePlatform implements AstralDicePlatform {
             }
         }
         return null;
+    }
+
+    // ------------------------------------------------------------- B4 经济识别 / 发放 / 配置只读
+
+    @Override
+    public long starCoinValue(ItemStack stack) {
+        return StarCoinCurrency.valueOf(stack);
+    }
+
+    @Override
+    public long depositCarriedStarCoins(Player player) {
+        return StarCoinCurrency.depositAllFromInventory(player);
+    }
+
+    @Override
+    public boolean giveItemToPlayer(Player player, ItemStack stack) {
+        if (player == null || stack == null || stack.isEmpty() || player.level().isClientSide()) {
+            return false;
+        }
+        ResourceConversion.giveItem(player, stack);
+        return true;
+    }
+
+    @Override
+    public boolean walletFeatureEnabled() {
+        return StarCoinCurrency.isWalletEnabled();
+    }
+
+    @Override
+    public boolean autoDepositOnObtain() {
+        return StarCoinCurrency.isAutoDepositEnabled();
+    }
+
+    @Override
+    public boolean firearmDamageAllowed() {
+        return ModCommonConfig.ALLOW_FIREARM_DAMAGE.get();
+    }
+
+    @Override
+    public int actionBarDurationTicks() {
+        return ModCommonConfig.ACTIONBAR_DURATION_TICKS;
+    }
+
+    @Override
+    public int actionBarFadeTicks() {
+        return ModCommonConfig.ACTIONBAR_FADE_TICKS;
     }
 }
 

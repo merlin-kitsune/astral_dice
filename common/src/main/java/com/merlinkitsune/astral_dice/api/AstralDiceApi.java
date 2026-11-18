@@ -67,6 +67,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -926,6 +927,96 @@ public final class AstralDiceApi {
     /** 当前登记的全部本模组效果 id（完整字符串）。 */
     public static Set<String> astralEffectIds() {
         return requirePlatform("astralEffectIds").astralEffectIds();
+    }
+
+    // ----------------------------------------------------- 经济识别 / 发放 / 配置（B4）
+
+    /** 是否为可存入钱包的货币物品（星币 / 星币袋）。 */
+    public static boolean isStarCoin(ItemStack stack) {
+        return starCoinValue(stack) > 0L;
+    }
+
+    /**
+     * 物品的星币面额：1 星币 = 1、1 星币袋 = 9，其它（含空栈）返回 0。
+     *
+     * <p>面额语义由各加载器线实现；若某线未接线会返回 0，与「不是货币」不可区分。
+     */
+    public static long starCoinValue(ItemStack stack) {
+        return stack == null || stack.isEmpty() ? 0L : requirePlatform("starCoinValue").starCoinValue(stack);
+    }
+
+    /**
+     * 玩家物品栏（36 格）与副手携带的星币面额合计，星币袋按 9 折算；**不是物品件数**。
+     *
+     * <p>只读物品，不动钱包，也不移除任何物品。
+     */
+    public static long countCarriedStarCoins(Player player) {
+        if (player == null) {
+            return 0L;
+        }
+        AstralDicePlatform platform = requirePlatform("countCarriedStarCoins");
+        long total = 0L;
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            long unit = platform.starCoinValue(stack);
+            if (unit > 0L) {
+                total += unit * stack.getCount();
+            }
+        }
+        ItemStack offhand = player.getOffhandItem();
+        long offUnit = platform.starCoinValue(offhand);
+        if (offUnit > 0L) {
+            total += offUnit * offhand.getCount();
+        }
+        return total;
+    }
+
+    /**
+     * 把玩家物品栏与副手的全部星币/星币袋折算进钱包并移除物品；返回实际入账面额。
+     *
+     * <p>仅服务端有效，0 表示没有货币或钱包不可用。顺序是先入账、后清物，不会出现「东西没了钱也没到」。
+     */
+    public static long depositCarriedStarCoins(Player player) {
+        return player == null ? 0L : requirePlatform("depositCarriedStarCoins").depositCarriedStarCoins(player);
+    }
+
+    /**
+     * 用本模组的中央发放漏斗给玩家发一件物品。
+     *
+     * <p>星币/星币袋在钱包开关与「获得即入钱包」同时开启时直接入钱包，否则进物品栏，物品栏满则掉地。
+     * 返回是否已交给漏斗处理；客户端 / 空栈返回 false。
+     */
+    public static boolean giveItemToPlayer(Player player, ItemStack stack) {
+        if (player == null || stack == null || stack.isEmpty()) {
+            return false;
+        }
+        return requirePlatform("giveItemToPlayer").giveItemToPlayer(player, stack);
+    }
+
+    /** 星币钱包功能是否启用。 */
+    public static boolean walletFeatureEnabled() {
+        return requirePlatform("walletFeatureEnabled").walletFeatureEnabled();
+    }
+
+    /** 「获得星币时直接存入钱包」是否生效（钱包关闭时恒 false）。 */
+    public static boolean autoDepositOnObtain() {
+        return requirePlatform("autoDepositOnObtain").autoDepositOnObtain();
+    }
+
+    /** 枪弹/炮弹类伤害是否计入法伤。 */
+    public static boolean firearmDamageAllowed() {
+        return requirePlatform("firearmDamageAllowed").firearmDamageAllowed();
+    }
+
+    /** actionbar 消息显示总时长（tick）。 */
+    public static int actionBarDurationTicks() {
+        return requirePlatform("actionBarDurationTicks").actionBarDurationTicks();
+    }
+
+    /** actionbar 消息淡出时长（tick）。 */
+    public static int actionBarFadeTicks() {
+        return requirePlatform("actionBarFadeTicks").actionBarFadeTicks();
     }
 
     // ------------------------------------------------------------------ 收口

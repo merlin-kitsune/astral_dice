@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.89
+
+### This line
+
+- Economy and config facade (B4 of the API-coverage plan): `AstralDiceApi` gains `isStarCoin`, `starCoinValue` (1 star coin = 1, 1 bag = 9, anything else = 0), `countCarriedStarCoins` (36 inventory slots + offhand, folded into **face value**, not item count), `depositCarriedStarCoins` (same scope, deposits and removes, returns the credited amount) and `giveItemToPlayer` (the mod's central funnel: star coins enter the wallet when both wallet and auto-deposit are enabled, otherwise the inventory, and drop on the ground when full). Config reads: `walletFeatureEnabled`, `autoDepositOnObtain`, `firearmDamageAllowed`, `actionBarDurationTicks` and `actionBarFadeTicks`.
+- The five lines already share identical `StarCoinCurrency` / `ResourceConversion` signatures, so B4 is common plus per-line forwarding: eight new `AstralDicePlatform` defaults (`starCoinValue`, `depositCarriedStarCoins`, `giveItemToPlayer`, the three config reads and the two actionbar durations), one `@Override` each on all five lines. `countCarriedStarCoins` stays in `common` because it only needs `starCoinValue` plus the vanilla inventory.
+- Honest boundaries: those platform defaults return `0` / `false` when a line is not wired, so a future loader line must implement them or the facade silently degrades; the wallet and deposit calls are server-side (client calls return `0` / `false`); `starCoinValue` only knows star coins and bags, no other currency items; the config reads cannot change values at runtime; the anvil costs, loot rules and actionbar display helper from the same audit item (P2) are not part of this batch.
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL; `javap` confirmed the ten B4 facade methods and the eight platform defaults in every built artifact.
+
 ## 26.4-SNAPSHOT.88
 
 ### This line

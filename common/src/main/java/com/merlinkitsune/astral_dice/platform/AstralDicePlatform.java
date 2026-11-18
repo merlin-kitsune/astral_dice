@@ -136,4 +136,59 @@ public interface AstralDicePlatform {
     default boolean triggerAstralEvent(Player triggerer, Player tierOwner, String eventId, AstralEventTrigger source) {
         return false;
     }
+
+    // ------------------------------------------------------------- B4 经济识别 / 发放 / 配置只读
+
+    /**
+     * 星币面额：1 星币 = 1、1 星币袋 = 9，其它物品返回 0。
+     *
+     * <p><b>未接线的平台实现会静默返回 0</b>，门面因此无法区分「不是货币」与「这线没接线」。
+     * 五线当前都已接线；若新增加载器线，必须实现本方法。
+     */
+    default long starCoinValue(ItemStack stack) {
+        return 0L;
+    }
+
+    /**
+     * 把玩家物品栏（36 格）与副手的全部星币/星币袋折算进钱包，并移除对应物品。
+     *
+     * <p>仅服务端有效；返回实际入账的面额合计，0 表示没有可存入货币或钱包不可用。
+     */
+    default long depositCarriedStarCoins(Player player) {
+        return 0L;
+    }
+
+    /**
+     * 用本模组的中央发放漏斗给玩家发一件物品：星币先进钱包（开关启用时），否则进物品栏，满则掉地。
+     *
+     * <p>仅服务端有效；返回是否已交给漏斗处理（false = 客户端 / 参数无效）。
+     */
+    default boolean giveItemToPlayer(Player player, ItemStack stack) {
+        return false;
+    }
+
+    /** 星币钱包功能是否启用（读 COMMON 配置）。未接线返回 false。 */
+    default boolean walletFeatureEnabled() {
+        return false;
+    }
+
+    /** 「获得星币时直接存入钱包」是否生效（钱包关闭时恒 false）。未接线返回 false。 */
+    default boolean autoDepositOnObtain() {
+        return false;
+    }
+
+    /** 枪弹/炮弹类伤害是否计入法伤（读 COMMON 配置）。未接线返回 false。 */
+    default boolean firearmDamageAllowed() {
+        return false;
+    }
+
+    /** actionbar 消息显示总时长（tick）。未接线返回 0。 */
+    default int actionBarDurationTicks() {
+        return 0;
+    }
+
+    /** actionbar 消息淡出时长（tick）。未接线返回 0。 */
+    default int actionBarFadeTicks() {
+        return 0;
+    }
 }

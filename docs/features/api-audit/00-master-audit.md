@@ -147,6 +147,15 @@
 - **诚实边界**：效果牌内部 `SelectorAction` 是 CREATURE 型，但 `apply` 依赖 `SignSelectionGate.Pending`，直接 API `startTargetSelection` 没有 pending 时会空转——纯 API 可断言的路径目前是立牌 ENEMY 动作；结算监听只在骰战触发、原生伤害不触发；事件触发仍受派发器冷却与资格约束。
 - **取证坑（本批新增）**：Rhino 里 try 块内的 `function` 声明不提升（用 `var f = function(){}`）；全局没有 `java`（`java.util.ArrayList` 报 undefined，Consumer 回调用 JS 数组 + 函数即可）；`stack.is(item)` 二义性报错，改用 `String(st.getItem())` 比较；`menu.getClass()`、`player.closeContainer()` 不可调用（protected），判菜单用 `containerMenu.token()` try/catch；`/summon` 的 `Health:200f` 与 `Attributes[max_health=200]` 都不会把尸壳血量抬过 20，选目标必须靠 `Tags` 过滤而不是血量。
 
+### 6.6 B4 落地记录（26.4-SNAPSHOT.89，2026-11-18）
+
+- **新增门面（10 个）**：`isStarCoin`、`starCoinValue`（1 / 9 / 0）、`countCarriedStarCoins`（物品栏 36 格 + 副手，按面额折算）、`depositCarriedStarCoins`（入账并移除，返回实际入账额）、`giveItemToPlayer`（中央漏斗），以及配置只读 `walletFeatureEnabled` / `autoDepositOnObtain` / `firearmDamageAllowed` / `actionBarDurationTicks` / `actionBarFadeTicks`。
+- **平台 seam**：`AstralDicePlatform` 新增 8 个 default（`starCoinValue`、`depositCarriedStarCoins`、`giveItemToPlayer`、三个配置读取、两个 actionbar 时长），五线平台实现各 8 个 `@Override`，分别转调 `StarCoinCurrency.valueOf` / `StarCoinCurrency.depositAllFromInventory` / `ResourceConversion.giveItem` / `StarCoinCurrency.isWalletEnabled` / `StarCoinCurrency.isAutoDepositEnabled` / `ModCommonConfig.ALLOW_FIREARM_DAMAGE.get()` 与两个常量。
+- **为什么不把统计放平台**：`countCarriedStarCoins` 只需 `starCoinValue` 与 `Player#getInventory`，留在 common 一份即可，避免五线重复实现同一段遍历逻辑。审计预判「重点 fabric 两线先确认 StarCoinCurrency 是否缺失」——实读五线都有 `economy/StarCoinCurrency.java` 且签名一致，故没有走「缺线用 default」的兜底。
+- **语义对齐**：星币面额来自 `StarCoinCurrency.STAR_COIN_VALUE=1L` / `STAR_COIN_BAG_VALUE=9L`；`depositCarriedStarCoins` 与 `depositAllFromInventory` 同语义（先入账、后清物）；`giveItemToPlayer` 走 `ResourceConversion.giveItem`，星币吸收、入包、掉地三段顺序与内部一致。
+- **诚实边界**：平台 default 未接线时静默返回 `0` / `false`（门面无法区分「不是货币」与「没接线」）；`giveItemToPlayer` 在客户端或空栈时返回 `false`；`starCoinValue` 只认星币/星币袋；配置只读，无 setter；铁砧费用、战利品规则、actionbar 显示助手（P2 备选）未做。
+- **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物均含 10 个 B4 门面方法与 8 个平台 default。KubeJS 实机读数尚未跑（发币入袋 / 携带面额 / 配置开关）。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点

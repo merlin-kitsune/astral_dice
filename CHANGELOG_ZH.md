@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.89
+
+### 本线
+
+- 经济与配置门面（API 覆盖计划的 B4 批）：`AstralDiceApi` 新增 `isStarCoin`、`starCoinValue`（1 星币 = 1、1 星币袋 = 9，其它一律 0）、`countCarriedStarCoins`（物品栏 36 格 + 副手，按**面额**折算而不是物品件数）、`depositCarriedStarCoins`（同范围，入账并移除物品，返回实际入账额）与 `giveItemToPlayer`（本模组的中央发放漏斗：钱包与「获得即入袋」同时开启时星币直接入钱包，否则进物品栏，满则掉地）。配置只读：`walletFeatureEnabled`、`autoDepositOnObtain`、`firearmDamageAllowed`、`actionBarDurationTicks`、`actionBarFadeTicks`。
+- 五线的 `StarCoinCurrency` / `ResourceConversion` 签名本就一致，所以 B4 是 common 加各线转发：`AstralDicePlatform` 新增 8 个 default（`starCoinValue`、`depositCarriedStarCoins`、`giveItemToPlayer`、三个配置读取、两个 actionbar 时长），五线各一份 `@Override` 转发。`countCarriedStarCoins` 留在 common，因为它只需要 `starCoinValue` 加原版物品栏。
+- 诚实边界：平台 default 在某线未接线时静默返回 `0` / `false`，新增加载器线必须实现，否则门面会无声降级；钱包与入袋调用是服务端语义（客户端调用返回 `0` / `false`）；`starCoinValue` 只认星币与星币袋，不覆盖其它货币物品；配置读取是只读的，不能在运行期改值；同一审计条目下的铁砧费用、战利品规则与 actionbar 显示助手（P2）不在本批范围内。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物均含 10 个 B4 门面方法与 8 个平台 default。
+
 ## 26.4-SNAPSHOT.88
 
 ### 本线
