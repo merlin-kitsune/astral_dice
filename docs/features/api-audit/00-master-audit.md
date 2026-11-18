@@ -156,6 +156,15 @@
 - **诚实边界**：平台 default 未接线时静默返回 `0` / `false`（门面无法区分「不是货币」与「没接线」）；`giveItemToPlayer` 在客户端或空栈时返回 `false`；`starCoinValue` 只认星币/星币袋；配置只读，无 setter；铁砧费用、战利品规则、actionbar 显示助手（P2 备选）未做。
 - **验收状态**：五线 `assemble --offline` BUILD SUCCESSFUL；`javap` 核对五份产物均含 10 个 B4 门面方法与 8 个平台 default。KubeJS 实机读数尚未跑（发币入袋 / 携带面额 / 配置开关）。
 
+### 6.7 实机验收记录（B4，26.4-SNAPSHOT.89，2026-11-18）
+
+- **环境**：`./gradlew.bat :neoforge-1.21.1:runClient -Pquickplay=probe --offline`（存档 probe，日志 `work/runclient-89.log`），AutoJS `127.0.0.1:25585/mcp` server 侧 Rhino eval，玩家 Dev。
+- **配置只读（通过）**：`walletFeatureEnabled=true`、`autoDepositOnObtain=true`、`firearmDamageAllowed=false`（该配置默认关闭，不是门面缺陷）、`actionBarDurationTicks=60`、`actionBarFadeTicks=10`。
+- **面额识别（通过）**：`starCoinValue` 对星币 = 1、星币袋 = 9、苹果 = 0；`isStarCoin` 相应为 `true/true/false`。
+- **携带面额与入袋（通过）**：清空背包后直接放入 3 星币 + 2 星币袋，`countCarriedStarCoins=21`（面额折算，不是 5 件）；`walletBalance=0` 时调 `depositCarriedStarCoins` 返回 21，钱包 0→21，背包再统计为 0。
+- **发币漏斗（通过）**：`giveItemToPlayer(p, 苹果×3)` 返回 `true`，背包出现 3 个苹果；`giveItemToPlayer(p, 星币×5)` 返回 `true`，钱包 21→26（`walletDelta=5`），背包里星币数量为 0 —— 星币确实走了「吸收进钱包」而不是进包。
+- **诚实边界**：本轮只断言了 neoforge-1.21.1 的 server 侧；其它四线只做到编译与 `javap` 核对，未逐线进游戏。手枪伤害开关的读数只证明「读到配置」，没有触发枪弹伤害做行为断言。
+
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点
