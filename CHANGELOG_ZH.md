@@ -4,6 +4,17 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.79
+
+### 本线
+
+- 补齐 `AstralDiceApi` 门面缺口（2026-11-18 裁决：本分支开始需要补齐门面）：新增类玩家注册与能力查询、骰子/立牌只读查询与立牌激活、骰子祝福判定、骰战参与者登记、类玩家钱包注册表、复合敌对探针六组公开面。附属模组此后不再需要 import 主模组内部实现类。
+- 平台接缝 `AstralDicePlatform` 新增三个默认方法（`registerPlayerLike` / `activateSign` / `hasDiceBlessing`），五条加载器线各自覆写，用来吸收三处五线差异：`ModEffects.DICE_BLESSING` 的注册器类型、`BaseSignItem.activateFor` 在 forge-1.20.1 是静态方法、neoforge-26.1.2 的 `ResourceLocation` 已改名 `Identifier`。
+- `DiceCombatEvents` 五线静态块改为向门面登记「试验假人也算敌对目标」探针；`PlayerLikeWallets.resolve` 在内部绑定未命中时回落到门面钱包表（fabric 两线无该文件，不接线）。
+- 冻结语义不变：`freezeContent()` 仍只冻结骰阶 / 立牌 / 筹码四张表，新增注册表不受冻结。
+
+- 验证：五线 `assemble --offline` exit 0（`BUILD SUCCESSFUL in 18s`，28 tasks：17 executed / 11 up-to-date；门面改动后先在同版本上编译通过，再统一升到 `.79` 复验）。本批未做实机检查。
+
 ## 26.4-SNAPSHOT.78
 
 ### 本线

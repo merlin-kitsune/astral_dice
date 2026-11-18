@@ -4,6 +4,17 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.79
+
+### This line
+
+- Filled the `AstralDiceApi` facade gaps (2026-11-18 ruling: this branch starts closing the facade). Six new public groups: player-like registration and capability queries, dice/sign read-only queries and sign activation, dice blessing checks, dice-combat participant registration, the player-like wallet registry, and a composite hostile-target probe. Addons no longer need to import the mod's internal implementation classes.
+- The `AstralDicePlatform` seam gains three default methods (`registerPlayerLike` / `activateSign` / `hasDiceBlessing`) overridden per loader line, absorbing three five-line differences: the registry type of `ModEffects.DICE_BLESSING`, `BaseSignItem.activateFor` being static on forge-1.20.1, and neoforge-26.1.2 renaming `ResourceLocation` to `Identifier`.
+- The five `DiceCombatEvents` static blocks now register their training-dummy hostile probe through the facade; `PlayerLikeWallets.resolve` falls back to the facade wallet table when no internal binding matches (the two fabric lines do not ship that file and are not wired).
+- Freeze semantics unchanged: `freezeContent()` still freezes only the four dice-tier/sign/chip tables; the new registries are not frozen.
+
+- Verification: five-line `assemble --offline` exited 0 (`BUILD SUCCESSFUL in 18s`, 28 tasks: 17 executed / 11 up-to-date; the facade was compiled green on the old version first, then re-verified after the bump to `.79`). No in-game check in this batch.
+
 ## 26.4-SNAPSHOT.78
 
 ### This line
