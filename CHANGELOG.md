@@ -4,6 +4,13 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.80
+
+### This line
+
+- Fixed the `giver != null` guard in `AstralDiceApi.giveCardTo`: player-like entities (maids, summons) can never be a `ServerPlayer`, so "maid hands a card to a player" always returned `false`. The giver may now be `null`, treated as an unknown giver — the card is still delivered, only giver-identity passives are skipped (matching the existing `VitaminPillChipItem.giveCard` convention). Found during the TLMDice facade-only rewrite's in-game acceptance (the maid-to-player transfer intent always failed).
+- Verification: five-line `assemble --offline` exited 0; the in-game re-check is recorded in the commit message.
+
 ## 26.4-SNAPSHOT.79
 
 ### This line

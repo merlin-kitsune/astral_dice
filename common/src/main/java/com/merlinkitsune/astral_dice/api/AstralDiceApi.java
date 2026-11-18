@@ -369,9 +369,17 @@ public final class AstralDiceApi {
         return PlayerLikeTargets.supports(entity, internal);
     }
 
-    /** 把卡牌发给类玩家生物（玩家走原版发牌路径）。 */
+    /**
+     * 把卡牌发给类玩家目标（玩家走原版发牌路径）。
+     *
+     * <p>{@code giver} 允许 {@code null}：类玩家实体（女仆 / 召唤物等）本身无法充当
+     * {@link ServerPlayer}，它们发牌时按「发牌者未知」处理 —— 卡牌照常交付，只是不结算
+     * 依赖发牌者身份的被动（蛟龙「湖沼之王」等）。这与
+     * {@code VitaminPillChipItem#giveCard(Player, Player, ItemStack)} 对 {@code null}
+     * 的既有约定一致，也是附属「女仆发牌给玩家」这条路的前提。
+     */
     public static boolean giveCardTo(ServerPlayer giver, LivingEntity receiver, ItemStack card) {
-        return giver != null && receiver != null && card != null
+        return receiver != null && card != null
                 && PlayerLikeTargets.giveCard(giver, receiver, card);
     }
 
