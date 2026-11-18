@@ -12,6 +12,8 @@ import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeWallet;
 import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
+import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
+import com.merlinkitsune.astral_dice.item.card.CardItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
@@ -383,7 +385,14 @@ public final class AstralDiceApi {
                 && PlayerLikeTargets.giveCard(giver, receiver, card);
     }
 
-    /** 发一件普通物品；返回 {@code false} 时调用方自行掉落。 */
+    /**
+     * 给目标发一件物品（服务端）：玩家走中央漏斗（星币入钱包 → 进包 → 掉地），
+     * 类玩家生物走其注册 handler。
+     *
+     * <p>两类接收方同口径：{@code true} = 已交付；{@code false} 只表示接收方不是类玩家目标
+     * （或调用发生在客户端），此时调用方自行处理（掉落 / 提示）。玩家分支恒 {@code true}，
+     * 背包满会在漏斗内就地掉地，不会静默丢失。
+     */
     public static boolean giveItemTo(LivingEntity receiver, ItemStack stack) {
         return receiver != null && stack != null && PlayerLikeTargets.giveItem(receiver, stack);
     }
@@ -393,6 +402,12 @@ public final class AstralDiceApi {
     /** 是否是可装备的骰子物品。 */
     public static boolean isDiceItem(ItemStack stack) {
         return stack != null && DiceCurioItem.isDiceItem(stack);
+    }
+
+    /** 是否是卡牌（战斗牌 {@code CardItem} 或效果牌 {@code BaseEffectCardItem}）。 */
+    public static boolean isCardItem(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        return stack.getItem() instanceof CardItem || stack.getItem() instanceof BaseEffectCardItem;
     }
 
     /** 骰子星级；非骰子返回 0。 */

@@ -4,6 +4,14 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.85
+
+### 本线
+
+- `PlayerLikeTargets.giveItem` 的玩家分支改为真正交付（原先直接返回 `false`）：玩家走中央漏斗 `ResourceConversion.giveItem`（星币自动入钱包 → 进背包 → 就地掉地），使 玩家→玩家、玩家→女仆、女仆→玩家、女仆→女仆 四条路径共用同一交付契约。旧的提前返回使门面 `AstralDiceApi.giveItemTo(player, stack)` 对真玩家恒为 `false`，逼得 addon 自己重复写「进包 / 掉地」，且静默跳过星币入钱包。
+- 新增 `AstralDiceApi.isCardItem(ItemStack)`：战斗牌（`CardItem`）与效果牌（`BaseEffectCardItem`）没有共同父类，addon 原先只能引内部物品类才能分辨「卡牌 / 普通物品」。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL；`AstralDiceApi` / `PlayerLikeTargets` 的编译产物含新成员。
+
 ## 26.4-SNAPSHOT.80
 
 ### 本线

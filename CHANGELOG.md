@@ -4,6 +4,14 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.85
+
+### This line
+
+- `PlayerLikeTargets.giveItem` now really delivers to players instead of returning `false`: the player branch routes through the central `ResourceConversion.giveItem` funnel (star-coin auto-deposit → inventory → drop), so player→player, player→maid, maid→player and maid→maid all share one delivery contract. The old early return made `AstralDiceApi.giveItemTo(player, stack)` permanently `false` and forced addons to duplicate inventory/drop logic that silently skipped star-coin absorption.
+- Added `AstralDiceApi.isCardItem(ItemStack)` — true for both combat cards (`CardItem`) and effect cards (`BaseEffectCardItem`), which share no common superclass, so addons previously had to reference internal item classes to tell a card from an ordinary item.
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL; compiled bytecode of `AstralDiceApi` / `PlayerLikeTargets` contains the new members.
+
 ## 26.4-SNAPSHOT.80
 
 ### This line
