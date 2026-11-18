@@ -3,6 +3,7 @@
 > 状态：2026-11-18 设计稿（待批准后进入实现计划）。
 > 目标读者：本仓维护者 + TLMDice 重写执行者。
 > 触发：TLMDice 需在 `.78` 之上**完全重写**，且只能走 `AstralDiceApi`；现有 9 个内部类引用必须全部收口。
+> 后续：2026-11-18 已做**全功能面覆盖审计**（122 项功能面，缺 74 项），见 [api-audit/00-master-audit.md](api-audit/00-master-audit.md)；本文只覆盖 TLMDice 重写所需的那批面。
 > 裁决记录（2026-11-18 用户）：
 > 1. 敌对探针**要**入门面，common 侧直连 starengine，把 TLMDice 的类初始化 hack 删干净；
 > 2. TLMDice **完全删除商店意图**，`ChipShopService` 从 TLMDice 消失，远程商店后续单独设计；
