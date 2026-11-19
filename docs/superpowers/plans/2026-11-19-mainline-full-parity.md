@@ -1,6 +1,6 @@
 # 主线全量对齐计划（2026-11-19）
 
-> 状态：阶段 0–2 已完成；阶段 2 已本地提交（库 `0147fb3` / 主模组 `515be163`，未 push），阶段 3 待开始。
+> 状态：阶段 0–3 已完成；阶段 3 已本地提交（库 `447ba39` / 主模组 `ed82ca32`，未 push），阶段 4 待开始。
 > 仓库：`F:/MCProject/astral_dice_multiloader`（`feature/mainline-full-parity`）与 `F:/MCProject/starengine`（`feature/mainline-full-parity`）。
 > 基线 tag：两仓均为 `mainline-parity-baseline-2026-11-19`。
 
@@ -230,11 +230,20 @@
 ### 阶段 3：C 常量拆分
 
 1. 主模组新增 `AstralGameplayConstants`（25 字段 + `cardCostForStar`）；库 `GameplayConstants` 只留 8 个通用字段。
-2. 改写 312 文件 / 325 处；mixed 文件同时保留库 import 与新类 import。
+2. 实读 319 文件（142 content-only、109 generic、36 mixed、32 comment-only）；改写 178 个，429 简单名 + 182 FQN 引用；mixed 文件同时保留库 import 与新类 import。
 3. 版本：库 `1.2.0-pre.4`，主模组 `1.6.0-pre.4`。
 4. 库 `clean publishToMavenLocal`；主模组五线 `clean assemble`。
 5. 校验：五份主模组 jar 含 `AstralGameplayConstants`；库 jar 的 `GameplayConstants` 只有通用字段；旧内容字段残留 0。
 6. 独立提交。
+
+**执行记录（2026-11-19）**
+
+- 库 `GameplayConstants` 只留 8 个通用字段；主模组新增 `AstralGameplayConstants`（25 个 `public static final int` + `cardCostForStar(int)`）。`GameplayConfigValues` 7 字段未改，`applyConfig` 不再派生两个 tick 常量。
+- 分析 319 个引用文件：142 content-only、109 generic、36 mixed、32 comment-only；`unknown_fields=0`、`assignments=0`、`static_imports=0`。改写 178 个文件，429 处简单名 + 182 处 FQN；`work/c_validate_mainline.py` 报 `issues: 0`，旧内容字段残留 0。
+- 版本：库 `1.2.0-pre.4`（提交 9 文件，+52/−97，`447ba39`）；主模组 `1.6.0-pre.4`（提交 186 文件，+723/−587，`ed82ca32`）。
+- 构建：库 `clean compileJava publishToMavenLocal --offline --no-daemon` 18s；主模组五线 `clean assemble --offline --no-daemon` 29s。
+- 产物：`work/verify_c_mainline.sh` 输出 `C_VERIFY_OK`；五份主模组 jar 含新类、25 字段与 `cardCostForStar`，五份库 jar 的 `GameplayConstants` 不含内容字段。未跑实机。
+- 两仓均未 push，tracked 工作树干净；未跟踪仅 `work/`、`models/`、库根发布日志等历史物。
 
 ### 阶段 4：API 全量
 
