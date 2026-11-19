@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
+import com.merlinkitsune.astral_dice.effect.MosesBrokenEffect;
 import com.merlinkitsune.astral_dice.effect.WeaknessRevealEffect;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.starengine.item.CuriosCompat;

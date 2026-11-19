@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.96
+
+### 本线
+
+- P2 归属批 A+B（用户 2026-11-19 裁决「先做AB」；Wallet 留库，GameplayConstants 拆分推迟）。18 个星骰 `MobEffect` 子类从 `starengine.effect` 搬入 `com.merlinkitsune.astral_dice.effect`；`Rarity` 从 `starengine.item` 搬入 common 的 `com.merlinkitsune.astral_dice.item`；五条线各自的 `AstralRarities` 平台接线路搬入同线 `com.merlinkitsune.astral_dice.item`。
+- 45 个 Java 文件改到新包名，并清掉 95 条同包冗余 import（每线 18 条 effect import + `ChipReadyEffect` 1 条）。两份 NeoForge `META-INF/enumextensions.json` 各 5 条现指向 `com/merlinkitsune/astral_dice/item/AstralRarities`；若留下旧路径，`Rarity` 类加载时会启动失败。
+- 依赖钉版：五线要求 StarEngine `26.4-SNAPSHOT.17`；NeoForge/Forge 区间维持 `[${starengine_version},27.0.0)`，Fabric 两线为 `">=26.4-SNAPSHOT.17 <27.0.0"`。
+- 验证：库 `.17` 已 clean 发布，五份 jar 均不含被搬走的类。本仓五线 `clean assemble --offline` BUILD SUCCESSFUL（26 s，EXIT=0）；五份 `astral_dice-26.4-SNAPSHOT.96+<loader>.jar` 均用 `work/verify_ab.sh` 检查 —— 新 effect/Rarity/AstralRarities 类存在、旧 `starengine` 路径不存在，五个 jar 全部 `AB_VERIFY_OK`；六条源码根上的旧 FQN 残留 grep 为空。
+- 诚实边界：本批未跑实机。`Rarity` / `AstralRarities` 除包名外行为未改；NeoForge 枚举扩展目前只在 jar/资源层取证，仍需一次真实启动做最终确认。`GameplayConstants`（C 批）与 `StarCoinWalletState` 按裁决未动。
+
 ## 26.4-SNAPSHOT.95
 
 ### 本线

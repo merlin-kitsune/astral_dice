@@ -369,4 +369,13 @@
 ### 12.4 边界与未完成
 
 - 本批未跑实机。`fabric-1.20.1` 的 FTB/OPAC 反射实现换成库版后，只有实机装对应后端才能确认 `AP_PARTY` 报 `on`；计时 seam 若某条线漏装，库版守卫会静默退回空实现。
-- TLMDice 已跟随 pin 到 `.95` / StarEngine `.16` 并升 `.90`（两线 clean assemble 9 s，EXIT=0；不引用平台类型，无源码改动）；`P2` 内容归属分类 / 影响面、`P3` 文档修正未开始。
+- TLMDice 已跟随 pin 到 `.95` / StarEngine `.16` 并升 `.90`（两线 clean assemble 9 s，EXIT=0；不引用平台类型，无源码改动）；P2 内容归属分类已完成（`docs/design/08-p2-sink-classification.md`），A/B 已执行（主模组 `.96` / 库 `.17`），C（`GameplayConstants` 拆分）待下一批，P3 文档修正未开始。
+
+## 13. P2 A/B 执行记录（26.4-SNAPSHOT.96 / 库 .17，2026-11-19）
+
+- 用户裁决（m02749，原文）：「先做AB，另外裁决Wallet留库，constants拆分，下一批做」。
+- A：库删 18 个 `MobEffect` 子类（`common/src/main/java/com/merlinkitsune/starengine/effect/`），主模组新增 `com.merlinkitsune.astral_dice.effect` 同 18 类；主模组 15 个使用文件改 import，库内旧引用 0。
+- B：库删 `common/.../item/Rarity.java` 与五线 `item/AstralRarities.java`；主模组新增 `common/.../astral_dice/item/Rarity.java` 与五线同包 `AstralRarities.java`；主模组 45 个 Java 文件改写（含 A/B），清 95 条同包 import；两份 NeoForge `META-INF/enumextensions.json` 各 5 条改指 `com/merlinkitsune/astral_dice/item/AstralRarities`；六条源码根旧 FQN 残留 0。
+- 版本与区间：库 `.17`；主模组 `.96`、`starengine_version=26.4-SNAPSHOT.17`、fabric `>=26.4-SNAPSHOT.17 <27.0.0`。
+- 验证：库 clean publish 9 s SUCCESSFUL，五份 `.17` jar 无旧类；主模组五线 clean assemble 26 s SUCCESSFUL，五份 `.96` jar 经 `work/verify_ab.sh` 全部 `AB_VERIFY_OK`。
+- 边界：未跑实机；NeoForge 枚举扩展仍需真实启动确认。`StarCoinWalletState` 按裁决留库；`GameplayConstants` C 批未做；TLMDice 不引用这些类，未改。

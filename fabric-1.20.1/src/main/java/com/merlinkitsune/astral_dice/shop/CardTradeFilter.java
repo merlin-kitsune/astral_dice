@@ -1,8 +1,8 @@
 package com.merlinkitsune.astral_dice.shop;
 
 import com.merlinkitsune.astral_dice.item.ModTags;
-import com.merlinkitsune.starengine.item.AstralRarities;
-import com.merlinkitsune.starengine.item.Rarity;
+import com.merlinkitsune.astral_dice.item.AstralRarities;
+import com.merlinkitsune.astral_dice.item.Rarity;
 import java.util.Collection;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;

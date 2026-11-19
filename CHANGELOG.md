@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.96
+
+### This line
+
+- P2 ownership batch A+B (user ruling 2026-11-19: "先做AB"; Wallet stays in the library, GameplayConstants split deferred). The 18 Astral Dice `MobEffect` subclasses moved from `starengine.effect` into `com.merlinkitsune.astral_dice.effect`; `Rarity` moved from `starengine.item` into the common `com.merlinkitsune.astral_dice.item`; and the five platform `AstralRarities` helpers moved into each line's `com.merlinkitsune.astral_dice.item`.
+- 45 Java files were rewritten to the new package names, and 95 same-package imports were removed (18 effect imports + 1 `ChipReadyEffect` import per line). The two NeoForge `META-INF/enumextensions.json` files now point the 5 entries each at `com/merlinkitsune/astral_dice/item/AstralRarities`; a stale path would fail at `Rarity` class load.
+- Dependency pin: all five lines require StarEngine `26.4-SNAPSHOT.17`; NeoForge/Forge keep `[${starengine_version},27.0.0)`, Fabric lines use `">=26.4-SNAPSHOT.17 <27.0.0"`.
+- Verification: library `.17` was clean-published; its five jars contain none of the moved classes. This repo's five-line `clean assemble --offline` BUILD SUCCESSFUL in 26 s (EXIT=0); all five `astral_dice-26.4-SNAPSHOT.96+<loader>.jar` artifacts were checked with `work/verify_ab.sh` — new effect/Rarity/AstralRarities classes present, old `starengine` paths absent, `AB_VERIFY_OK` for every jar. Residual old-FQN grep over all six source roots is empty.
+- Honest boundary: no live-game run. `Rarity` / `AstralRarities` behavior is unchanged apart from the package; the NeoForge enum extension is only proven at the jar/resource level here, so a real startup is still the final check. `GameplayConstants` (batch C) and `StarCoinWalletState` were deliberately left out.
+
 ## 26.4-SNAPSHOT.95
 
 ### This line
