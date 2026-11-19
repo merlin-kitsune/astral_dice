@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.entity;
 
 import com.merlinkitsune.astral_dice.block.ModBlocks;
-import com.merlinkitsune.astral_dice.combat.EliteTargets;
+import com.merlinkitsune.starengine.combat.EliteTargets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;

@@ -14,7 +14,7 @@ import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.concurrent.ThreadLocalRandom;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 肾上腺素筹码(一般/高效):生命值为 50% 或更低时,攻击力/防御力 +3/+8。

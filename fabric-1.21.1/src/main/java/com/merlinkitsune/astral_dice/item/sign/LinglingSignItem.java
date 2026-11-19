@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.component.SignAttachments;
 import com.merlinkitsune.astral_dice.effect.LinglingSurgeEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.starengine.event.SignActiveTriggeredEvent;

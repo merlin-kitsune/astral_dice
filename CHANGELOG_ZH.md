@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.6.0-pre.2 (2026-11-19)
+
+### 本次发布
+
+- P1 去重：删除 13 个与 StarEngine 重复的本地副本 —— `fabric-1.20.1`（`PartyRelations`、`EffectTimerGuard`、`EliteTargets`、`HoldToSelect`、`SelfTargetable`）、`fabric-1.21.1`（后四个）、`neoforge-26.1.2`（`PartyRelations` 加后三个）。相关引用统一改为 `com.merlinkitsune.starengine.{combat,event,target}`。
+- 两条 Fabric 线在平台工厂之后安装 `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())`；`SignTimerSourceAdapter` 与 `ModAttachments.EFFECT_TIMER_ENDS` 直接使用库版 `EffectTimerGuard.TimerEntry`，读写均做防御性拷贝。
+- `PartyRelations#reportBackends()` 的机器行由 `AP_FAB_PARTY:` 改为 `AP_PARTY:`；两个测试夹具与 Fabric 入口注释同步改写，Fabric 1.20.1 改为调用库实现。
+- StarEngine pin 升至 `1.2.0-pre.2`；五线 `clean assemble --offline --no-daemon` 通过（132 个 tracked 文件：119 修改 / 13 删除，+213/−2176）。产物校验：五份 `1.6.0-pre.2` jar、无本地重复类、库版 `TimerEntry` 与 `setTimerSource` 均在、mavenLocal 五份 `1.2.0-pre.2` 库 jar（`P1_VERIFY_OK`）。
+- 行为说明：Fabric 与 NeoForge 26.1.2 的本地 `EliteTargets` / `PartyRelations` 副本已移除；Fabric 旧 `EliteTargets` 恒返回 `false`，库版会走第三方接入 seam。本批未跑实机客户端/服务端冒烟。
+
 ## 1.6.0-pre.1 (2026-11-16)
 
 ### 本次发布

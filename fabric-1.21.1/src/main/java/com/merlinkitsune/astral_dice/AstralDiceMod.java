@@ -54,6 +54,10 @@ public class AstralDiceMod implements ModInitializer {
         // (仅 set + install,零行为变化),之后 AstralDiceApi 才能取到正确的平台 id。
         com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
                 new com.merlinkitsune.astral_dice.platform.FabricAstralDicePlatform());
+
+        // 计时守卫统一走库版:本地 EffectTimerGuard 已删除,这里注入计时表 seam.
+        com.merlinkitsune.starengine.event.EffectTimerGuard.setTimerSource(
+                new com.merlinkitsune.astral_dice.component.SignTimerSourceAdapter());
         // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
         //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
         //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
@@ -359,7 +363,7 @@ public class AstralDiceMod implements ModInitializer {
     @com.merlinkitsune.astral_dice.platform.event.SubscribeEvent
     public static void onCommonSetup(FMLCommonSetupEvent event) {
         ModCompatibilityCheck.verifyOrThrow();
-        // 队伍后端接入状态诊断(machine line: AP_FAB_PARTY)。
+        // 队伍后端接入状态诊断(machine line: AP_PARTY)。
         // ⚠️ 放这里而不是 onInitialize():三条队伍系统的**启用开关**由公共配置驱动
         //    (GameplayConstants.applyConfig),此阶段配置已加载,读数才是真实生效值。
         //    三个后端全是反射,契约不符时会静默退回原版计分板 —— 这条机器行让

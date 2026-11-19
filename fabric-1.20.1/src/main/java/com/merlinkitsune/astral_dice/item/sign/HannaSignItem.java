@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.effect.HannaDollCompleteEffect;
 import com.merlinkitsune.astral_dice.effect.HannaDollCraftEffect;
 import com.merlinkitsune.astral_dice.effect.HannaFloatEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
@@ -30,7 +30,7 @@ import com.merlinkitsune.astral_dice.platform.event.EventPriority;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 人偶师立牌(hanna,稀有)1.20.1 Forge 移植版。

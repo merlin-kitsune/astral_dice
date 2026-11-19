@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.astral_dice.combat.EliteTargets;
+import com.merlinkitsune.starengine.combat.EliteTargets;
 import com.merlinkitsune.astral_dice.entity.BarricadeEntity;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingChangeTargetEvent;

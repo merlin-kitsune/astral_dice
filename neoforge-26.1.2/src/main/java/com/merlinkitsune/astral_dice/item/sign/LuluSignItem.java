@@ -7,7 +7,7 @@ import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
+import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;

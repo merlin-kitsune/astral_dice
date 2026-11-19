@@ -1,4 +1,6 @@
 package com.merlinkitsune.astral_dice.combat;
+
+import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
@@ -70,7 +72,7 @@ import com.merlinkitsune.astral_dice.item.sign.AlanaSignItem;
 import com.merlinkitsune.astral_dice.component.SignAttachments;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.starengine.combat.HostileTargets;
 
 public class DiceCombatEvents {

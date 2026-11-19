@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.component.SignAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;
 import com.merlinkitsune.starengine.economy.StarEngineEconomy;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;

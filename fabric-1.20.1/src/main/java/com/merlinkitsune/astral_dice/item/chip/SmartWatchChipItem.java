@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEvent;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 智能手表筹码:物品栏中卡牌数量不足 {@link #CARD_THRESHOLD} 张时,

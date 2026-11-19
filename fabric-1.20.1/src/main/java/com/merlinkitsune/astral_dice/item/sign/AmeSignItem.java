@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.component.SignAttachments;
 import com.merlinkitsune.astral_dice.effect.AmeLoveEffect;
 import com.merlinkitsune.astral_dice.effect.AmeOverdoseEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.platform.event.EventPriority;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;

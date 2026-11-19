@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.DragonRoarBreakEffect;
 import com.merlinkitsune.astral_dice.effect.MamushiDragonEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.DragonCardUtil;
 import com.merlinkitsune.astral_dice.item.card.RandomCardHandler;

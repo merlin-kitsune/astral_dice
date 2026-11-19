@@ -204,7 +204,7 @@ bash scripts/test/win/mt.sh --version fabric-1.20.1 --phase stop --side client
 | `AP_FAB_PROD_CP` / `_LAUNCH` / `_READY` / `_CRASH` / `_CRASH_CAUSE` / `_FAIL` | `ft_prod` | 生产映射冒烟：classpath 构造 / 启动 / 就绪 / 崩溃 / 失败原因 |
 | `AP_FAB_PROD_MIXIN_FAIL` / `_MIXIN_FAIL_DETAIL` | `ft_prod` | 注入失败（`InjectionError`）时那一行原文 —— 一眼看出是哪个模组的哪个注入器 |
 | `AP_CATCHUP_ENV` / `_MELEE` / `_RANGE` / `_CONC` / `_LEGACY` / `_ERR` / `_MISS` | **模组侧**（非本台脚本） | 追平批证据读数（`scripts/test/fabric/astral_catchup_probe.js`，见 §7.2.7）：注册面 / 近战黑名单四项 / 射程两段夹取 / 隐匿三态 / 常驻时长归一。`_ERR` 与 `_MISS` 是**失败面**，用例对其断言 absent |
-| `AP_FAB_PARTY` | **模组侧**（非本台脚本） | 队伍判定三条后端的接入状态：`sw_mc/sw_ftb/sw_opac`（配置开关）+ `back_ftb/back_opac`（反射契约是否解析成功）+ `why_ftb/why_opac`（失败原因）。由 `PartyRelations#reportBackends()` 在 common setup 打印，用例 `FAB-PARTY-BACKENDS` 断言其形态 |
+| `AP_PARTY` | **模组侧**（非本台脚本） | 队伍判定三条后端的接入状态：`sw_mc/sw_ftb/sw_opac`（配置开关）+ `back_ftb/back_opac`（反射契约是否解析成功）+ `why_ftb/why_opac`（失败原因）。由 `PartyRelations#reportBackends()` 在 common setup 打印，用例 `FAB-PARTY-BACKENDS` 断言其形态 |
 
 | `MT_FAB_<NAME>: OK/FAIL/ERROR/BLOCKED` | 全部 | 结论行（stderr 走 FAIL/ERROR，stdout 走 OK） |
 | `MT_FAB_NOTE[n]` / `MT_FAB_INFO` / `MT_FAB_WARN` | 全部 | 过程行 |
@@ -487,7 +487,7 @@ KI-F17 正是靠这一条读数把方向扭过来的（否则很容易继续在�
 会静默跳过它**（返回 “No matches” 是**假阴性**，不是「真的没有」）。查 `run/client/logs/**` 必须用不遵守
 gitignore 的方式或显式指定文件路径，否则「`Unknown attachment type` 命中 0」这种结论根本不可信。
 
-### 7.2.5 第三方接入后端的「注入第三方模组」验证法（2026-10-01，`AP_FAB_PARTY` / `FAB-PARTY-BACKENDS`）
+### 7.2.5 第三方接入后端的「注入第三方模组」验证法（2026-10-01，`AP_PARTY` / `FAB-PARTY-BACKENDS`）
 
 **要验证的问题**：`PartyRelations` 用反射接 FTB Teams / OPAC（不能编译期依赖）。这类「后端」在**没装**第三方模组时
 必然走「未安装」分支 ⇒ **只跑常规冒烟永远测不到真正生效的那条路径**（本线三个整合包都没装 FTB、也都没装 OPAC，
@@ -495,7 +495,7 @@ gitignore 的方式或显式指定文件路径，否则「`Unknown attachment ty
 
 **做法 = 把第三方 jar 丢进 `run/<side>/mods/` 再跑，用机器行做 A/B/C/D 对照**：
 
-| 轮次 | 放入 `run/client/mods/` 的东西 | 预期 `AP_FAB_PARTY` |
+| 轮次 | 放入 `run/client/mods/` 的东西 | 预期 `AP_PARTY` |
 |---|---|---|
 | A | （无，基线） | `back_ftb=off back_opac=off why_*=ClassNotFoundException:…` |
 | B | `ftb-teams-fabric-2001.3.2` + `ftb-library-fabric-2001.2.0` + `architectury-9.1.13-fabric` | `back_ftb=on why_ftb=OK` |
@@ -1041,7 +1041,7 @@ M2 钉住 fabric 的两条 `hasEffect` 早退判据。期望 `GATE: PASS (22 项
 | `FAB-CLIENT-BOOT` | `CLIENT-BOOT-fabric-1.20.1.json` | **已迁移** | 客户端事件桥/注册桥/订阅审计中文机器行（新 `PLATFORM-BRIDGE` 只验字节码，不验运行时读数） |
 | `FAB-INJECT-ROUNDTRIP` | `INJECT-ROUNDTRIP-fabric-1.20.1.json` | **已迁移** | RCON 注入往返端到端（`/say` 的控制台回声锚点） |
 | `FAB-JAR-ASSETS` | `JAR-ASSETS-fabric-1.20.1.json` | **已迁移** | `bountiful_max=0`（本条线**不得**出现 `data/bountiful`），其余四项与 `CARD-CHIP-UI`/`JAR-RESOURCE`/`TRINKET-BACKEND` 重叠 |
-| `FAB-PARTY-BACKENDS` | `PARTY-BACKENDS-fabric-1.20.1.json` | **已迁移** | `AP_FAB_PARTY` 三后端接入状态行（反射失败是静默缺陷） |
+| `FAB-PARTY-BACKENDS` | `PARTY-BACKENDS-fabric-1.20.1.json` | **已迁移** | `AP_PARTY` 三后端接入状态行（反射失败是静默缺陷） |
 | `FAB-Q2Q3-INVARIANTS` | `Q2Q3-INVARIANTS-fabric-1.20.1.json` | **已迁移** | `AP_CATCHUP_EFFREM` / `AP_CATCHUP_MEDKIT`（效果移除拦截 + 医疗箱不刷血） |
 | `FAB-DISPATCH-BASIC` | **不迁入** | **保留 legacy（唯一覆盖暂缺工具链）** | 断言类型 `dispatch_tick` / `dispatch_fired` / `dispatch_zero_absent` 与步骤 `wait_for` **仅存在于本目录的 旧 shell 遗产层**（`scripts/test/mt_assert.py` / `bash scripts/test/win/mt.sh --version fabric-1.20.1 --side <client|server> --phase cases`），bash 运行器（`lib/fabric.sh` 的 `eval_assert`）与 `scripts/test/win/mt.sh --phase cases` 都**没有**实现 ⇒ 迁进正式目录会恒 `BLOCKED` 或校验不过 = 假绿。它断言的三条基础事件在 `TICK-DISPATCH-fabric-1.20.1.json`（字节码面）有部分覆盖，**运行时派发读数仍需用 `scripts/test/mt_assert.py` 手动取证** |
 

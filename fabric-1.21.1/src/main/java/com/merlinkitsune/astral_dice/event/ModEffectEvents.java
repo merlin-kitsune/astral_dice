@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.resources.ResourceLocation;
