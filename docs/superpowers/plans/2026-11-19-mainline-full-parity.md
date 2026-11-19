@@ -1,6 +1,6 @@
 # 主线全量对齐计划（2026-11-19）
 
-> 状态：阶段 0–1 已完成；阶段 1 已落盘并待本地提交，阶段 2 待开始。
+> 状态：阶段 0–1 已完成；阶段 1 已本地提交（库 `0abae39` / 主模组 `92c5cf73`，未 push），阶段 2 待开始。
 > 仓库：`F:/MCProject/astral_dice_multiloader`（`feature/mainline-full-parity`）与 `F:/MCProject/starengine`（`feature/mainline-full-parity`）。
 > 基线 tag：两仓均为 `mainline-parity-baseline-2026-11-19`。
 
@@ -201,13 +201,14 @@
 
 **执行记录（2026-11-19）**
 
-- dry-run：138 处改动、13 个删除；`--apply` 后 tracked 132 个文件（119 修改 / 13 删除），+213/−2176。
+- dry-run：138 处改动、13 个删除；代码/版本/测试共 132 个文件（119 修改 / 13 删除），+213/−2176；加入 3 个文档/CHANGELOG 后提交共 135 文件，+246/−2179。
 - 删除：fabric-1.20.1 5 个、fabric-1.21.1 4 个、neoforge-26.1.2 4 个本地副本。
 - fabric：`SignTimerSourceAdapter` 改为库版 `TimerEntry` 防御性拷贝；`ModAttachments.EFFECT_TIMER_ENDS` 泛型切库版；两条入口在平台工厂后调用 `EffectTimerGuard.setTimerSource(...)`。
 - `PartyRelations#reportBackends()` 改走库版，机器行 `AP_PARTY:`；两个测试夹具与 README 同步。
-- 版本：库 `1.2.0-pre.2`（5 文件，+10/−10）；主模组 `1.6.0-pre.2`（五线依赖区间同步）。
+- 版本：库 `1.2.0-pre.2`（提交 7 文件：5 gradle + 2 CHANGELOG，+28/−10）；主模组 `1.6.0-pre.2`（五线依赖区间同步）。
 - 构建：库 `clean compileJava publishToMavenLocal --offline --no-daemon` 11s；主模组 `clean assemble --offline --no-daemon` 25s。
 - 产物：五份主模组 jar、五份库 jar；`work/verify_p1.sh` 输出 `P1_VERIFY_OK`。未跑实机。
+- 提交：库 `0abae39`、主模组 `92c5cf73`；均未 push，tracked 工作树干净。
 
 ### 阶段 2：A/B 内容归属
 
