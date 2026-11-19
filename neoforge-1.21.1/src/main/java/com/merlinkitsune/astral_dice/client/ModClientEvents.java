@@ -14,6 +14,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.player.LocalPlayer;
+import com.merlinkitsune.starengine.api.astral.client.AstralHudLayers;
+import com.merlinkitsune.starengine.api.astral.client.AstralKeyBindings;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -103,6 +107,14 @@ public class ModClientEvents {
 
         // 事件效果卡：接在准星之上（瞬时动画，不遮准星本身）
         event.registerAbove(VanillaGuiLayers.CROSSHAIR, EventCardOverlay.LAYER_ID, EventCardOverlay.LAYER);
+
+        // 附属注册的 HUD 图层（B5）：锚准星、id 取 AstralHudLayers 的 path，只在本线客户端入口登记。
+        for (AstralHudLayers.Registration registration : AstralHudLayers.registered()) {
+            event.registerAbove(VanillaGuiLayers.CROSSHAIR,
+                    ResourceLocation.fromNamespaceAndPath(AstralDiceMod.MODID, AstralHudLayers.pathOf(registration.id())),
+                    (graphics, deltaTracker) -> registration.layer().render(graphics,
+                            deltaTracker.getGameTimeDeltaPartialTick(false)));
+        }
     }
 
     public static class ActionBarOverlay implements LayeredDraw.Layer {
@@ -123,6 +135,12 @@ public class ModClientEvents {
         event.register(KeyBindingSetup.ACTIVATE_SIGN_KEY);
         event.register(KeyBindingSetup.OPEN_CARD_INVENTORY_KEY);
         // 目标选择器不注册键盘确认键：确认 = 鼠标左键、取消 = 右键+潜行 / ESC 菜单（强力胶式语义）
+
+        // 附属注册的按键（B5）：翻译键 key.astral_dice.<id>，分类沿用本线既有分类。
+        for (AstralKeyBindings.Request request : AstralKeyBindings.registered()) {
+            event.register(new KeyMapping(request.translationKey(), InputConstants.Type.KEYSYM,
+                    request.defaultKeyCode(), "key.categories.astral_dice"));
+        }
     }
 
     public static class DamageNumberOverlay implements LayeredDraw.Layer {

@@ -132,7 +132,7 @@ public class DiceCombatEvents {
         // 而它的判定点有一部分落在库内 —— target/SelectorTargets 的可选中判定(客户端射线/半径高亮/
         // 服务端确认)直接调它 ⇒ 消费方无法插手,故由库留 seam、本模组在此注入。
         // 未注入时库退回原口径(假人不算敌对),即本注入是**纯增益**、不影响其它实体。
-        com.merlinkitsune.starengine.api.combat.HostileTargets.installExtraHostileProbe(
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.registerHostileProbe(
                 DiceCombatEvents::isTrainingDummy);
     }
 
