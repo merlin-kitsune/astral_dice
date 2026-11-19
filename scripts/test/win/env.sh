@@ -176,7 +176,7 @@ for v in $VERSIONS; do
         jdk_home="$(mt_find_jdk "$toolchain_ver" 2>/dev/null || true)"
     fi
     if [ -z "$jdk_home" ]; then
-        mt_fail "jdk_$v" "本线 toolchain=$toolchain_ver（:$proj），本机未发现该版本 JDK（找过 C:/Program Files/Zulu/zulu-$toolchain_ver、C:/Program Files/Java/jdk-$toolchain_ver、Program Files/Eclipse Adoptium、Amazon Corretto、~/.gradle/jdks/*$toolchain_ver*、~/.jdks/*$toolchain_ver*、JAVA_HOME）"
+        mt_fail "jdk_$v" "本线 toolchain=$toolchain_ver（:$proj），本机未发现该版本 JDK（找过 C:/Program Files/Microsoft/jdk-$toolchain_ver*、C:/Program Files/Zulu/zulu-$toolchain_ver、C:/Program Files/Java/jdk-$toolchain_ver、Program Files/Eclipse Adoptium、Amazon Corretto、~/.gradle/jdks/*$toolchain_ver*、~/.jdks/*$toolchain_ver*、JAVA_HOME）"
     else
         jline="$(mt_java_line "$jdk_home/bin/java.exe" 2>/dev/null || mt_java_line "$jdk_home/bin/java" 2>/dev/null || true)"
         major="$(mt_java_major "$jdk_home/bin/java.exe" 2>/dev/null || mt_java_major "$jdk_home/bin/java" 2>/dev/null || true)"

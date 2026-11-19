@@ -14,7 +14,7 @@ import com.merlinkitsune.astral_dice.fixes.DamageStackSanitizer;
  * 旧调用：tools\run_mixin_stack_sanitizer_test.py
  * </pre>
  * 等价手工命令（javac/java 取 JAVA_HOME 下的 21；本机亦可用
- * {@code C:\Program Files\Zulu\zulu-21\bin}）：
+ * {@code C:\Program Files\Microsoft\jdk-21.0.13.102-hotspot\bin}）：
  * <pre>
  * $out = "$env:TEMP\mss-out"
  * Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue

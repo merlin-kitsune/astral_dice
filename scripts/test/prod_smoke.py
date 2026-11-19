@@ -27,7 +27,7 @@ classpath = rules 过滤后的 `libraries` + 实例 jar；JVM/游戏参数 = `ar
 
     python scripts/test/prod_smoke.py \
         --instance "D:\\.minecraft\\versions\\1.20.1-Forge 模组测试" \
-        --java "C:\\Program Files\\Zulu\\zulu-21\\bin\\java.exe" \
+        --java "C:\\Program Files\\Microsoft\\jdk-21.0.13.102-hotspot\\bin\\java.exe" \
         --expect "AP_PARTY: sw_mc=.* back_ftb=on back_opac=on" \
         --timeout 300
 

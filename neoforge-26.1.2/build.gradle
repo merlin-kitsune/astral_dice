@@ -76,7 +76,7 @@ base {
 }
 
 // Minecraft 26.1.2 的 javaVersion = java-runtime-epsilon / majorVersion 25(1.21.1 为 21)
-// ⇒ 本子项目 toolchain 必须是 Java 25(本机 C:\Program Files\Zulu\zulu-25;缺失时由根 foojay 解析器自动下载)。
+// ⇒ 本子项目 toolchain 必须是 Java 25(本机 C:\Program Files\Microsoft\jdk-25.0.5.102-hotspot;缺失时由根 foojay 解析器自动下载)。
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 neoForge {

@@ -97,7 +97,8 @@ def resolve_jdk_tool(name: str) -> Optional[str]:
     hit = shutil.which(name)
     if hit:
         return hit
-    for guess in (r"C:\Program Files\Zulu\zulu-21\bin",
+    for guess in (r"C:\Program Files\Microsoft\jdk-21*\bin",
+                  r"C:\Program Files\Zulu\zulu-21\bin",
                   r"C:\Program Files\Eclipse Adoptium\jdk-21*\bin"):
         for path in sorted(glob.glob(os.path.join(guess, name + ".exe"))):
             return path

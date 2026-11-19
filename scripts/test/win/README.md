@@ -50,7 +50,7 @@ scripts/test/win/
 | pidfile 里的 shell PID | pidfile 记 **Windows PID**：`cat /proc/$!/winpid` | `runClient` 的实际进程是 `java.exe`，`win-run.pid` 只是「本脚本拉起的 wrapper」的锚点，权威判线仍是 jps + 端口 |
 | `findmnt -T .` | `df -T .`（Type 列 `ntfs`） | 判据从「挂载源/挂载点」降级为「文件系统类型」；`ntfs` 就代表大小写不敏感 + CRLF 风险 |
 | `ss -lntp` | `netstat -ano` 过滤 25585/25565/25575 的 `LISTENING` 行取 PID | 没有「按进程过滤」，取 PID 后与 jps 行、pidfile 三者交叉核对 |
-| `/usr/lib/jvm/*` 遍历 | `JAVA_HOME` → `C:/Program Files/Zulu/zulu-<n>` → `C:/Program Files/Java/jdk-<n>*` → `Eclipse Adoptium` → `Amazon Corretto` → `~/.gradle/jdks/*<n>*` → `~/.jdks/*<n>*` | 逐条跑 `java -version` 校验主版本（**精确匹配**才算 OK）；Gradle 自动下载的 JDK 也在这条链里被找到 |
+| `/usr/lib/jvm/*` 遍历 | `JAVA_HOME` → `C:/Program Files/Microsoft/jdk-<n>*` → `C:/Program Files/Zulu/zulu-<n>` → `C:/Program Files/Java/jdk-<n>*` → `Eclipse Adoptium` → `Amazon Corretto` → `~/.gradle/jdks/*<n>*` → `~/.jdks/*<n>*` | 逐条跑 `java -version` 校验主版本（**精确匹配**才算 OK）；Gradle 自动下载的 JDK 也在这条链里被找到 |
 | `comm=java` 判残留 | `jps -lvm` 的 java 行 | 只认 JVM；Gradle daemon 用命令里的 `GradleDaemon` 再分一层 |
 | `bash ./gradlew --stop` | `cmd //c "gradlew.bat --stop"` | 需要 ≥21 的 daemon JVM（`stop.sh --stop-daemon` 会自动带上） |
 | `trap INT/TERM → 130` | 同款 | 但**不收停游戏**：中断只退出本脚本，游戏进程继续跑（会打印收停命令） |

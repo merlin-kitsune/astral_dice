@@ -368,11 +368,12 @@ mt_gradle_daemon_rows() {
     done <<< "$rows"
 }
 
-# ── JDK 发现（Windows 布局：Zulu / Java / Adoptium / Corretto / Gradle 自动下载）──
+# ── JDK 发现（Windows 布局：Microsoft / Zulu / Java / Adoptium / Corretto / Gradle 自动下载）──
 mt_jdk_candidates() {
     local n="${1:-}" c
     [ -n "$n" ] || return 1
     for c in \
+        "/c/Program Files/Microsoft/jdk-$n"* \
         "/c/Program Files/Zulu/zulu-$n" \
         "/c/Program Files/Java/jdk-$n"* \
         "/c/Program Files/Eclipse Adoptium/jdk-$n"* \
@@ -406,7 +407,7 @@ mt_find_jdk_exact() {
     local n="${1:-}" c major
     [ -n "$n" ] || return 1
     # ⚠ 必须用 read 循环而不是 `for c in $(...)`：Windows 路径含空格（Program Files），
-    # 词分割会把 "/c/Program Files/Zulu/zulu-21" 拆成两段。
+    # 词分割会把 "/c/Program Files/Microsoft/jdk-21.0.13.102-hotspot" 拆成两段。
     while IFS= read -r c; do
         [ -n "$c" ] || continue
         major="$(mt_java_major "$c/bin/java.exe" 2>/dev/null || mt_java_major "$c/bin/java" 2>/dev/null || true)"

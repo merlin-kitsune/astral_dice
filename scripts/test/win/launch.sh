@@ -354,7 +354,7 @@ fi
 
 # ── 真启动前的阻塞判定 ───────────────────────────────────────────────────
 if [ -z "$DAEMON_JDK" ]; then
-    mt_launch_err "BLOCKED — 未找到 Gradle daemon JVM（需 ≥21）：设 MT_GRADLE_DAEMON_JAVA_HOME，或装 JDK 21+（Zulu 21/25 均可）"
+    mt_launch_err "BLOCKED — 未找到 Gradle daemon JVM（需 ≥21）：设 MT_GRADLE_DAEMON_JAVA_HOME，或装 JDK 21+（Microsoft 21/25 均可）"
     exit 11
 fi
 if [ ! -d "$RUN_DIR" ]; then

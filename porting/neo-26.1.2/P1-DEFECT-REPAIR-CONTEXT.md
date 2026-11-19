@@ -10,7 +10,7 @@
 - **禁止**顺手改 fabric-1.20.1 / neoforge-1.21.1 / forge-1.20.1（fabric 侧同类问题已在本会话修完；他线若发现问题只写进报告，不动手）。
 - 仓库红线：默认不 commit / push / tag、不部署、不启动实机（实机必须用户明确下令）。
 - 基线口径：主基准 = neoforge-1.21.1，次基准 = forge-1.20.1；用户裁决「一律以最新主线为准，旧版本差异全部放弃」（m01840）。
-- 构建：JAVA_HOME=C:\Program Files\Zulu\zulu-21；命令 gradlew.bat :neoforge-26.1.2:build --console=plain。
+- 构建：JAVA_HOME=C:\Program Files\Microsoft\jdk-21.0.13.102-hotspot；命令 gradlew.bat :neoforge-26.1.2:build --console=plain。
 
 ## 1. 该线的关键机制（改之前先知道）
 
