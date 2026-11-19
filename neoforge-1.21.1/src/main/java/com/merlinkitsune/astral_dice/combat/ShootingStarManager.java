@@ -28,7 +28,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**

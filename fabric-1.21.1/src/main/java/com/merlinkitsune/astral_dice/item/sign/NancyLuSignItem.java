@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;

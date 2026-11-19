@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 
 import com.merlinkitsune.starengine.component.GameplayConstants;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;

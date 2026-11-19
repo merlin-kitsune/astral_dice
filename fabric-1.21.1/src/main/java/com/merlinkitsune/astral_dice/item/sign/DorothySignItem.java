@@ -13,7 +13,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;

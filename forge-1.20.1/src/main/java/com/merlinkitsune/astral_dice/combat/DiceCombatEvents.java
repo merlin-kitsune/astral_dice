@@ -78,7 +78,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.combat.DiceCombatAbilities;
 import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 

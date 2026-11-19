@@ -222,3 +222,17 @@
 - event/ModTooltipHandler.java:348-353：13 个 ModItems.*_DICE 硬编码。
 - economy/StarCoinCurrency.java：STAR_COIN_VALUE:38、STAR_COIN_BAG_VALUE:40、valueOf:48、isCurrency:64、isWalletEnabled:71、isAutoDepositEnabled:80、countCarriedValue:92、depositAllFromInventory:115、withdraw:148。
 - AstralDiceApi.java:85-86 返回类型全限定写死 com.merlinkitsune.astral_dice.item.dice.DiceTier；:104 diceTier(String) 返回 StarEngine DiceTier。
+
+## 9. 包收口记录（26.4-SNAPSHOT.93，2026-11-19）
+
+- 目的：对外类型一律收进 `api.*` 命名空间，消除「门面在 api、类型在内部包」的半开裂；同时让库侧（StarEngine）与本体都只引用 dev 线产物，不做跨分支引用。
+- **库侧 StarEngine（26.4-SNAPSHOT.14）**：`target/TargetType` → `api/target/TargetType`、`combat/HostileTargets` → `api/combat/HostileTargets`（git mv，包声明同步）；库内 8 个引用文件补 import：TargetSelectionAction、SelfTargetable（javadoc）、SelectorTargets、TargetCategory、PlayerHostilityTracker、PartyRelations、EliteTargets（javadoc）、CreatureTargets。五子项目 `lib_version` 升 `26.4-SNAPSHOT.14`，`publishToMavenLocal --offline` 成功。
+- **本体搬包（五线）**：`event/api/*`（AstralEvent / AstralEventEffect / AstralEventPolarity / AstralEventTier / AstralEventTrigger）→ `api/event/`；`choice/CardChoiceType` → `api/choice/`（五线各一份）。`AstralEvent` 依赖同线 `event/AstralEventSystem`，故只做同包改名、不进 common。
+- **本体搬包（common）**：`platform/AstralDicePlatform` → `api/platform/`；`AstralDicePlatforms` 与五线实现类（NeoForge/Forge/Fabric `*AstralDicePlatform`）留在原 `platform` 包，只搬接口。
+- 引用改写：全局 FQN 替换 60 个文件；同包引用处补显式 import —— 五线 `choice/CardChoiceManager.java` 加 `api.choice.CardChoiceType`，`platform` 包内 6 个文件加 `api.platform.AstralDicePlatform`。另把 231 个文件里的 `starengine.target.TargetType` / `starengine.combat.HostileTargets` 改成 `api` 包，残留 grep 清零。
+- **依赖钉版**：五线 `starengine_version` = `26.4-SNAPSHOT.14`；`neoforge.mods.toml`（neo-1.21.1:149、neo-26.1.2:147）与 `mods.toml`（forge-1.20.1:159）区间由 `[${starengine_version},2.0.0)` 改为 `[${starengine_version},27.0.0)` —— 下界 26.4 已高于原上界 2.0.0，原区间是空集；fabric 两线走 `fabric.mod.json:45` 的 `lib_version_range`，未改。
+- **顺带修复**：`AstralDiceApi.java:236` `diceTierIds()` 原读库侧 `DiceTiers`，与 `diceTierViews()`（读 `DiceTierRegistry`）不同源；改为同读 `DiceTierRegistry`。`AstralDiceApi` 类 javadoc 补「附属须同时依赖 astral_dice 与 starengine 两个 jar」。
+- **验证**：五线 `assemble --offline` BUILD SUCCESSFUL（`work/assemble-93.log`）；`jar tf` 五份产物含 `astral_dice/api/{event,choice,platform}/`，无 `astral_dice/event/api/`、`choice/CardChoiceType.class`、`platform/AstralDicePlatform.class` 残留；打进去的 `neoforge.mods.toml` 读作 `versionRange="[26.4-SNAPSHOT.14,27.0.0)"`。产物 sha256：neo-1.21.1 `3c93306c…ec2939a`（类数 673）、forge-1.20.1 `11ba614c…68f314a8`（类数 698，SRG 305）。
+- **破坏性声明**：包路径改名不看旧路径 —— 附属必须改 import（或用新 FQN）并同时把 `starengine` 钉到 `26.4-SNAPSHOT.14`；只保留旧签名、不保留旧包路径别名。
+- 消费方级联：TLMDice 两线 pin 换 `.93` + StarEngine `26.4-SNAPSHOT.14`，`mod_version` 升 `26.4-SNAPSHOT.88`；只用到 `AstralDiceApi` 与 `api.playerlike.*`，代码零改动，两线 `assemble` 通过。
+

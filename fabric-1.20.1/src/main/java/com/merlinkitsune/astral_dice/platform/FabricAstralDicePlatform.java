@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.platform;
 
+import com.merlinkitsune.astral_dice.api.platform.AstralDicePlatform;
+
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.server.level.ServerPlayer;
 import com.merlinkitsune.astral_dice.api.combat.AttackPowerModifier;
@@ -19,8 +21,8 @@ import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import com.merlinkitsune.astral_dice.platform.registry.RegistryObject;
 import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
 import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
-import com.merlinkitsune.astral_dice.event.api.AstralEvent;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.astral_dice.api.event.AstralEvent;
+import com.merlinkitsune.astral_dice.api.event.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
 import net.minecraft.resources.ResourceLocation;

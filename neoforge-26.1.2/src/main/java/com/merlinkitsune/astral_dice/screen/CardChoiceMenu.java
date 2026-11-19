@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.screen;
 
 import com.merlinkitsune.astral_dice.choice.CardChoiceManager;
-import com.merlinkitsune.astral_dice.choice.CardChoiceType;
+import com.merlinkitsune.astral_dice.api.choice.CardChoiceType;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;

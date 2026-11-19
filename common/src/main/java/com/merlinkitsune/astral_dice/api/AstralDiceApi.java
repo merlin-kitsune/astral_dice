@@ -23,11 +23,11 @@ import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.astral_dice.api.playerlike.PlayerLikeWallet;
 import com.merlinkitsune.astral_dice.choice.CardChoiceManager;
-import com.merlinkitsune.astral_dice.choice.CardChoiceType;
+import com.merlinkitsune.astral_dice.api.choice.CardChoiceType;
 import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
 import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
-import com.merlinkitsune.astral_dice.event.api.AstralEvent;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.astral_dice.api.event.AstralEvent;
+import com.merlinkitsune.astral_dice.api.event.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.CardItem;
 import com.merlinkitsune.astral_dice.item.card.CardUseService;
@@ -35,10 +35,10 @@ import com.merlinkitsune.astral_dice.item.card.DiceCardLoadout;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
 import com.merlinkitsune.astral_dice.item.sign.BaseSignItem;
-import com.merlinkitsune.astral_dice.platform.AstralDicePlatform;
+import com.merlinkitsune.astral_dice.api.platform.AstralDicePlatform;
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
 import com.merlinkitsune.astral_dice.target.TargetSelectionManager;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.platform.AstralDicePlatforms;
 import com.merlinkitsune.starengine.api.combat.damage.DamageHook;
 import com.merlinkitsune.starengine.api.combat.damage.DamageHooks;
@@ -55,7 +55,7 @@ import com.merlinkitsune.starengine.api.content.sign.SignDescriptor;
 import com.merlinkitsune.starengine.api.content.sign.Signs;
 import com.merlinkitsune.starengine.api.economy.EntityWallet;
 import com.merlinkitsune.starengine.api.economy.WalletRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -92,8 +92,18 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>侧别</b>:标注「服务端」的方法只在逻辑服务端有效 —— 客户端调用会抛
  * {@link IllegalStateException}(由 {@code requireServer} 守卫)。注册类方法不受此限制,
- * 客户端也会用到查询类方法。
- */
+ * 客户端也会用到查询类方法。
+ *
+ * <p><b>依赖</b>：附属模组必须同时依赖 {@code astral_dice} 与 {@code starengine} 两个 jar ——
+ * 本门面的返回类型与底层注册表来自库侧（{@code com.merlinkitsune.starengine.api.*}），
+ * 只声明 astral 依赖会在编译期缺类；{@code mods.toml} / {@code fabric.mod.json} 里对
+ * starengine 的版本区间应写成 {@code [26.4-SNAPSHOT.14,27.0.0)}。
+ *
+ * <p><b>包路径</b>：26.4-SNAPSHOT.93 起对外类型统一收进 {@code api.*} ——
+ * {@code event.api} 迁到 {@code api.event}、{@code choice.CardChoiceType} 迁到
+ * {@code api.choice.CardChoiceType}、{@code platform.AstralDicePlatform} 迁到
+ * {@code api.platform.AstralDicePlatform}；旧路径不保留别名，附属升级时须同步改 import。
+ **/
 public final class AstralDiceApi {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AstralDiceApi.class);
@@ -232,9 +242,9 @@ public final class AstralDiceApi {
         return Chips.all().stream().map(ChipDescriptor::id).toList();
     }
 
-    /** 全部骰面阶级 id。 */
+    /** 全部可玩骰面阶级 id（与 {@link #diceTierViews()} 同源；仅库侧注册的已弃用档位不在内）。 */
     public static List<String> diceTierIds() {
-        return DiceTiers.all().stream().map(DiceTier::id).toList();
+        return DiceTierRegistry.all().stream().map(tier -> tier.id()).toList();
     }
 
     /** 内容注册表是否已冻结。 */

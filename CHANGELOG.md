@@ -4,6 +4,17 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.93
+
+### This line
+
+- API surface consolidation, no aliases kept: every addon-facing type now sits under `com.merlinkitsune.astral_dice.api.*`. Moved on all five lines — `event.api.*` → `api.event.*` (5 types), `choice.CardChoiceType` → `api.choice.CardChoiceType`, `platform.AstralDicePlatform` → `api.platform.AstralDicePlatform`. StarEngine made the same move for `target.TargetType` → `api.target.TargetType` and `combat.HostileTargets` → `api.combat.HostileTargets`; 231 astral sources were rewritten, plus every call site inside the library itself. Addons and KubeJS `Java.type` strings must update their imports.
+- Dependency pin: all five lines now require StarEngine `26.4-SNAPSHOT.14` (the release carrying the moved packages). The NeoForge/Forge `mods.toml` range was `[\${starengine_version},2.0.0)`, which is already empty once the lower bound is `26.4`; it is now `[\${starengine_version},27.0.0)`. Both Fabric lines keep `lib_version_range` in `fabric.mod.json`.
+- Fixed a real inconsistency: `AstralDiceApi.diceTierIds()` read the library-side `DiceTiers` table while `diceTierViews()` read the project-side `DiceTierRegistry`, so the id list could miss registered playable tiers and include deprecated library-only entries. It now reads `DiceTierRegistry`, the same source as the views.
+- `AstralDiceApi` class javadoc now states the two-jar requirement (addons must depend on both `astral_dice` and `starengine`) and the new package paths.
+- Verification: five-line `assemble --offline` with JDK 21 — BUILD SUCCESSFUL, no `error:` lines; artifacts `astral_dice-26.4-SNAPSHOT.93+<loader>.jar` in all five `build/libs`; `jar tf` shows `astral_dice/api/{event,choice,platform}/` and no leftover `astral_dice/event/api/`, `astral_dice/choice/CardChoiceType.class` or `astral_dice/platform/AstralDicePlatform.class`; the packaged `neoforge.mods.toml` carries `versionRange="[26.4-SNAPSHOT.14,27.0.0)"` for `starengine`.
+- Honest boundary: this is a source- and binary-breaking move for addons (class names changed, no deprecated stubs). Only the moved types are affected — `combat.TargetCategory`, `api.playerlike.*` and the facade keep their signatures, so a consumer that only uses `AstralDiceApi` recompiles unchanged.
+
 ## 26.4-SNAPSHOT.92
 
 ### This line

@@ -4,6 +4,17 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.93
+
+### 本线
+
+- 对外 API 收口，不留别名：附属可见类型统一收到 `com.merlinkitsune.astral_dice.api.*`。五线同步搬迁 —— `event.api.*` → `api.event.*`（5 个类型）、`choice.CardChoiceType` → `api.choice.CardChoiceType`、`platform.AstralDicePlatform` → `api.platform.AstralDicePlatform`。库侧同样把 `target.TargetType` → `api.target.TargetType`、`combat.HostileTargets` → `api.combat.HostileTargets`；本体 231 个源文件改引用，库内调用点一并改完。附属与 KubeJS `Java.type` 字符串需同步改 import。
+- 依赖钉版：五线要求 StarEngine `26.4-SNAPSHOT.14`（携带搬包的那次发布）。NeoForge/Forge 的 `mods.toml` 区间原是 `[\${starengine_version},2.0.0)`，下界升到 26.4 后区间已空，现改为 `[\${starengine_version},27.0.0)`；Fabric 两线继续走 `fabric.mod.json` 的 `lib_version_range`。
+- 修掉一处真实不同源：`AstralDiceApi.diceTierIds()` 读库侧 `DiceTiers`，而 `diceTierViews()` 读本体 `DiceTierRegistry`，导致 id 列表可能漏掉已注册的可玩骰面、又混进仅库侧的弃用档位。现统一读 `DiceTierRegistry`，与视图同源。
+- `AstralDiceApi` 类 javadoc 补上「附属须同时依赖 `astral_dice` 与 `starengine` 两个 jar」以及新包路径说明。
+- 验证：五线 `assemble --offline`（JDK 21）BUILD SUCCESSFUL、无 `error:` 行；五个 `build/libs` 均产出 `astral_dice-26.4-SNAPSHOT.93+<loader>.jar`；`jar tf` 确认 `astral_dice/api/{event,choice,platform}/` 存在，且无残留 `astral_dice/event/api/`、`astral_dice/choice/CardChoiceType.class`、`astral_dice/platform/AstralDicePlatform.class`；包内 `neoforge.mods.toml` 的 starengine 依赖为 `versionRange="[26.4-SNAPSHOT.14,27.0.0)"`。
+- 诚实边界：对附属是源码级/二进制级破坏性改动（类名变了，不提供过时桩）。受影响仅限被搬的类型 —— `combat.TargetCategory`、`api.playerlike.*` 与门面签名不变，只用 `AstralDiceApi` 的消费方重编即过。
+
 ## 26.4-SNAPSHOT.92
 
 ### 本线

@@ -4,7 +4,7 @@ package com.merlinkitsune.astral_dice.item;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
 import com.merlinkitsune.astral_dice.event.AstralEventIds;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.astral_dice.api.event.AstralEventTrigger;
 import com.merlinkitsune.starengine.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import net.minecraft.ChatFormatting;

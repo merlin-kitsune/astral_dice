@@ -1,5 +1,7 @@
 package com.merlinkitsune.astral_dice.platform;
 
+import com.merlinkitsune.astral_dice.api.platform.AstralDicePlatform;
+
 /**
  * 平台实现的全局持有者(主项目 {@code common} 源码根)。
  *
