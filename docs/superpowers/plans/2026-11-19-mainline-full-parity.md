@@ -276,4 +276,23 @@
 - 阶段 1–3 完成前不进入阶段 4。
 - 阶段 4 完成前不改 TLMDice；TLMDice 对 `AstralDiceApi` / `CardChoiceType` / `AstralEvent` 当前引用为 0。
 - 矩阵确认是阶段 0 的出口：确认 19/3/0 分类、`CombatResolution*` 不 defer、72 方法缺口按阶段 4 处理后再开始阶段 1。
+## 8. 执行记录（2026-11-19）
+
+### 阶段 4（最终并入 pre.2）
+
+- 库 `api.astral` 实际 37 个逻辑类 / 38 个物理文件（common 36 + `common/src/main/java-rl` 的 `AstralEvent` + `neoforge-26.1.2` 的 `AstralEvent`）；`AstralDiceApi` 103 个 `public static`，`AstralDiceService` 101 个。
+- 旧 API 删除：主模组 common `api` 9 文件、五线 `event/api` 25 文件、五线 `CardChoiceType` 5 文件。
+- 新增/接线：`apiimpl/AstralDiceServiceImpl`（1184 行）、`PlayerLikeTargetsAdapter`、`DiceCardLoadout`、五线 `DiceLoadoutAccess`、五线 `CombatApiAdapters`、三线 `CardUseService`；五入口安装 service。
+- 平台：`AstralDicePlatform` 207 行，五线实现约 221 行；事件 4 类进库、`AstralEvent` 双变体；`TargetType` / `HostileTargets` 迁到 `api.*`。
+- 行为：五线 `DiceCombatEvents` 两处 `CombatResolutionListeners.fire`；`PlayerLikeWallets.resolve` 回落 `AstralDiceApi.playerLikeWallet`；`PlayerLikeTargets.giveItem` 用 `ResourceConversion`。
+- 版本：按用户 m04027 回退，库 `1.2.0-pre.2`、主模组 `1.6.0-pre.2`；pre.3 / pre.4 / pre.5 仅内部迭代。
+- 提交：库 `6a6ca4f`（57 files，+2220/−14）；主模组 `55ffdb6d`（362 files，+4157/−2317）。两仓均未 push。
+
+### 阶段 5（文档收口）
+
+- 库 `clean publishToMavenLocal --offline --no-daemon` 13s；五份 m2 `1.2.0-pre.2` jar，每份 47 个 `api/astral` 条目。
+- 主模组五线 `clean assemble --no-daemon --no-configuration-cache` 11s；五份 jar 为 fabric-1.20.1 3,362,853 B、fabric-1.21.1 3,399,442 B、forge-1.20.1 3,121,422 B、neoforge-1.21.1 3,071,135 B、neoforge-26.1.2 3,290,021 B；每份含 `apiimpl/AstralDiceServiceImpl.class`，旧 API 类 0。
+- 设计 `docs/design/09-mainline-full-parity.md`、审计 `docs/audit/2026-11-19-mainline-full-parity.md` 已写。
+- 双语 CHANGELOG/README 已改为 `1.6.0-pre.2` / `1.2.0-pre.2`；pre.3 / pre.4 作为内部记录保留。
+- 未跑实机；不称可发布；未 push。
 

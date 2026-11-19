@@ -4,33 +4,25 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
-## 1.6.0-pre.4 (2026-11-19)
-
-### This release
-
-- C split: added `common/src/main/java/com/merlinkitsune/astral_dice/component/AstralGameplayConstants.java` with 25 `public static final int` content fields and `cardCostForStar(int)`. StarEngine `GameplayConstants` now keeps only the eight generic fields.
-- Rewrote 178 consumer files (142 content-only, 36 mixed): 429 new simple references plus 182 new fully-qualified references. Mixed files keep the generic `GameplayConstants` import and add the new class import; `GameplayConfigValues` is unchanged.
-- Pin StarEngine `1.2.0-pre.4`; five-line `clean assemble --offline --no-daemon` passed. `C_VERIFY_OK`: no old content references, five jars contain `AstralGameplayConstants`, and the five library jars carry no content fields in `GameplayConstants`.
-- No gameplay values changed. The content fields are now final and the derived tick values are compile-time constants; `applyConfig` only writes the generic config fields. No live client/server smoke was run in this batch.
-
-## 1.6.0-pre.3 (2026-11-19)
-
-### This release
-
-- A/B content ownership: moved the 18 StarEngine MobEffect classes to `common/src/main/java/com/merlinkitsune/astral_dice/effect`, `Rarity` to `.../astral_dice/item`, and the five per-line `AstralRarities` shims to each line's `.../astral_dice/item`. 24 new source files.
-- Rewrote 100 `starengine.effect` references, 25 `starengine.item.Rarity` references and 40 `starengine.item.AstralRarities` references; removed 95 same-package imports; retargeted both NeoForge `META-INF/enumextensions.json` files (5 entries each) to `com/merlinkitsune/astral_dice/item/AstralRarities`.
-- Pin StarEngine `1.2.0-pre.3`; five-line `clean assemble --offline --no-daemon` passed. Artifact checks: five `1.6.0-pre.3` jars contain all 18 new effects plus `Rarity`/`AstralRarities`, no old `starengine` effect/Rarity classes; five library `1.2.0-pre.3` jars contain no old classes (`AB_VERIFY_OK`).
-- No gameplay logic changed; the move is package ownership only. NeoForge enum-extension paths changed, so a live launch is still needed to confirm the five rarity entries resolve. No live client/server smoke was run in this batch.
-
 ## 1.6.0-pre.2 (2026-11-19)
 
 ### This release
 
+This is the final parity build for the 2026-11-19 mainline alignment. The intermediate `1.6.0-pre.3`, `pre.4` and `pre.5` labels were internal iterations and are folded into this entry.
+
 - P1 dedupe: removed 13 local copies that duplicated StarEngine classes — `fabric-1.20.1` (`PartyRelations`, `EffectTimerGuard`, `EliteTargets`, `HoldToSelect`, `SelfTargetable`), `fabric-1.21.1` (the last four) and `neoforge-26.1.2` (`PartyRelations` plus the last three). All references now import `com.merlinkitsune.starengine.{combat,event,target}`.
-- Both Fabric lines now install `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())` after the platform factory; `SignTimerSourceAdapter` and `ModAttachments.EFFECT_TIMER_ENDS` use the library `EffectTimerGuard.TimerEntry` directly with defensive copies.
-- `PartyRelations#reportBackends()` now prints `AP_PARTY:` instead of `AP_FAB_PARTY:`; the two test fixtures and the Fabric setup comments were retargeted. Fabric 1.20.1 now calls the library implementation.
-- Pin StarEngine `1.2.0-pre.2`; five-line `clean assemble --offline --no-daemon` passed (135 tracked files in the commit: 132 code/version/test changed — 119 modified / 13 deleted — plus 3 docs/CHANGELOG, +246/−2179). Artifact checks: five jars at `1.6.0-pre.2`, no local duplicate classes, library `TimerEntry` and `setTimerSource` present, five `1.2.0-pre.2` library jars in mavenLocal (`P1_VERIFY_OK`).
-- Behavior note: the Fabric and NeoForge 26.1.2 local `EliteTargets` / `PartyRelations` copies are gone. Fabric `EliteTargets` previously returned `false` unconditionally; the library version consults the third-party seam. No live client/server smoke was run in this batch.
+- Both Fabric lines install `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())` after the platform factory; `SignTimerSourceAdapter` and `ModAttachments.EFFECT_TIMER_ENDS` use the library `EffectTimerGuard.TimerEntry` directly with defensive copies. `PartyRelations#reportBackends()` now prints `AP_PARTY:`; the two test fixtures and the Fabric setup comments were retargeted.
+- A/B content ownership: moved the 18 StarEngine MobEffect classes to `common/.../astral_dice/effect`, `Rarity` to `.../astral_dice/item`, and the five per-line `AstralRarities` shims to each line's `.../astral_dice/item`; 24 new source files. Rewrote 100 `starengine.effect` references, 25 `starengine.item.Rarity` references and 40 `starengine.item.AstralRarities` references; removed 95 same-package imports; retargeted both NeoForge `META-INF/enumextensions.json` files to `com/merlinkitsune/astral_dice/item/AstralRarities`.
+- C split: added `common/.../astral_dice/component/AstralGameplayConstants.java` with 25 content fields and `cardCostForStar(int)`; StarEngine `GameplayConstants` keeps only the eight generic fields. Rewrote 178 consumer files (142 content-only, 36 mixed): 429 new simple references plus 182 new fully-qualified references; `GameplayConfigValues` unchanged.
+- Public API parity: StarEngine now owns 37 logical Astral API classes (38 physical files) under `com.merlinkitsune.starengine.api.astral`; `AstralDiceApi` has 103 `public static` methods and `AstralDiceService` has 101. The mainline's old 39 physical API files / 15 unique classes are deleted.
+- Mainline implementation: added `apiimpl/AstralDiceServiceImpl` and `PlayerLikeTargetsAdapter`, `item/card/DiceCardLoadout`, five `item/dice/DiceLoadoutAccess`, five `combat/CombatApiAdapters`, and three `item/card/CardUseService`; five entrypoints install `AstralDiceApi.install(new AstralDiceServiceImpl())` before content registration.
+- Platform seam: `AstralDicePlatform` now carries the dev-line 207-line contract; all five implementations carry the ~221-line dev version (player-like registration, sign activation, combat modifiers, events/effects, economy, card inventory).
+- Events and choice: the four event metadata classes and the `AstralEvent` record are now library-side; the mainline's 25 per-line event API files and five `CardChoiceType` files are gone. Five `CardChoiceManager` copies remain, but import the shared enum and route `matchesCardChoice` through the API.
+- Combat and economy seams: five `DiceCombatEvents` now fire `CombatResolutionListeners` on both the player and participant paths; `PlayerLikeWallets.resolve` falls back to `AstralDiceApi.playerLikeWallet` and `PlayerLikeTargets.giveItem` uses `ResourceConversion`.
+- Package migration: `TargetType` moved to `api.target`, `HostileTargets` to `api.combat`; the library's five build files pick up `common/src/main/java-rl` for the `ResourceLocation` `AstralEvent`.
+- Verification: library `clean publishToMavenLocal --offline --no-daemon` passed in 13s; five m2 `1.2.0-pre.2` jars each carry 47 `api/astral` entries. Mainline five-line `clean assemble --no-daemon --no-configuration-cache` passed in 11s; jars: fabric-1.20.1 3,362,853 B, fabric-1.21.1 3,399,442 B, forge-1.20.1 3,121,422 B, neoforge-1.21.1 3,071,135 B, neoforge-26.1.2 3,290,021 B.
+- Artifact checks: every mainline jar contains `apiimpl/AstralDiceServiceImpl.class` and none of the old `AstralDiceApi`, `event/api/AstralEvent` or `choice/CardChoiceType` classes. Forge build-info is `1d376ae0` / 681 classes; NeoForge 1.21.1 is `1d376ae0` / 657 classes.
+- No gameplay values changed by the C split; no live client/server smoke was run in this batch. Not pushed, not tagged, not published.
 
 ## 1.6.0-pre.1 (2026-11-16)
 

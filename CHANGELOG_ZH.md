@@ -4,7 +4,21 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
-## 1.6.0-pre.4 (2026-11-19)
+## 1.6.0-pre.2（2026-11-19）
+
+### 本次发布
+
+本次是 2026-11-19 主线全量对齐的最终预发布构建；`1.6.0-pre.3`、`pre.4`、`pre.5` 只是内部迭代号，已并入本条。
+
+- 公开 API 全量：StarEngine 提供 37 个逻辑类（38 个物理文件）的 `com.merlinkitsune.starengine.api.astral`；`AstralDiceApi` 103 个 `public static`，`AstralDiceService` 101 个。主模组旧的 39 个物理 API 文件 / 15 个唯一类全部删除。
+- 主模组实现：新增 `apiimpl/AstralDiceServiceImpl` 与 `PlayerLikeTargetsAdapter`、`item/card/DiceCardLoadout`、五线 `item/dice/DiceLoadoutAccess`、五线 `combat/CombatApiAdapters`、三线 `item/card/CardUseService`；五个入口在内容注册前安装 `AstralDiceApi.install(new AstralDiceServiceImpl())`。
+- 平台 seam：`AstralDicePlatform` 换成 dev 的 207 行契约，五线实现换成约 221 行版本（类玩家注册、立牌激活、战斗修饰器、事件/效果、经济、卡牌背包）。事件 4 类与 `AstralEvent` 记录进库；主模组 25 个 event API 与 5 个 `CardChoiceType` 删除，五份 `CardChoiceManager` 只保留实现并 import 库枚举。
+- 战斗与经济：五线 `DiceCombatEvents` 在玩家侧与参与者侧各接一处 `CombatResolutionListeners`；`PlayerLikeWallets.resolve` 回落 `AstralDiceApi.playerLikeWallet`，`PlayerLikeTargets.giveItem` 走 `ResourceConversion`。`TargetType` 迁到 `api.target`，`HostileTargets` 迁到 `api.combat`。
+- 验收：库 `clean publishToMavenLocal --offline --no-daemon` 13s，五份 m2 `1.2.0-pre.2` jar 各含 47 个 `api/astral` 条目；主模组五线 `clean assemble --no-daemon --no-configuration-cache` 11s，五份 jar 为 fabric-1.20.1 3,362,853 B、fabric-1.21.1 3,399,442 B、forge-1.20.1 3,121,422 B、neoforge-1.21.1 3,071,135 B、neoforge-26.1.2 3,290,021 B。
+- 产物校验：五份 jar 均含 `apiimpl/AstralDiceServiceImpl.class`，旧 `AstralDiceApi` / `event/api/AstralEvent` / `choice/CardChoiceType` 均为 0；Forge build-info 为 `1d376ae0` / 681 类，NeoForge 1.21.1 同 commit / 657 类。
+- C 拆分未改玩法数值；本批未跑实机客户端/服务端冒烟。未 push、未打 tag、未发布。
+
+**Internal pre.4（已并入 pre.2）：C 常量拆分**
 
 ### 本次发布
 
@@ -13,7 +27,7 @@
 - StarEngine pin 升至 `1.2.0-pre.4`；五线 `clean assemble --offline --no-daemon` 通过。`C_VERIFY_OK`：旧内容引用为 0、五份 jar 均含 `AstralGameplayConstants`、五份库 jar 的 `GameplayConstants` 不再含内容字段。
 - 未改玩法数值；内容字段改为 final，派生 tick 值改为编译期常量；`applyConfig` 只写通用配置字段。本批未跑实机客户端/服务端冒烟。
 
-## 1.6.0-pre.3 (2026-11-19)
+**Internal pre.3（已并入 pre.2）：A/B 内容归属**
 
 ### 本次发布
 
@@ -22,7 +36,7 @@
 - StarEngine pin 升至 `1.2.0-pre.3`；五线 `clean assemble --offline --no-daemon` 通过。产物校验：五份 `1.6.0-pre.3` jar 均含 18 个新效果与 `Rarity`/`AstralRarities`，不含旧 `starengine` effect/Rarity 类；五份库 `1.2.0-pre.3` jar 不含旧类（`AB_VERIFY_OK`）。
 - 未改玩法逻辑，本次只是包归属迁移；NeoForge 枚举扩展路径已变，仍需实机启动确认 5 个稀有度条目解析。本批未跑实机客户端/服务端冒烟。
 
-## 1.6.0-pre.2 (2026-11-19)
+**P1 去重基线（pre.2）**
 
 ### 本次发布
 
