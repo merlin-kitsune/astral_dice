@@ -1,6 +1,6 @@
 # 主线全量对齐计划（2026-11-19）
 
-> 状态：阶段 0–1 已完成；阶段 1 已本地提交（库 `0abae39` / 主模组 `92c5cf73`，未 push），阶段 2 待开始。
+> 状态：阶段 0–2 已完成；阶段 2 已本地提交（库 `0147fb3` / 主模组 `515be163`，未 push），阶段 3 待开始。
 > 仓库：`F:/MCProject/astral_dice_multiloader`（`feature/mainline-full-parity`）与 `F:/MCProject/starengine`（`feature/mainline-full-parity`）。
 > 基线 tag：两仓均为 `mainline-parity-baseline-2026-11-19`。
 
@@ -219,6 +219,14 @@
 5. 校验：五份 jar 含新类、不含旧 `starengine` 路径；NeoForge 枚举扩展 JSON 指新类；库 jar 无旧类。
 6. 独立提交。
 
+**执行记录（2026-11-19）**
+
+- 库删除 24 个源文件（18 效果 + `Rarity` + 五线 `AstralRarities`）；主模组新增 24 个源文件，改写 100 处 effect、25 处 `Rarity`、40 处 `AstralRarities`，清理 95 条同包 import。
+- 两份 NeoForge `META-INF/enumextensions.json` 各 5 条改指 `com/merlinkitsune/astral_dice/item/AstralRarities`。
+- 版本：库 `1.2.0-pre.3`（提交 32 文件，+46/−1218）；主模组 `1.6.0-pre.3`（提交 78 文件，+1305/−187）。
+- 构建：库 `clean compileJava publishToMavenLocal --offline --no-daemon` 17s；主模组五线 `clean assemble --offline --no-daemon` 28s。
+- 产物：五份主模组 jar、五份库 jar；`work/verify_ab_mainline.sh` 输出 `AB_VERIFY_OK`。未跑实机。
+- 提交：库 `0147fb3`、主模组 `515be163`；均未 push，tracked 工作树干净。
 ### 阶段 3：C 常量拆分
 
 1. 主模组新增 `AstralGameplayConstants`（25 字段 + `cardCostForStar`）；库 `GameplayConstants` 只留 8 个通用字段。
