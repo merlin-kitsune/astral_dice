@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.98
+
+### 本线
+
+- 修复 NeoForge 26.1.2 的 `astral_dice:astral_anvil` 无序合成配方：`neoforge-26.1.2/src/main/resources/data/astral_dice/recipe/astral_anvil.json` 的 `ingredients` 仍是 1.21.1 的对象写法（`{"item":"..."}`），26.1.2 要求 ingredient 字符串，导致 `No key neoforge:ingredient_type` / `List is too short`，配方被丢弃。现改为 `"minecraft:anvil"`、`"astral_dice:star_coin_bag"`（两次）。
+- 五线 `mod_version` 统一到 `26.4-SNAPSHOT.98+<loader>`；`starengine_version` 仍为 `26.4-SNAPSHOT.18`。
+- 验证：`:neoforge-26.1.2:classes --offline` BUILD SUCCESSFUL（8 s，EXIT=0），构建产物 JSON 已是字符串数组。专用服务端（`:neoforge-26.1.2:runServer`）启动 `testworld`：`Loaded 1578 recipes`（旧 `mt_server_gen.log` 为 1577）；`RecipeManager.byKey(Identifier.parse("astral_dice:astral_anvil"))` 返回 present；`latest.log` 不再出现 `Couldn't parse data file 'astral_dice:astral_anvil'` / `No key neoforge:ingredient_type` / `List is too short`；`AstralDiceApi.isContentFrozen()` 为 true，服务已安装。检查后已收停服务端；未 push、未发布。
+- 诚实边界：26.1.2 的 `ShapelessRecipe#getIngredients()` 在 AutoJS Rhino 桥下不可调用，因此 ingredients 列表以构建产物 JSON + 解析错误消失为准，未读取运行期 ingredient 列表。
+
 ## 26.4-SNAPSHOT.97
 
 ### 本线

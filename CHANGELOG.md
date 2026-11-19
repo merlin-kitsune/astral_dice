@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.98
+
+### This line
+
+- Fixed the NeoForge 26.1.2 `astral_dice:astral_anvil` shapeless recipe: the `ingredients` entries in `neoforge-26.1.2/src/main/resources/data/astral_dice/recipe/astral_anvil.json` were still the 1.21.1 object form (`{"item":"..."}`); 26.1.2 expects ingredient strings, so the file failed with `No key neoforge:ingredient_type` / `List is too short` and the recipe was dropped. They are now `"minecraft:anvil"`, `"astral_dice:star_coin_bag"` (twice).
+- Bumped all five lines to `mod_version=26.4-SNAPSHOT.98+<loader>`; `starengine_version` remains `26.4-SNAPSHOT.18`.
+- Verification: `:neoforge-26.1.2:classes --offline` BUILD SUCCESSFUL (8 s, EXIT=0); the built resource JSON contains the string array. Dedicated server (`:neoforge-26.1.2:runServer`) started `testworld`: `Loaded 1578 recipes` (the old `mt_server_gen.log` was 1577), `RecipeManager.byKey(Identifier.parse("astral_dice:astral_anvil"))` is present, and `latest.log` no longer contains `Couldn't parse data file 'astral_dice:astral_anvil'`, `No key neoforge:ingredient_type`, or `List is too short`; `AstralDiceApi.isContentFrozen()` is true and the service is installed. The server was stopped after the check; nothing was pushed or released.
+- Honest boundary: in 26.1.2 the `ShapelessRecipe#getIngredients()` accessor is not exposed through the AutoJS Rhino bridge, so the ingredient list is evidenced by the built JSON plus the disappearance of the parser errors, not by reading the runtime ingredient list.
+
 ## 26.4-SNAPSHOT.97
 
 ### This line
