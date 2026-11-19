@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import net.minecraft.world.entity.player.Player;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
@@ -30,7 +30,7 @@ public final class StarLightManager {
 
     /** 星光点数上限(配置控制) */
     public static int getCap() {
-        return GameplayConstants.MAX_STARLIGHT;
+        return AstralGameplayConstants.MAX_STARLIGHT;
     }
 
     /** 「装备时获得 N 层星光」类筹码/立牌的发放闸门位(见 {@link #claimEquipGrant});每位一枚。 */

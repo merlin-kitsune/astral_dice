@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.6.0-pre.4 (2026-11-19)
+
+### 本次发布
+
+- C 常量拆分：新增 `common/src/main/java/com/merlinkitsune/astral_dice/component/AstralGameplayConstants.java`，含 25 个 `public static final int` 内容字段与 `cardCostForStar(int)`。StarEngine `GameplayConstants` 只保留 8 个通用字段。
+- 改写 178 个消费方文件（142 个纯内容、36 个混合）：429 处新简单名引用 + 182 处新全限定名引用。混合文件保留通用 `GameplayConstants` import，并追加新类 import；`GameplayConfigValues` 不变。
+- StarEngine pin 升至 `1.2.0-pre.4`；五线 `clean assemble --offline --no-daemon` 通过。`C_VERIFY_OK`：旧内容引用为 0、五份 jar 均含 `AstralGameplayConstants`、五份库 jar 的 `GameplayConstants` 不再含内容字段。
+- 未改玩法数值；内容字段改为 final，派生 tick 值改为编译期常量；`applyConfig` 只写通用配置字段。本批未跑实机客户端/服务端冒烟。
+
 ## 1.6.0-pre.3 (2026-11-19)
 
 ### 本次发布

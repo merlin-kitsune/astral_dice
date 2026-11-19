@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.6.0-pre.4 (2026-11-19)
+
+### This release
+
+- C split: added `common/src/main/java/com/merlinkitsune/astral_dice/component/AstralGameplayConstants.java` with 25 `public static final int` content fields and `cardCostForStar(int)`. StarEngine `GameplayConstants` now keeps only the eight generic fields.
+- Rewrote 178 consumer files (142 content-only, 36 mixed): 429 new simple references plus 182 new fully-qualified references. Mixed files keep the generic `GameplayConstants` import and add the new class import; `GameplayConfigValues` is unchanged.
+- Pin StarEngine `1.2.0-pre.4`; five-line `clean assemble --offline --no-daemon` passed. `C_VERIFY_OK`: no old content references, five jars contain `AstralGameplayConstants`, and the five library jars carry no content fields in `GameplayConstants`.
+- No gameplay values changed. The content fields are now final and the derived tick values are compile-time constants; `applyConfig` only writes the generic config fields. No live client/server smoke was run in this batch.
+
 ## 1.6.0-pre.3 (2026-11-19)
 
 ### This release

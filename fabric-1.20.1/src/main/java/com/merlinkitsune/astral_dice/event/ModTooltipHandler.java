@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.event;
 import com.merlinkitsune.astral_dice.platform.fml.ModList;
 
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -184,7 +184,7 @@ public class ModTooltipHandler {
     private static void addChargeCounter(List<Component> tooltip, Player player) {
         if (player == null) return;
         addSignCounter(tooltip, "tooltip.astral_dice.chip.charge",
-                ChargeManager.getStacks(player), GameplayConstants.CHARGE_MAX_STACKS);
+                ChargeManager.getStacks(player), AstralGameplayConstants.CHARGE_MAX_STACKS);
     }
 
     // 翻译文本修正:将 %% 转义为普通 % 后放入 Component.literal,
@@ -358,17 +358,17 @@ public class ModTooltipHandler {
             int usedDefenseCost = 0;
             if (enhancement != null) {
                 starLevel = enhancement.starLevel();
-                maxCost = GameplayConstants.cardCostForStar(enhancement.starLevel());
+                maxCost = AstralGameplayConstants.cardCostForStar(enhancement.starLevel());
                 stones = enhancement.appliedStones();
                 usedCost = enhancement.usedCost();
-                maxDefenseCost = GameplayConstants.cardCostForStar(enhancement.starLevel());
+                maxDefenseCost = AstralGameplayConstants.cardCostForStar(enhancement.starLevel());
                 usedDefenseCost = enhancement.usedDefenseCost();
             }
             tooltip.add(Component.empty());
             tooltip.add(Component.empty()
                     .append(tt("tooltip.astral_dice.dice_desc_prefix").withStyle(ChatFormatting.GOLD))
                     .append(tt("tooltip.astral_dice.dice_desc_blessing",
-                            formatMmSs(GameplayConstants.DICE_BLESSING_DURATION_SECONDS)).withStyle(ChatFormatting.BLUE))
+                            formatMmSs(AstralGameplayConstants.DICE_BLESSING_DURATION_SECONDS)).withStyle(ChatFormatting.BLUE))
                     .append(tt("tooltip.astral_dice.dice_desc_middle").withStyle(ChatFormatting.GRAY))
                     .append(Component.literal(cardInventoryKeyName()).withStyle(ChatFormatting.YELLOW))
                     .append(tt("tooltip.astral_dice.dice_desc_suffix").withStyle(ChatFormatting.GRAY)));
@@ -679,8 +679,8 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.parunan_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.parunan.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.parunan_passive",
-                    formatSignTime(GameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS),
-                    GameplayConstants.MAX_STARLIGHT);
+                    formatSignTime(AstralGameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS),
+                    AstralGameplayConstants.MAX_STARLIGHT);
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.sign.parunan_starlight",
                         StarLightManager.get(player), StarLightManager.getCap());
@@ -694,7 +694,7 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.jasmine_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.jasmine.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.jasmine_passive",
-                    GameplayConstants.JASMINE_MAX_BONUS);
+                    AstralGameplayConstants.JASMINE_MAX_BONUS);
             int atkBonus = JasmineSignItem.getAttackBonus(stack);
             int defBonus = JasmineSignItem.getDefenseBonus(stack);
             addSignCounter(tooltip, "tooltip.astral_dice.sign.jasmine_bonus", atkBonus, defBonus);
@@ -726,7 +726,7 @@ public class ModTooltipHandler {
             addSignActiveTitle(tooltip, "tooltip.astral_dice.sign.lulu.active");
             // 2026-09-28:主动技能已移除「对范围内玩家/宠物/可骑乘生物瞬间治疗」⇒ 文案只剩一个范围参数
             addSignLines(tooltip, "tooltip.astral_dice.sign.lulu_active",
-                    GameplayConstants.LULU_ACTIVE_RANGE);
+                    AstralGameplayConstants.LULU_ACTIVE_RANGE);
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.lulu.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.lulu_passive");
             if (event.getEntity() != null) {
@@ -913,13 +913,13 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.HAND_FAN_BIG_CHIP.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.hand_fan_big",
-                            GameplayConstants.HAND_FAN_BIG_RANGE)
+                            AstralGameplayConstants.HAND_FAN_BIG_RANGE)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.EIGHT_SIDED_DICE.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.eight_sided_dice",
-                            GameplayConstants.MAX_STARLIGHT)
+                            AstralGameplayConstants.MAX_STARLIGHT)
                     .withStyle(ChatFormatting.GRAY));
             if (event.getEntity() != null) {
                 addSignCounter(tooltip, "tooltip.astral_dice.chip.starlight",
@@ -1032,7 +1032,7 @@ public class ModTooltipHandler {
         if (stack.is(ModItems.CURSED_SWORD.get())) {
             tooltip.add(Component.empty());
             tooltip.add(Component.translatable("tooltip.astral_dice.chip.cursed_sword",
-                            GameplayConstants.CURSED_SWORD_BONUS_MAX)
+                            AstralGameplayConstants.CURSED_SWORD_BONUS_MAX)
                     .withStyle(ChatFormatting.GRAY));
             // 青之诅咒效果描述:上下各空一行,名称使用红色
             tooltip.add(Component.empty());
@@ -1179,7 +1179,7 @@ public class ModTooltipHandler {
             addSignLines(tooltip, "tooltip.astral_dice.sign.padman_active");
             addSignPassiveTitle(tooltip, "tooltip.astral_dice.sign.padman.passive");
             addSignLines(tooltip, "tooltip.astral_dice.sign.padman_passive",
-                    formatSignTime(GameplayConstants.PADMAN_REFRESH_SECONDS));
+                    formatSignTime(AstralGameplayConstants.PADMAN_REFRESH_SECONDS));
             int atkBonus = ModDataComponents.PADMAN_ATK_BONUS.getOrDefault(stack, 0);
             int defBonus = ModDataComponents.PADMAN_DEF_BONUS.getOrDefault(stack, 0);
             addSignCounter(tooltip, "tooltip.astral_dice.sign.padman_bonus", atkBonus, defBonus);
@@ -1775,7 +1775,7 @@ public class ModTooltipHandler {
      * 效果牌冷却的 tooltip 显示值（秒）。
      *
      * <p><b>2026-09-24 修正「冷却倒计时不实时刷新」</b>：原先恒返回**冷却总时长**
-     * （{@link GameplayConstants#EFFECT_CARD_COOLDOWN_SECONDS} 经充能减免后的静态值）⇒
+     * （{@link AstralGameplayConstants#EFFECT_CARD_COOLDOWN_SECONDS} 经充能减免后的静态值）⇒
      * tooltip 虽然每帧重建（物品栏悬停时），但**数值本身不随时间变化**，玩家看到的是一个冻住的秒数
      * （用户原话「手持效果牌时冷却倒计时不能实时刷新」，且这是**全局**问题：所有效果牌共用本方法）。
      * 现改为：**冷却进行中返回实时剩余秒数**（随 tick 递减 ⇒ 自然实时刷新），空闲时返回本次冷却的总时长。

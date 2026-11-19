@@ -5,6 +5,7 @@ import com.merlinkitsune.starengine.target.HoldToSelect;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -211,7 +212,7 @@ public final class TargetSelectionManager {
         // 结算一律走 Session.holdToSelect 分支（每 tick 校验物品是否仍在主手）。
         boolean holdToSelect = action instanceof HoldToSelect;
         long expireTick = holdToSelect ? 0L
-                : player.level().getGameTime() + (long) GameplayConstants.SKILL_WAIT_SECONDS * 20L;
+                : player.level().getGameTime() + (long) AstralGameplayConstants.SKILL_WAIT_SECONDS * 20L;
         Session session = new Session(token, actionId, action.targetType(), radius, expireTick, allowSelf, holdToSelect);
         SESSIONS.put(player.getUUID(), session);
         // 会话被替换:旧会话可能留下的「立牌门控待执行记录」必须一并清除(防跨会话误触发);

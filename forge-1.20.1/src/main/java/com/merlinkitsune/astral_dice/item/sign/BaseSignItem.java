@@ -129,7 +129,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
         //     本次主动的效果、玩家级冷却/锁定、电流核心充能、风扇筹码发牌与立牌主动响应事件(含默认提示)
         //     **全部推迟到确认合法目标之后**(恢复点见 resumeGatedActiveSkill);效果与冷却/充能由各
         //     TargetSelectionAction#apply 负责,恢复流程不重复写一次。
-        //     GameplayConstants.SKILL_WAIT_SECONDS(秒)内未选择或取消 ⇒ 记录被清除,
+        //     AstralGameplayConstants.SKILL_WAIT_SECONDS(秒)内未选择或取消 ⇒ 记录被清除,
         //     该次主动等同「未使用」(不发牌/不进冷却/不施效果)。
         //     actionId 为 null 的立牌(其余全部立牌)不走本分支,下方原流程逐字不变。
         String gatedActionId = sign.selectorActionId();
@@ -428,7 +428,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      */
     protected int activeCooldownBaseTicksNoBattery(Player player) {
         return (int) com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
-                player, com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+                player, com.merlinkitsune.astral_dice.component.AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
     }
 
     /**

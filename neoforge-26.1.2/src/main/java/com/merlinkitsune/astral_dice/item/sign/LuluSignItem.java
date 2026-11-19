@@ -9,6 +9,7 @@ import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
 import com.merlinkitsune.starengine.target.TargetType;
@@ -37,7 +38,7 @@ import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
  *       并使主动技能冷却 -10 秒;</li>
  *   <li><b>主动「治愈粘液」</b>:走<b>目标选择器</b>({@link TargetType#PLAYER} + {@link SelfTargetable#allowSelf()}
  *       ⇒ 可选任意玩家,或右键对自身使用),确认后把效果施加到**被指向的目标**(自身目标时即原来「对自己」的行为):
- *       ① 主体 +3 点治愈 + 瞬间治疗;② 以目标为中心 {@link GameplayConstants#LULU_ACTIVE_RANGE} 格内的
+ *       ① 主体 +3 点治愈 + 瞬间治疗;② 以目标为中心 {@link AstralGameplayConstants#LULU_ACTIVE_RANGE} 格内的
  *       **敌对生物**获得缓慢 1:00(2026-09-28 用户裁决:移除原「对范围内玩家/宠物/可骑乘生物施加瞬间治疗」);</li>
  *   <li>卸载立牌不做任何扣除(治愈点数保留,避免卸下/重载丢失点数)。</li>
  * </ul>
@@ -115,7 +116,7 @@ public class LuluSignItem extends BaseSignItem {
 
             // ── 2. 范围能力(2026-09-28 起仅剩「敌对生物缓慢」):以**被指向的目标**为中心 ──────
             // 目标自身已吃到主体效果,故与旧实现排除施放者同构,这里排除目标本身。
-            AABB aabb = target.getBoundingBox().inflate(GameplayConstants.LULU_ACTIVE_RANGE);
+            AABB aabb = target.getBoundingBox().inflate(AstralGameplayConstants.LULU_ACTIVE_RANGE);
             List<LivingEntity> nearby = target.level().getEntitiesOfClass(LivingEntity.class, aabb,
                     e -> e != target);
             for (LivingEntity entity : nearby) {
@@ -138,7 +139,7 @@ public class LuluSignItem extends BaseSignItem {
             // 同处配对写「未折电池」基准(与 BaseSignItem 的写入点同一口径;漏写会让命运指引卡读到旧值)。
             ModAttachments.setSignActiveMaxCooldownBase(player,
                     com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(player,
-                            com.merlinkitsune.starengine.component.GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS));
+                            com.merlinkitsune.astral_dice.component.AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS));
             // 电流核心筹码:主动技能实际生效时充能 +1
             CurrentCoreChipItem.onActiveSkillUsed(player);
 
@@ -161,7 +162,7 @@ public class LuluSignItem extends BaseSignItem {
     }
 
     // 目标选择器前置门控:本立牌主动为选择器类 —— 按下主动键只开启目标选择会话并立即返回,
-    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 会话时长取自 AstralGameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
     // 确认合法目标后才由 resumeGatedActiveSkill 走「风扇筹码发牌 + 立牌主动响应事件」。
     // 语义基准 = 1.21.1 `LuluSignItem.java` 第 153-156 行(逐字同形,纯平台无关代码)。
     @Override

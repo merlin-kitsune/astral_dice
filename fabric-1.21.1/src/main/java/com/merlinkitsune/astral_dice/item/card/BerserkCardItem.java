@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.target.TargetType;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -51,7 +51,7 @@ public class BerserkCardItem extends BaseEffectCardItem {
     protected void applyEffect(Level level, Player user, LivingEntity applyTo, ItemStack stack) {
         var existing = applyTo.getEffect(Effects.holder(ModEffects.BERSERK.get()));
         int newAmp = existing != null
-                ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_EFFECT_STACKS - 1) : 0;
+                ? Math.min(existing.getAmplifier() + 1, AstralGameplayConstants.MAX_EFFECT_STACKS - 1) : 0;
         int newDuration = existing != null ? Math.max(existing.getDuration(), 3600) : 3600;
         applyTo.addEffect(new MobEffectInstance(Effects.holder(ModEffects.BERSERK.get()) , newDuration, newAmp, false, false, true));
     }

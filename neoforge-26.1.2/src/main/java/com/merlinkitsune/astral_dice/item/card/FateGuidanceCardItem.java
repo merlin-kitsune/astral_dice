@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
@@ -81,9 +81,9 @@ public class FateGuidanceCardItem extends BaseEffectCardItem {
             // 兜底:记录缺失(老存档/漏写路径)时按**运行期**基础冷却值(未折电池)重算 ——
             // 不走 WeirdDiceHandler.signCooldownTicks:那条链带「额外电池筹码 ×0.5」,
             // 会把本卡的减半量一起砍掉(电池只作用于立牌主动冷却,不作用于本卡收益)。
-            // 运行期取值(不能冻结成 static final:GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS 可被 config 重算)。
+            // 运行期取值(不能冻结成 static final:AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS 可被 config 重算)。
             maxCooldown = com.merlinkitsune.astral_dice.item.ChargeManager.signCooldownTicksBase(
-                    player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+                    player, AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
         long reduction = maxCooldown / 2;
         if (com.merlinkitsune.astral_dice.item.sign.BaseSignItem.isSignActiveLocked(player)) {

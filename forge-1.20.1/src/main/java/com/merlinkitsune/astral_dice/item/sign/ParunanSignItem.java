@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.shop.CardShopOpener;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -83,7 +83,7 @@ public class ParunanSignItem extends BaseSignItem {
     protected int activeCooldownBaseTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
-                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+                : AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
         return ticks;
     }
@@ -97,7 +97,7 @@ public class ParunanSignItem extends BaseSignItem {
     protected int activeCooldownBaseTicksNoBattery(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
-                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+                : AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
         return ticks;
     

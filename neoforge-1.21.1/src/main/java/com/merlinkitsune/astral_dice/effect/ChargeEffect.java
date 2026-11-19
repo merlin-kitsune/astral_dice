@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.effect;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -25,11 +25,11 @@ public class ChargeEffect extends MobEffect {
         super(MobEffectCategory.BENEFICIAL, 0xFFC800);
     }
 
-    /** 增加层数(上限见 GameplayConstants.CHARGE_MAX_STACKS) */
+    /** 增加层数(上限见 AstralGameplayConstants.CHARGE_MAX_STACKS) */
     public static int addStacks(Player player, int stacks) {
         if (player == null || player.level().isClientSide()) return getStacks(player);
         if (stacks <= 0) return getStacks(player);
-        int total = Math.min(GameplayConstants.CHARGE_MAX_STACKS, getStacks(player) + stacks);
+        int total = Math.min(AstralGameplayConstants.CHARGE_MAX_STACKS, getStacks(player) + stacks);
         if (total > 0) {
             // visible=false:禁用粒子;showIcon **沿用现有实例**(首次获得默认显示,
             // 之后由 setIconVisibility 按「是否装备充能类筹码」纠正,见 2026-10-03 用户裁决)

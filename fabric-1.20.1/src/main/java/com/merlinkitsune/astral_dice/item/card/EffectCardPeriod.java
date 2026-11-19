@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.card;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
@@ -26,7 +26,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
  *   命运的指引效果存在即 +1(覆盖式,不累计)、可口糖果满血触发 +1
  *   (每周期一次)、探天卫星轨道炮触发 +1(每 1:00 一次)、
  *   立牌主动技能一次性 +1({@link #grantBonusPlay},同样只作用于当前出牌轮)。
- * - 出牌数上限:min(1 + 固定 + 临时, {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS})
+ * - 出牌数上限:min(1 + 固定 + 临时, {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS})
  *   实时计算,加成来源可叠加,但单轮总出牌数固定封顶 9 张(固定常量,非配置文件项)。
  * - **冷却与效果时长彻底分离(2026-09-30 用户裁决)**:只要出牌即启动冷却,且**同一轮内每次出牌都把它
  *   重置**为 {@link #COOLDOWN_SECONDS} 秒(30 → 45);出牌数打满不再单独判定,同样由该次出牌重置。
@@ -54,7 +54,7 @@ public final class EffectCardPeriod {
     }
 
     // === 冷却时长(模组侧口径,2026-09-30 用户裁决) ===
-    // ⚠️ 刻意**不**复用库 GameplayConstants 的 30/20 秒:库的工作树(next, 2.0.0-SNAPSHOT)与
+    // ⚠️ 刻意**不**复用库 AstralGameplayConstants 的 30/20 秒:库的工作树(next, 2.0.0-SNAPSHOT)与
     //    消费方引用的稳定线(1.0.5)存在版本落差,改库要跨分支 bump + 重发 + 三线 refresh;
     //    故本模块自行持值,并由 EffectCardPeriod / ChargeManager / ModTooltipHandler 三处共源。
     /** 效果牌冷却基础时长(秒):30 → 45(2026-09-30 用户裁决) */
@@ -233,7 +233,7 @@ public final class EffectCardPeriod {
         // 否则 count >= max 恒成立,出牌会被永久判定为"已打满"
         if (extra < 0) extra = 0;
         // 单轮出牌数固定封顶(常量 9,不写入配置文件)
-        return Math.min(GameplayConstants.MAX_EFFECT_CARD_PLAYS, 1 + extra);
+        return Math.min(AstralGameplayConstants.MAX_EFFECT_CARD_PLAYS, 1 + extra);
     }
 
     /**
@@ -249,7 +249,7 @@ public final class EffectCardPeriod {
      *
      * <p><b>一次性</b>:同一出牌轮内只授予一次,不累积、不跨轮保留(周期结束时由
      * {@link #clearRoundBonuses} 清除,不需要也不允许调用方自行清理);出牌轮上限仍受
-     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 封顶约束。
+     * {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS} 封顶约束。
      *
      * @return true = 本次授予成功;false = 本轮已授予过(调用方据此拒绝技能释放,且不得消耗主动技能冷却)
      */
@@ -275,13 +275,13 @@ public final class EffectCardPeriod {
      * 每次打出**都**给本周期计数器 {@link ModAttachments#FU_CARD_CYCLE_BONUS} +1(不做"每轮一次"的
      * 拒绝判断、**不**走 {@link #grantBonusPlay} 的二进制槽位 ⇒ 与忍者立牌主动 +1 **彻底解耦**,
      * 两者可叠加);该计数器计入 {@link #getMaxAllowed} 的 extra,并受
-     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 全局封顶(单轮最多 9 张);
+     * {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS} 全局封顶(单轮最多 9 张);
      * 周期归零时由 {@link #clearRoundBonuses} 与活体书页计数器同址清零。
      */
     public static boolean grantFuCardBonusPlay(Player player) {
         if (player == null) return false;
         int current = ModAttachments.getFuCardCycleBonus(player);
-        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        if (current >= AstralGameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
         ModAttachments.setFuCardCycleBonus(player, current + 1);
         return true;
     }
@@ -290,7 +290,7 @@ public final class EffectCardPeriod {
      * 活体书页「连续出牌」补记:命中**前**已有 ≥3 层标记的目标时,本出牌周期出牌数 +1。
      *
      * <p><b>用户裁决(2026-09-25)</b>:仅当命中标记层数 ≥ 3 才应用出牌数 +1,且严格遵守
-     * 「单轮出牌数封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}」的全局规则。
+     * 「单轮出牌数封顶 {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS}」的全局规则。
      * 判定用的层数由调用方({@code combat/LivingPageImpact#resolve})在**施加本次 1 层标记之前**读取。
      *
      * <p><b>跨轮保护</b>:本方法在**命中时**才被调用(飞行结束),与出牌不在同一 tick;
@@ -300,7 +300,7 @@ public final class EffectCardPeriod {
      *
      * <p>与 {@link #grantBonusPlay} 的区别:后者是立牌主动技能的**一次性**授予(同一轮只成功一次),
      * 本方法每次满足条件的命中都可累加,但累加值本身也封顶
-     * {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS}(避免周期长期不结算时无界增长)。
+     * {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS}(避免周期长期不结算时无界增长)。
      *
      * @return true = 本次补记成功(+1);false = 未补记(本轮已归零或已达封顶)
      */
@@ -308,7 +308,7 @@ public final class EffectCardPeriod {
         if (player == null) return false;
         if (getPlayCount(player) <= 0) return false;
         int current = ModAttachments.getLivingPageCycleBonus(player);
-        if (current >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
+        if (current >= AstralGameplayConstants.MAX_EFFECT_CARD_PLAYS) return false;
         ModAttachments.setLivingPageCycleBonus(player, current + 1);
         return true;
     }
@@ -436,7 +436,7 @@ public final class EffectCardPeriod {
      * 出任何一张牌都会把冷却到期时刻写成 {@code now + EffectCardPeriod.COOLDOWN_SECONDS}(45 秒),
      * 同一轮内连续出牌会不断把到期时刻推后(最后一次出牌之后 45 秒冷却结束);
      * 冷却归零后由 {@link #tick} 清空出牌数占用。任何增加出牌数的手段(固定/临时来源、立牌主动的一次性 +1)
-     * 都只能提高上限,不能绕过 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} 这一最高优先级封顶。
+     * 都只能提高上限,不能绕过 {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS} 这一最高优先级封顶。
      */
     public static void registerPlay(Player player) {
         // 忍者主动"锁定(生效中)"期的出牌佐证(第二批「三态化」第 4 条):期内**出过任何效果牌**即置真。

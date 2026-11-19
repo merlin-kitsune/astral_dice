@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -31,7 +31,7 @@ public class EffectCardItem extends BaseEffectCardItem {
         // 王之力效果:层数叠加(上限 3 层),时长刷新为 3:00
         var existing = user.getEffect(ModEffects.KING_POWER.get());
         int newAmp = existing != null
-                ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_EFFECT_STACKS - 1) : 0;
+                ? Math.min(existing.getAmplifier() + 1, AstralGameplayConstants.MAX_EFFECT_STACKS - 1) : 0;
         int newDuration = existing != null ? Math.max(existing.getDuration(), 3600) : 3600;
         user.addEffect(new MobEffectInstance(ModEffects.KING_POWER.get(), newDuration, newAmp, false, false, true));
     }

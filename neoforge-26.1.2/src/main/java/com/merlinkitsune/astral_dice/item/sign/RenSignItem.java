@@ -10,6 +10,7 @@ import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
 import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
 import com.merlinkitsune.starengine.target.TargetType;
@@ -107,7 +108,7 @@ public class RenSignItem extends BaseSignItem {
     }
 
     // 目标选择器前置门控:本立牌主动为选择器类 —— 按下主动键只开启目标选择会话并立即返回,
-    // 会话时长取自 GameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
+    // 会话时长取自 AstralGameplayConstants.SKILL_WAIT_SECONDS(秒),此处不写死数字;
     // 确认合法目标后才由 resumeGatedActiveSkill 走「风扇筹码发牌 + 立牌主动响应事件」。
     @Override
     protected String selectorActionId() {

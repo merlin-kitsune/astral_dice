@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.screen;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -47,8 +47,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
     private final int attackSlots;
     private final int defenseSlots;
     private final ItemStack equippedDice;
-    private int maxAttackCost = GameplayConstants.MAX_CARD_COST;
-    private int maxDefenseCost = GameplayConstants.MAX_CARD_COST;
+    private int maxAttackCost = AstralGameplayConstants.MAX_CARD_COST;
+    private int maxDefenseCost = AstralGameplayConstants.MAX_CARD_COST;
     private int starLevel = 0;
     private int selectorScrollOffset = 0;
     private int displayAttackMin;
@@ -67,7 +67,7 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         this.equippedDice = findEquippedDice();
         initMaxCostFromDice();
         int totalCardSlots = equippedDice.isEmpty()
-                ? GameplayConstants.CARD_SLOTS_TOTAL
+                ? AstralGameplayConstants.CARD_SLOTS_TOTAL
                 : DiceCurioItem.getCardSlots(equippedDice);
         this.cardSlots = totalCardSlots;
         this.attackSlots = totalCardSlots / 2;
@@ -250,8 +250,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         if (equippedDice.isEmpty()) return;
         // 卡牌配置星级:下界之星骰子(T4)恒为最高档 3★(卡牌槽 12/费用上限各 6)
         this.starLevel = DiceCurioItem.configStarLevel(equippedDice);
-        this.maxAttackCost = GameplayConstants.cardCostForStar(starLevel);
-        this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
+        this.maxAttackCost = AstralGameplayConstants.cardCostForStar(starLevel);
+        this.maxDefenseCost = AstralGameplayConstants.cardCostForStar(starLevel);
     }
     private ItemStack findEquippedDice() {
         var curios = CuriosApi.getCuriosInventory(player);
@@ -265,8 +265,8 @@ public class CardInventoryMenu extends AbstractContainerMenu {
         if (equippedDice.isEmpty()) return;
         WeaponEnhancement enh = equippedDice.getOrDefault(ModDataComponents.WEAPON_ENHANCEMENT.get(), WeaponEnhancement.EMPTY);
         this.starLevel = DiceCurioItem.configStarLevel(equippedDice);
-        this.maxAttackCost = GameplayConstants.cardCostForStar(starLevel);
-        this.maxDefenseCost = GameplayConstants.cardCostForStar(starLevel);
+        this.maxAttackCost = AstralGameplayConstants.cardCostForStar(starLevel);
+        this.maxDefenseCost = AstralGameplayConstants.cardCostForStar(starLevel);
         List<AppliedStone> stones = enh.appliedStones();
         int attIdx = 0;
         int defIdx = attackSlots;

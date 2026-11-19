@@ -17,7 +17,7 @@ import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 
@@ -208,7 +208,7 @@ public final class LinglingSignManager {
     /** 有效充能层 = {@code min(20, ChargeManager.getStacks)};2026-10-21 起不再有「额外加成层」账本 */
     public static int effectiveCharge(Player player) {
         if (player == null) return 0;
-        return Math.min(GameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
+        return Math.min(AstralGameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
     }
 
     // ── 每 10t 被动刷新(§4.1 / §4.4 / §4.6 / §5 实时修饰器) ────────────────────

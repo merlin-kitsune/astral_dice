@@ -17,7 +17,7 @@ import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.item.sign.MimiSignItem;
 
 public class DiceCurioItem extends Item implements ICurioItem {
@@ -39,7 +39,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
     // 卡牌放置栏总槽位数**由骰子品质(品阶)决定,与星级无关**(用户裁决 2026-10-28):
     // 基础 4(各 2) / T1 8(各 4) / T2 10(各 5) / T3 12(各 6) / T4 12(各 6),
     // 由 {@link DiceTier#cardSlots()} 逐骰子登记;星级只影响费用上限与赐福强度。
-    // 未登记的骰子(理论上不存在)回退 GameplayConstants.CARD_SLOTS_TOTAL。
+    // 未登记的骰子(理论上不存在)回退 AstralGameplayConstants.CARD_SLOTS_TOTAL。
 
     /** 卡牌配置星级:下界之星骰子恒为 3★(最高档),其余骰子取实际星级 */
     public static int configStarLevel(ItemStack stack) {
@@ -51,7 +51,7 @@ public class DiceCurioItem extends Item implements ICurioItem {
 
     public static int getCardSlots(ItemStack stack) {
         DiceTier tier = DiceTierRegistry.get(stack);
-        return tier != null ? tier.cardSlots() : GameplayConstants.CARD_SLOTS_TOTAL;
+        return tier != null ? tier.cardSlots() : AstralGameplayConstants.CARD_SLOTS_TOTAL;
     }
 
     @Override

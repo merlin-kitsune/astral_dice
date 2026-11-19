@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
@@ -45,7 +45,7 @@ public final class WeirdDiceHandler {
      * 禁止调用本方法(2026-10-21 用户裁决)。
      */
     public static int signCooldownTicks(Player player) {
-        return (int) ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+        return (int) ChargeManager.signCooldownTicks(player, AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
     }
 
     /**

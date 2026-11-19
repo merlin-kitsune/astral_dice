@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ChargeEffect;
 import net.minecraft.world.entity.player.Player;
 
@@ -12,7 +12,7 @@ import java.util.UUID;
  * 充能流派管理器(玩家级资源)。
  *
  * <p>层数存储于 {@link ChargeEffect}(amplifier = 层数-1,上限见
- * {@link GameplayConstants#CHARGE_MAX_STACKS})。
+ * {@link AstralGameplayConstants#CHARGE_MAX_STACKS})。
  * 流派固定效果(与层数多少无关):拥有至少 1 层充能时,
  * 立牌主动冷却至多 160 秒、效果牌冷却至多 20 秒 —— 把**基础值**封顶
  * (2026-09-25 改口径,取代旧的「-20% 比例减免」);封顶之后再由调用方叠加
@@ -115,14 +115,14 @@ public final class ChargeManager {
 
     /**
      * 立牌主动技能冷却 tick:拥有充能时把**基础值**封顶为 160 秒
-     * ({@link GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS})。
+     * ({@link AstralGameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS})。
      *
      * <p>2026-09-25 改口径:取代旧的「有充能即 -20%」比例减免。封顶只作用于**基础值**,
      * 之后由调用方继续叠加其它减免(额外电池筹码 ×0.5、枪匠「精密技巧」的 120 秒基础值等);
      * 基础值本就低于上限时保持原值。**已在进行的倒计时不受影响** —— 本方法只在开始冷却时取值。
      */
     public static long signCooldownTicks(Player player, long baseTicks) {
-        long capped = capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        long capped = capByCharge(player, baseTicks, AstralGameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
         // 额外电池筹码:立牌主动技能冷却 -50%(纯查询 ⇒ 卸下后下一次开冷却自动恢复原值)。
         // ⚠️ 作用域硬边界:只作用于「立牌主动技能冷却」,不得套到效果牌 / 抽奖盒 / 商店等其它冷却路径
         //    (2026-10-21 用户裁决;同口径见 forge-1.20.1 ChargeManager)。
@@ -134,7 +134,7 @@ public final class ChargeManager {
      * **立牌主动技能**冷却 tick —— <b>不含「额外电池筹码 ×0.5」折算</b>的基准值。
      *
      * <p>取值链与 {@link #signCooldownTicks(Player, long)} 完全一致:
-     * {@code baseTicks} → 「有充能时封顶 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒」,
+     * {@code baseTicks} → 「有充能时封顶 {@value AstralGameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒」,
      * 唯独**跳过**最后一步 {@code ExtraBatteryChipItem#applySignActiveCooldownReduction}。
      *
      * <p>用途:附件 {@code sign_active_max_cooldown_base}(命运指引卡减半时的基准)——
@@ -142,7 +142,7 @@ public final class ChargeManager {
      * 作用域同为「立牌主动技能冷却」,其它冷却禁止调用(2026-10-21 用户裁决)。
      */
     public static long signCooldownTicksBase(Player player, long baseTicks) {
-        return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        return capByCharge(player, baseTicks, AstralGameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
     }
 
     /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 30 秒(2026-09-30 用户裁决,20 → 30;

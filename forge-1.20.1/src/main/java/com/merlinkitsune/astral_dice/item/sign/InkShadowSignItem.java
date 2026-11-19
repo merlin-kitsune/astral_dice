@@ -31,7 +31,7 @@ import net.minecraft.world.phys.HitResult;
  * 因此<b>第二次按键不经过 {@code performSkill}</b>：{@code ModNetwork.SignActivateMessage} 先用
  * {@link InkShadowSignManager#tryPlaceEndFromKey} 这个前置钩子直接放终点门；
  * pending 一清空，锁定机下一拍自然结束锁定，冷却走<b>全局立牌规则</b>
- * （{@code GameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS}，默认 180 s，含充能封顶与电池减免）。
+ * （{@code AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_SECONDS}，默认 180 s，含充能封顶与电池减免）。
  *
  * <p><b>1.20.1 平台差异</b>：{@link net.minecraft.world.entity.ai.attributes.AttributeModifier}
  * 用 UUID 作 id，修饰符统一经 {@link SignAttributeUtil} 按 key 派生稳定 UUID；

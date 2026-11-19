@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.chip;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.starengine.combat.HostileTargets;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
@@ -28,7 +28,7 @@ import com.merlinkitsune.starengine.combat.PartyRelations;
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。
  * 骰神赐福期间,每击杀 1 个不少于 20 血的敌对目标,攻击力 +1;
  * 每个骰神赐福效果期间最多触发一次,上限由**前置库常量**
- * {@link GameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(2026-10-02 由 16 上调为 32;该字段不读配置文件)。
+ * {@link AstralGameplayConstants#CURSED_SWORD_BONUS_MAX} 决定(2026-10-02 由 16 上调为 32;该字段不读配置文件)。
  * 移除筹码时清除全部攻击力加成与青之诅咒效果。
  */
 @EventBusSubscriber(modid = com.merlinkitsune.astral_dice.AstralDiceMod.MODID)
@@ -100,7 +100,7 @@ public class CursedSwordChipItem extends BaseChipItem {
         if (ModAttachments.getCursedSwordBlessingTriggered(player)) return;
         ModAttachments.setCursedSwordBlessingTriggered(player, true);
         int current = ModAttachments.getCursedSwordBonus(player);
-        int max = GameplayConstants.CURSED_SWORD_BONUS_MAX;
+        int max = AstralGameplayConstants.CURSED_SWORD_BONUS_MAX;
         if (current < max) {
             ModAttachments.setCursedSwordBonus(player, current + 1);
         }
