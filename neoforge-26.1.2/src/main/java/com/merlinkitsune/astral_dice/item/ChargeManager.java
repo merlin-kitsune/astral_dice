@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ChargeEffect;
 import net.minecraft.world.entity.player.Player;
 
@@ -12,7 +12,7 @@ import java.util.UUID;
  * 充能流派管理器(玩家级资源)。
  *
  * <p>层数存储于 {@link ChargeEffect}(amplifier = 层数-1,上限见
- * {@link GameplayConstants#CHARGE_MAX_STACKS})。
+ * {@link AstralGameplayConstants#CHARGE_MAX_STACKS})。
  * 流派固定效果(与层数多少无关):拥有至少 1 层充能时,
  * 立牌主动冷却至多 160 秒、效果牌冷却至多 20 秒 —— 把**基础值**封顶
  * (2026-09-25 改口径,取代旧的「-20% 比例减免」);封顶之后再由调用方叠加
@@ -107,8 +107,8 @@ public final class ChargeManager {
      *
      * <p>取值链(逐段作用,全部只在「开始冷却」时取一次):
      * <ol>
-     *   <li>基础值 {@code baseTicks}(调用方传入;缺省 = {@code GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} = 180 秒);</li>
-     *   <li>拥有充能时把**基础值**封顶为 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒
+     *   <li>基础值 {@code baseTicks}(调用方传入;缺省 = {@code AstralGameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} = 180 秒);</li>
+     *   <li>拥有充能时把**基础值**封顶为 {@value AstralGameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒
      *       —— {@link #capByCharge}(2026-09-25 改口径,取代旧的「有充能即 -20%」);基础值本就低于上限时保持原值;</li>
      *   <li>「额外电池筹码」×{@code ExtraBatteryChipItem#COOLDOWN_MULTIPLIER}(= 0.5,纯查询,
      *       未佩戴 / 未装骰子时原样返回)—— {@code ExtraBatteryChipItem#applySignActiveCooldownReduction};</li>
@@ -118,7 +118,7 @@ public final class ChargeManager {
      * <p><b>已在进行的倒计时不受影响</b> —— 本方法只在开始冷却时取值。
      */
     public static long signCooldownTicks(Player player, long baseTicks) {
-        long capped = capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        long capped = capByCharge(player, baseTicks, AstralGameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
         // 额外电池筹码(史诗/无流派,2026-10-20):立牌主动技能冷却 -50%。
         // 作用域硬约束(2026-10-21):只允许立牌主动冷却走这条;抽奖盒 / 筹码商店 /
         // 任何其它 *CooldownUntil / *CooldownEnd 一律禁止调用本折算。
@@ -131,7 +131,7 @@ public final class ChargeManager {
      * **立牌主动技能**冷却 tick —— <b>不含「额外电池筹码 ×0.5」折算</b>的基准值。
      *
      * <p>取值链与 {@link #signCooldownTicks(Player, long)} 完全一致:
-     * {@code baseTicks} → 「有充能时封顶 {@value GameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒」,
+     * {@code baseTicks} → 「有充能时封顶 {@value AstralGameplayConstants#CHARGE_SIGN_COOLDOWN_CAP_SECONDS} 秒」,
      * 唯独**跳过**最后一步 {@code ExtraBatteryChipItem#applySignActiveCooldownReduction}。
      *
      * <p>用途:附件 {@code sign_active_max_cooldown_base}(命运指引卡减半时的基准)——
@@ -139,7 +139,7 @@ public final class ChargeManager {
      * 作用域同为「立牌主动技能冷却」,其它冷却禁止调用(2026-10-21 用户裁决)。
      */
     public static long signCooldownTicksBase(Player player, long baseTicks) {
-        return capByCharge(player, baseTicks, GameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
+        return capByCharge(player, baseTicks, AstralGameplayConstants.CHARGE_SIGN_COOLDOWN_CAP_SECONDS);
     }
 
     /** 效果牌公共冷却 tick:拥有充能时把**基础值**封顶为 30 秒(2026-09-30 用户裁决,20 → 30;

@@ -2,7 +2,7 @@
 
 - 日期：2026-11-19
 - 范围：dev-next 线（库 `starengine_next` / 主模组 `astral_dice_multiloader-next`），不含 main 线跟随迁移
-- 状态：A/B 已执行（库 26.4-SNAPSHOT.17 / 主模组 26.4-SNAPSHOT.96）；C（GameplayConstants 拆分）待下一批；`StarCoinWalletState` 按用户裁决留库
+- 状态：A/B 已执行（库 26.4-SNAPSHOT.17 / 主模组 26.4-SNAPSHOT.96）；C（GameplayConstants 拆分）已执行（库 26.4-SNAPSHOT.18 / 主模组 26.4-SNAPSHOT.97）；`StarCoinWalletState` 按用户裁决留库
 - 前序：`docs/design/07-api-ownership.md`、`docs/features/api-audit/00-master-audit.md` §11–§12；P0/P1 已完成
 
 ## 0. 结论摘要
@@ -13,7 +13,7 @@
 | 平台/契约 | `StarEnginePlatform(s)`、`api.astral` 37 类 | 留在库 | 无（P0 已归位） |
 | 星骰内容 | `effect` 18 个 MobEffect | **已搬回**（.96/.17） | 低（15 文件） |
 | 星骰内容 | `Rarity` + 五线 `AstralRarities` | **已搬回**（.96/.17） | 中（25 + 30 import、10 条 json） |
-| 混合 | `GameplayConstants` | 拆成库通用 + 主模组内容常量 | 高（174 文件，最大 diff）；**下一批 C** |
+| 混合 | `GameplayConstants` | 已拆分：库通用 + 主模组内容常量（`.97` / `.18`） | 高（179 文件）；已完成 |
 | 边界 | `StarCoinWalletState` | **留库**（m02749 裁决） | 低（15 文件） |
 
 **判据**：一个类若被两个以上模组消费，或属于库的通用子系统（经济、目标、actionbar、平台 seam），且不含星骰角色/命名空间/内容 ID，算“共享实现”；若类名、效果名、稀有度 ID 或数值明显属于星骰内容，且只有主模组使用，算“应搬回主模组”。API 契约按 m01848 一律留库。
@@ -119,7 +119,7 @@
 
 1. **批 A（低风险）— 已执行（`.96` / `.17`）**：effect 18 类搬回主模组 → 五线 assemble；主模组 CHANGELOG / 库 CHANGELOG；库版本 `.17`、主模组 `.96`。
 2. **批 B（中低）— 已执行（`.96` / `.17`）**：Rarity + 五线 AstralRarities 搬回；改 10 条 `enumextensions.json`；25 + 30 import；五线 assemble；jar 内 json 与类路径校验。
-3. **批 C（高）— 下一批**：GameplayConstants 拆分；174 个 import；库 8 个文件不动；五线 assemble + jar 校验。
+3. **批 C（高）— 已执行（`.97` / `.18`）**：GameplayConstants 拆分；179 个文件改写（143 content + 36 mixed）；库 8 个文件不动；五线 assemble + jar 校验。
 4. **已裁决**：StarCoinWalletState 留库（m02749），不再作为待办。
 
 每批都应遵守：主模组/库各自 bump `mod_version`、写双语 CHANGELOG、五线 assemble 取证；TLMDice 当前只依赖 `StarEngineEconomy` 与 `api.astral`，A/B/C 都不需要改 TLMDice（除非库版本 pin 要跟随）。
@@ -131,15 +131,16 @@
 - 库 effect（历史位置，已于 `.17` 搬出）：`starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/*.java`；迁移后：`astral_dice_multiloader-next/common/src/main/java/com/merlinkitsune/astral_dice/effect/*.java`
 - 库 Rarity（历史位置，已于 `.17` 搬出）：`starengine_next/common/src/main/java/com/merlinkitsune/starengine/item/Rarity.java:43-57`；迁移后：`astral_dice_multiloader-next/common/src/main/java/com/merlinkitsune/astral_dice/item/Rarity.java:43-57`
 - NeoForge 枚举扩展：`astral_dice_multiloader-next/neoforge-1.21.1/src/main/resources/META-INF/enumextensions.json:8`（`"class"` 已改指 `com/merlinkitsune/astral_dice/item/AstralRarities`）
-- 库 GameplayConstants：`starengine_next/common/src/main/java/com/merlinkitsune/starengine/component/GameplayConstants.java:18-101`
+- 库 GameplayConstants（C 批后仅剩通用 seam）：`starengine_next/common/src/main/java/com/merlinkitsune/starengine/component/GameplayConstants.java:17-53`
+- 主模组内容常量（C 批新增）：`astral_dice_multiloader-next/common/src/main/java/com/merlinkitsune/astral_dice/component/AstralGameplayConstants.java`
 - 库经济：`starengine_next/common/src/main/java/com/merlinkitsune/starengine/economy/{StarEngineEconomy,StarCoinCommand,StarCoinWalletState}.java`
 - 库平台存储注册：`starengine_next/{fabric-1.20.1,fabric-1.21.1,forge-1.20.1,neoforge-1.21.1,neoforge-26.1.2}/src/main/java/com/merlinkitsune/starengine/economy/*EconomyStorage.java`
 
 ## 5. 裁决结果（2026-11-19）
 
 1. `StarCoinWalletState`：**留库**（用户 m02749）。
-2. `GameplayConstants`：**先做 A/B，C 批下一批**（用户 m02749）。
-3. `GIVE_GUIDE_BOOK_ON_FIRST_JOIN`：随 C 批再议；本批不动。
+2. `GameplayConstants`：**C 批已执行**（主模组 `.97` / 库 `.18`，见 §7）；用户 m02749 原裁决为「constants拆分，下一批做」。
+3. `GIVE_GUIDE_BOOK_ON_FIRST_JOIN`：C 批仍留库，作为配置 seam；内容常量已搬出。
 4. 本报告随 A/B 代码一起提交到 astral-next 的 `docs/design/`。
 
 ## 6. A/B 执行记录（26.4-SNAPSHOT.96 / 库 26.4-SNAPSHOT.17）
@@ -150,3 +151,12 @@
 - 版本：库五线 `lib_version`/`mod_version` = `26.4-SNAPSHOT.17`；主模组五线 `mod_version` = `26.4-SNAPSHOT.96+<loader>`，`starengine_version` = `26.4-SNAPSHOT.17`，fabric 区间 `>=26.4-SNAPSHOT.17 <27.0.0`。
 - 构建：库 `clean publishToMavenLocal --offline`（JDK 21）SUCCESSFUL，五份 `.17` jar 均无旧类；主模组五线 `clean assemble --offline` SUCCESSFUL（26 s，EXIT=0），五份 `.96` jar 经 `work/verify_ab.sh` 全部 `AB_VERIFY_OK`。
 - 边界：未跑实机；NeoForge 枚举扩展只在类/路径层校验，仍需真实启动确认 `Rarity` 常量注入。`GameplayConstants`（C 批）与 `StarCoinWalletState` 未动。
+
+## 7. C 执行记录（26.4-SNAPSHOT.97 / 库 26.4-SNAPSHOT.18）
+
+- 用户裁决：m02891「继续做C」；m02749「constants拆分，下一批做」。
+- 拆分：库 `GameplayConstants` 只保留 7 个通用字段 + `GIVE_GUIDE_BOOK_ON_FIRST_JOIN` 配置位；25 个内容字段与 `cardCostForStar(int)` 搬到主模组 `com.merlinkitsune.astral_dice.component.AstralGameplayConstants`，全部 `public static final`；`GameplayConfigValues` 的 7 字段 record 未动。
+- 引用：179 个文件（143 content + 36 mixed），615 insertions / 579 deletions；content 文件改 import/FQN/简单名，mixed 文件保留库 import、新增新类 import 并只把内容符号改走新类；旧内容字段残留 0。
+- 版本与构建：库 `.18` `clean compileJava publishToMavenLocal --offline` 16 s SUCCESSFUL；主模组 `.97` 五线 `clean assemble --offline` 26 s SUCCESSFUL（EXIT=0）。
+- 产物验收：五份主模组 jar 均含 `AstralGameplayConstants.class`（25 个 `public static final int` 字段）、不含库侧 `GameplayConstants.class`，依赖区间均为 `.18`；库五份 jar 用 `javap` 确认 `GameplayConstants` 无内容字段与 `cardCostForStar`；`work/verify_c.sh` 返回 0。
+- 边界：未跑实机；配置重载与 179 个改写引用只有编译/字节码取证。TLMDice 不引用这些类，未改。

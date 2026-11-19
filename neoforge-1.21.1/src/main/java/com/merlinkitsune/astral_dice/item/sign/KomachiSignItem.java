@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
@@ -34,7 +34,7 @@ import net.neoforged.bus.api.SubscribeEvent;
  * 释放前置(任一不满足即不释放,
  * 且<b>不消耗</b>主动技能冷却 —— performSkill 以 SUCCESS 判定是否起冷却):
  * <ol>
- *   <li>出牌数上限已达封顶 {@link GameplayConstants#MAX_EFFECT_CARD_PLAYS} → 拒绝(+1 无意义,且不得绕过封顶);</li>
+ *   <li>出牌数上限已达封顶 {@link AstralGameplayConstants#MAX_EFFECT_CARD_PLAYS} → 拒绝(+1 无意义,且不得绕过封顶);</li>
  *   <li>本轮已授予过这次 +1 → 拒绝(一次性;同一轮内不叠加)。</li>
  * </ol>
  * 主动技能自身冷却中的拒绝仍由 {@link BaseSignItem#performSkillForCurio} 统一处理。
@@ -72,9 +72,9 @@ public class KomachiSignItem extends BaseSignItem {
             return InteractionResultHolder.success(stack);
         }
         // 主动(忍术连击):一次性 —— 仅当前出牌轮 +1 张出牌数。释放前置见类注释(两条)。
-        if (EffectCardPeriod.getMaxAllowed(player) >= GameplayConstants.MAX_EFFECT_CARD_PLAYS) {
+        if (EffectCardPeriod.getMaxAllowed(player) >= AstralGameplayConstants.MAX_EFFECT_CARD_PLAYS) {
             sendSignActionBarColored(player, net.minecraft.ChatFormatting.RED, "msg.astral_dice.komachi_active_capped",
-                    GameplayConstants.MAX_EFFECT_CARD_PLAYS);
+                    AstralGameplayConstants.MAX_EFFECT_CARD_PLAYS);
             return InteractionResultHolder.fail(stack);
         }
         // 一次性授予:本轮已授予过则不再释放(不消耗主动技能冷却)

@@ -437,7 +437,7 @@ public class RepulsionEntity extends LivingEntity {
      *   <li>走 {@link ChargeManager#addStacks(Player, int)}：与其它充能来源同一条链路
      *       （HUD / 消耗 / 死亡保留全部自动生效）；</li>
      *   <li><b>只在真实增加层数时计数</b>：玩家已到
-     *       {@link com.merlinkitsune.starengine.component.GameplayConstants#CHARGE_MAX_STACKS}
+     *       {@link com.merlinkitsune.astral_dice.component.AstralGameplayConstants#CHARGE_MAX_STACKS}
      *       上限时本次不加、也不占配额；</li>
      *   <li><b>永久到账</b>：玩家走远、目标脱离 / 阵亡、本力场碎裂或被拆 —— 一律**不回收**。</li>
      * </ul>

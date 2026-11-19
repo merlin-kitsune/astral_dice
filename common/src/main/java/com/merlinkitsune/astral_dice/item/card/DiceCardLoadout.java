@@ -10,7 +10,7 @@ import com.merlinkitsune.astral_dice.item.CardReturnHelper;
 import com.merlinkitsune.astral_dice.item.dice.DiceCurioItem;
 import com.merlinkitsune.astral_dice.item.dice.DiceLoadoutAccess;
 import com.merlinkitsune.astral_dice.item.sign.TeruSignItem;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -30,7 +30,7 @@ import java.util.Map;
  *   <li>装配会**销毁**卡牌物品栈，数据只落在 {@link WeaponEnhancement#appliedStones()}。
  *       因此 {@link #equip} 成功时**调用方自行扣掉卡牌栈**（门面方法同样不代扣），
  *       卸下由 {@link #unequipAll} 按 {@code (type, uses)} 重建全新栈。</li>
- *   <li>费用上限 = {@code GameplayConstants.cardCostForStar(configStarLevel(dice))}，与菜单同口径；
+ *   <li>费用上限 = {@code AstralGameplayConstants.cardCostForStar(configStarLevel(dice))}，与菜单同口径；
  *       攻击牌与防御牌**各自独立计费**、各自各占一半槽位。</li>
  *   <li>星级持久化写骰子的**实际**星级，不得改写为配置星级
  *       （下界之星骰子 GUI 显示 3★ 档配置，但存档里的实际星级必须保留）。</li>
@@ -105,7 +105,7 @@ public final class DiceCardLoadout {
         if (defense ? defenseCards >= perSide : attackCards >= perSide) return false;
 
         int cost = costOf(type, owner);
-        int maxCost = GameplayConstants.cardCostForStar(DiceCurioItem.configStarLevel(dice));
+        int maxCost = AstralGameplayConstants.cardCostForStar(DiceCurioItem.configStarLevel(dice));
         if (defense) {
             if (enh.usedDefenseCost() + cost > maxCost) return false;
         } else if (enh.usedCost() + cost > maxCost) {
@@ -167,7 +167,7 @@ public final class DiceCardLoadout {
             }
         }
 
-        int maxCost = GameplayConstants.cardCostForStar(DiceCurioItem.configStarLevel(dice));
+        int maxCost = AstralGameplayConstants.cardCostForStar(DiceCurioItem.configStarLevel(dice));
         DiceLoadoutAccess.setEnhancement(dice,
                 new WeaponEnhancement(0, maxCost, 0, maxCost, enh.starLevel(), List.of()));
         return returned;

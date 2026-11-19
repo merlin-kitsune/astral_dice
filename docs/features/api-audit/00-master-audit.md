@@ -378,4 +378,12 @@
 - B：库删 `common/.../item/Rarity.java` 与五线 `item/AstralRarities.java`；主模组新增 `common/.../astral_dice/item/Rarity.java` 与五线同包 `AstralRarities.java`；主模组 45 个 Java 文件改写（含 A/B），清 95 条同包 import；两份 NeoForge `META-INF/enumextensions.json` 各 5 条改指 `com/merlinkitsune/astral_dice/item/AstralRarities`；六条源码根旧 FQN 残留 0。
 - 版本与区间：库 `.17`；主模组 `.96`、`starengine_version=26.4-SNAPSHOT.17`、fabric `>=26.4-SNAPSHOT.17 <27.0.0`。
 - 验证：库 clean publish 9 s SUCCESSFUL，五份 `.17` jar 无旧类；主模组五线 clean assemble 26 s SUCCESSFUL，五份 `.96` jar 经 `work/verify_ab.sh` 全部 `AB_VERIFY_OK`。
-- 边界：未跑实机；NeoForge 枚举扩展仍需真实启动确认。`StarCoinWalletState` 按裁决留库；`GameplayConstants` C 批未做；TLMDice 不引用这些类，未改。
+- 边界：未跑实机；NeoForge 枚举扩展仍需真实启动确认。`StarCoinWalletState` 按裁决留库；`GameplayConstants` C 批当时未做（见 §14）；TLMDice 不引用这些类，未改。
+
+## 14. P2 C 执行记录（26.4-SNAPSHOT.97 / 库 .18，2026-11-19）
+
+- 用户裁决：m02891「继续做C」；m02749「constants拆分，下一批做」。
+- 拆分：库 `GameplayConstants` 保留 7 个通用字段（actionbar 两项、队伍开关三项、目标半径、枪械伤害）加 `GIVE_GUIDE_BOOK_ON_FIRST_JOIN`；25 个星骰内容字段与 `cardCostForStar(int)` 搬到主模组 `com.merlinkitsune.astral_dice.component.AstralGameplayConstants`，全部 `public static final`；`GameplayConfigValues` 7 字段未动。
+- 引用：179 个 Java 文件（143 content-only + 36 mixed），615 insertions / 579 deletions；content 文件改 import/FQN/简单名，mixed 文件保留库 import 并新增新类 import；旧内容字段残留 0。
+- 版本与产物：库 `.18` clean publish 16 s，五份 jar `javap` 无内容字段与 `cardCostForStar`；主模组 `.97` 五线 clean assemble 26 s，五份 jar 均含 `AstralGameplayConstants.class`（25 个 `public static final int` 字段）、不含库侧 `GameplayConstants.class`、依赖区间 `.18`；`work/verify_c.sh` 返回 0。
+- 边界：未跑实机；配置重载与全部改写引用只有编译/字节码取证。TLMDice 不引用这些类，未改。

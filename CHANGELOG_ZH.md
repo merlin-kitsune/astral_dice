@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.97
+
+### 本线
+
+- P2 归属批 C（用户 2026-11-19 裁决「constants拆分，下一批做」）。25 个星骰内容常量与 `cardCostForStar(int)` 从库 `com.merlinkitsune.starengine.component.GameplayConstants` 搬到 common 新类 `com.merlinkitsune.astral_dice.component.AstralGameplayConstants`，全部 `public static final`。库只保留通用 seam（actionbar、队伍开关、目标半径、枪械伤害、首次加入规则书）；`GameplayConfigValues` 仍为 7 字段。
+- 179 个 Java 文件改写（143 个纯内容 + 36 个混用）：纯内容文件改 import 到新类；混用文件保留库 import，仅内容符号改走新类。615 insertions / 579 deletions。两个派生 tick 字段（`SIGN_ACTIVE_COOLDOWN_TICKS`、`DICE_BLESSING_DURATION_TICKS`）在新类里是常量表达式，五处 `applyConfig` 调用点未改。
+- 依赖钉版：五线要求 StarEngine `26.4-SNAPSHOT.18`；NeoForge/Forge 区间维持 `[${starengine_version},27.0.0)`，Fabric 两线为 `>=26.4-SNAPSHOT.18 <27.0.0`。
+- 验证：库 `.18` 已 clean 发布；五份库 jar 用 `javap` 确认无内容字段与 `cardCostForStar`。本仓五线 `clean assemble --offline` BUILD SUCCESSFUL（26 s，EXIT=0）；五份 `astral_dice-26.4-SNAPSHOT.97+<loader>.jar` 均含 `AstralGameplayConstants.class`（25 个 `public static final int` 字段）、未打包库侧 `GameplayConstants`，依赖区间为 `.18`。`work/verify_c.sh` 返回 0。
+- 诚实边界：本批未跑实机。搬迁保值且已过编译；配置重载读的仍是未变的 7 字段 record，但实机配置推送与全部改写引用尚未在运行期复证。TLMDice 不引用这些类，未改。
+
 ## 26.4-SNAPSHOT.96
 
 ### 本线

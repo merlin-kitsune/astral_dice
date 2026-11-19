@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.SherryReasoningEffect;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.item.ModItems;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionResultHolder;
@@ -219,7 +219,7 @@ public class SherrySignItem extends BaseSignItem {
     protected int activeCooldownBaseTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
-                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+                : AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
         return ticks;
     }
@@ -233,7 +233,7 @@ public class SherrySignItem extends BaseSignItem {
     protected int activeCooldownBaseTicksNoBattery(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
-                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+                : AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
         return ticks;
     }

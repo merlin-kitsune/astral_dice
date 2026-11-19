@@ -16,7 +16,7 @@ import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.item.card.BaseEffectCardItem;
 import com.merlinkitsune.astral_dice.item.card.ExclusiveCardUtil;
 import com.merlinkitsune.astral_dice.item.card.RepulsionCardItem;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 
 import net.minecraft.resources.Identifier;
@@ -236,11 +236,11 @@ public final class LinglingSignManager {
      * 有效充能层 = {@code min(20, ChargeManager.getStacks(player))}。
      *
      * <p>2026-10-21 起强化拒止给的层数是**真实充能**（{@code ChargeEffect}），这里不再有
-     * 「额外加成层」的独立账本 —— 只剩总上限 {@link GameplayConstants#CHARGE_MAX_STACKS} 的夹取。
+     * 「额外加成层」的独立账本 —— 只剩总上限 {@link AstralGameplayConstants#CHARGE_MAX_STACKS} 的夹取。
      */
     public static int effectiveCharge(Player player) {
         if (player == null) return 0;
-        return Math.min(GameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
+        return Math.min(AstralGameplayConstants.CHARGE_MAX_STACKS, ChargeManager.getStacks(player));
     }
 
     /**

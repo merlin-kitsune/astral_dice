@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -22,7 +22,7 @@ public class PadmanSignItem extends BaseSignItem {
         long gameTime = player.level().getGameTime();
         long lastRefresh = ModDataComponents.PADMAN_LAST_REFRESH.getOrDefault(stack, 0L);
         // 被动:每 60 秒刷新基础攻防数值(首次佩戴时立即刷新)
-        if (lastRefresh == 0L || gameTime - lastRefresh >= GameplayConstants.PADMAN_REFRESH_SECONDS * 20L) {
+        if (lastRefresh == 0L || gameTime - lastRefresh >= AstralGameplayConstants.PADMAN_REFRESH_SECONDS * 20L) {
             refreshBonus(stack);
             ModDataComponents.PADMAN_LAST_REFRESH.set(stack, gameTime);
         }

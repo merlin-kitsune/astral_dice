@@ -8,6 +8,7 @@ import com.merlinkitsune.astral_dice.network.EventChoiceStartMessage;
 import com.merlinkitsune.astral_dice.network.EventChoiceTickMessage;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -55,7 +56,7 @@ public final class EventChoiceManager {
     /** 选项个数（固定 2 个）。 */
     public static final int OPTION_COUNT = 2;
 
-    /** 等待期 = 15 秒（用户裁决；**不复用**库里 {@code GameplayConstants.SKILL_WAIT_SECONDS}=30，那是目标选择器的）。 */
+    /** 等待期 = 15 秒（用户裁决；**不复用**库里 {@code AstralGameplayConstants.SKILL_WAIT_SECONDS}=30，那是目标选择器的）。 */
     public static final int CHOICE_TIMEOUT_TICKS = 15 * 20;
 
     /** 确认后「等待 1 秒 → 关闭界面 → 再进入事件触发流程」里的那 1 秒（20 ticks）。 */

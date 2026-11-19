@@ -3,7 +3,7 @@ package com.merlinkitsune.astral_dice.content;
 import com.merlinkitsune.starengine.api.astral.AstralDiceApi;
 import com.merlinkitsune.starengine.api.content.chip.ChipCategory;
 import com.merlinkitsune.starengine.api.content.chip.ChipSchool;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 
 /**
  * 主模组内置立牌 / 筹码与 StarEngine 内容描述符的连接。
@@ -23,7 +23,7 @@ import com.merlinkitsune.starengine.component.GameplayConstants;
  * 新增 / 删除内置物品时必须同步维护这两张表（暂无自动校验）。
  *
  * <p>立牌在主模组里没有流派字段，故描述符统一使用 {@code generic}；冷却记录
- * {@link GameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} 的基准值，实际冷却仍由
+ * {@link AstralGameplayConstants#SIGN_ACTIVE_COOLDOWN_TICKS} 的基准值，实际冷却仍由
  * {@code BaseSignItem} 按玩家状态计算。筹码价格使用商店基础价
  * {@code ChipShopCatalog.PRICE_INITIAL}=10，权重按品质使用村民交易同口径
  * {@code 6 / 3 / 2}。
@@ -164,7 +164,7 @@ public final class BuiltinContent {
             AstralDiceApi.registerChip(chip.id(), chip.school(), chip.category(),
                     CHIP_BASE_PRICE, weightOf(chip.tier()));
         }
-        int cooldown = GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+        int cooldown = AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         for (String sign : SIGNS) {
             AstralDiceApi.registerSign(sign, SIGN_SCHOOL, cooldown);
         }

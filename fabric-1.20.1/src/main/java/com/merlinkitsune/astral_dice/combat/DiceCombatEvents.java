@@ -8,6 +8,7 @@ import com.merlinkitsune.starengine.api.astral.combat.CombatResolutionListeners;
 import com.merlinkitsune.starengine.api.astral.combat.CombatResolutionView;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
@@ -533,7 +534,7 @@ public class DiceCombatEvents {
             // (物品栏效果面板不读 showIcon,故只在物品栏可见)——与本模组其它状态效果(充能/赋能/弱点识破/治愈)
             // 一律用 (…, false, false, true) 的口径保持一致,不得改回五参。
             player.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
-                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
+                    AstralGameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
             triggeredBlessing = true;
             // 新赐福周期:重置“防御牌已消耗”标记,确保本次赐福期间最多消耗一次防御牌耐久
             ModAttachments.setDefenseCardConsumedThisBlessing(player, false);
@@ -549,7 +550,7 @@ public class DiceCombatEvents {
                     if (targetDiceResult.isPresent() && !targetPlayer.hasEffect(ModEffects.DICE_BLESSING.get())) {
                         // 同主分支:六参构造保持 HUD 图标可见(粒子仍由 visible=false 关闭)
                         targetPlayer.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
-                                GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
+                                AstralGameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
                         ModAttachments.setDefenseCardConsumedThisBlessing(targetPlayer, false);
                         ModAttachments.setCursedSwordBlessingTriggered(targetPlayer, false);
                         // 财运签“本次赐福已触发”标记(被攻击方同一赐福周期口径)
@@ -1381,7 +1382,7 @@ public class DiceCombatEvents {
         //   触发条件与效果参数沿用玩家侧(带骰 && 未持有 && isBlessingTarget),但不跑玩家专属筹码/立牌/附件标记。
         if (attackerHasDice && !mob.hasEffect(ModEffects.DICE_BLESSING.get()) && isBlessingTarget(target, mob)) {
             mob.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
-                    GameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
+                    AstralGameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
         }
 
         float mobLanding = finalDmg - Math.min(finalDmg, target.getAbsorptionAmount());

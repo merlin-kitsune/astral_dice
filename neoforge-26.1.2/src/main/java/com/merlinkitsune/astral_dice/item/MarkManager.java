@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -44,7 +44,7 @@ public final class MarkManager {
     // 发光效果 showIcon=false:不显示 HUD 效果标识器(仅保留轮廓视觉,不占效果图标栏)。
     public static int apply(LivingEntity target, int durationTicks) {
         var existing = target.getEffect(ModEffects.MARKED);
-        int level = existing != null ? Math.min(existing.getAmplifier() + 1, GameplayConstants.MAX_MARKER - 1) : 0;
+        int level = existing != null ? Math.min(existing.getAmplifier() + 1, AstralGameplayConstants.MAX_MARKER - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.MARKED, durationTicks, level, false, true));
         PlayerEffectProtection.apply(target,
                 new MobEffectInstance(net.minecraft.world.effect.MobEffects.GLOWING, durationTicks, 0, false, false));

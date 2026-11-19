@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.97
+
+### This line
+
+- P2 ownership batch C (user ruling 2026-11-19: `constants拆分，下一批做`). The 25 Astral Dice content constants and `cardCostForStar(int)` moved out of the library `com.merlinkitsune.starengine.component.GameplayConstants` into the new common `com.merlinkitsune.astral_dice.component.AstralGameplayConstants`, all `public static final`. The library keeps only the generic seam (actionbar, team routing, target radius, firearm damage, guide-book flag); `GameplayConfigValues` is unchanged at seven fields.
+- 179 Java files rewritten (143 content-only + 36 mixed): content-only files now import the new class; mixed files keep the library import and use the new class only for content symbols. 615 insertions / 579 deletions. The two derived tick fields (`SIGN_ACTIVE_COOLDOWN_TICKS`, `DICE_BLESSING_DURATION_TICKS`) are constant expressions in the new class, so the five `applyConfig` call sites did not change.
+- Dependency pin: all five lines require StarEngine `26.4-SNAPSHOT.18`; NeoForge/Forge keep `[${starengine_version},27.0.0)`, both Fabric lines use `>=26.4-SNAPSHOT.18 <27.0.0`.
+- Verification: library `.18` clean-published; `javap` on all five library jars shows no content fields or `cardCostForStar`. This repo five-line `clean assemble --offline` BUILD SUCCESSFUL in 26 s (EXIT=0); all five `astral_dice-26.4-SNAPSHOT.97+<loader>.jar` artifacts carry `AstralGameplayConstants.class` with 25 `public static final int` fields, bundle no library `GameplayConstants`, and declare the `.18` range. `work/verify_c.sh` returns 0.
+- Honest boundary: no live-game run. The move is value-preserving and compile-checked; config reload reads the unchanged seven-field record, but actual in-game config push and the rewritten references are not re-proven here. TLMDice does not reference these classes and was not changed.
+
 ## 26.4-SNAPSHOT.96
 
 ### This line

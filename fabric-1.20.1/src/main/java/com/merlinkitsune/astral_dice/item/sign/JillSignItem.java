@@ -62,7 +62,7 @@ import java.util.UUID;
  *   <li>③ Curios:{@code top.theillusivec4.curios.api.SlotContext} ⇒ 本线门面
  *       {@link SlotContext}({@code entity()} 取值形态一致);</li>
  *   <li>④ 冷却:{@code event.WeirdDiceHandler.signCooldownTicks(Player)} 本线**存在且同签名**
- *       (L36,内部 {@code ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS)}),
+ *       (L36,内部 {@code ChargeManager.signCooldownTicks(player, AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS)}),
  *       逐字沿用;</li>
  *   <li>⑤ <b>防御力↔护甲折算</b>:2026-11-01 D-06 批次已与 forge 1:1 对齐 —— 直接取
  *       {@code DiceCombatModifiers.PLAYER_ARMOR_PER_DEFENSE}(= 1 ÷ 玩家护甲系数 ≈ 3.333),

@@ -11,7 +11,7 @@ import com.merlinkitsune.astral_dice.item.StarLightManager;
 import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.astral_dice.shop.CardShopOpener;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -62,7 +62,7 @@ public class ParunanSignItem extends BaseSignItem {
     protected void onCurioTick(SlotContext slotContext, ItemStack stack) {
         if (!(slotContext.entity() instanceof Player player)) return;
         long gameTime = player.level().getGameTime();
-        if (gameTime % (GameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS * 20L) == 0) {
+        if (gameTime % (AstralGameplayConstants.PARUNAN_PASSIVE_INTERVAL_SECONDS * 20L) == 0) {
             // 被动:每 N 秒星光 +1(上限由 StarLightManager 统一管理)
             StarLightManager.add(player, 1);
         }
@@ -119,7 +119,7 @@ public class ParunanSignItem extends BaseSignItem {
     protected int activeCooldownBaseTicks(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
-                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+                : AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicks(player, ticks);
         return ticks;
     }
@@ -133,7 +133,7 @@ public class ParunanSignItem extends BaseSignItem {
     protected int activeCooldownBaseTicksNoBattery(Player player) {
         int ticks = isEquipped(player)
                 ? ACTIVE_COOLDOWN_SECONDS * 20
-                : GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
+                : AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS;
         ticks = (int) ChargeManager.signCooldownTicksBase(player, ticks);
         return ticks;
     }

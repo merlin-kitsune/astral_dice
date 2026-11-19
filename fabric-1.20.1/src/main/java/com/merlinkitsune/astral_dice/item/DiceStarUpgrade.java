@@ -5,7 +5,7 @@ import com.merlinkitsune.astral_dice.component.WeaponEnhancement;
 import com.merlinkitsune.astral_dice.config.ModCommonConfig;
 import com.merlinkitsune.astral_dice.data.AstralDiceDataStore;
 import com.merlinkitsune.astral_dice.item.dice.DiceTierRegistry;
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -112,9 +112,9 @@ public final class DiceStarUpgrade {
         ItemStack output = input.copy();
         setEnhancement(output, new WeaponEnhancement(
                 enhancement.usedCost(),
-                GameplayConstants.cardCostForStar(star + 1),
+                AstralGameplayConstants.cardCostForStar(star + 1),
                 enhancement.usedDefenseCost(),
-                GameplayConstants.cardCostForStar(star + 1),
+                AstralGameplayConstants.cardCostForStar(star + 1),
                 star + 1,
                 // ⚠️ appliedStones 必须**原样透传**(不重建):临时牌(绿洲女王 nardis)的
                 // temporary 分量存在 AppliedStone 里,重建/拷贝时丢标记 = 该牌到期清不掉。
@@ -128,9 +128,9 @@ public final class DiceStarUpgrade {
         ItemStack output = result.copy();
         setEnhancement(output, new WeaponEnhancement(
                 0,
-                GameplayConstants.cardCostForStar(0),
+                AstralGameplayConstants.cardCostForStar(0),
                 0,
-                GameplayConstants.cardCostForStar(0),
+                AstralGameplayConstants.cardCostForStar(0),
                 0,
                 List.of()));
         return output;

@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 
-import com.merlinkitsune.starengine.component.GameplayConstants;
+import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;
 import com.merlinkitsune.astral_dice.item.ChargeManager;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
@@ -107,7 +107,7 @@ public class JasmineSignItem extends BaseSignItem {
         long maxCooldown = ModAttachments.getSignActiveMaxCooldown(player);
         if (maxCooldown <= 0) {
             // 记录缺失时的兜底基线:与起冷却时同一口径(含「有充能时封顶 160 秒」,2026-09-25 改口径)
-            maxCooldown = ChargeManager.signCooldownTicks(player, GameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
+            maxCooldown = ChargeManager.signCooldownTicks(player, AstralGameplayConstants.SIGN_ACTIVE_COOLDOWN_TICKS);
         }
         // 第二批「三态化」:主动仍在锁定(生效中)态时冷却尚未起算 ⇒ 把同一减半量累加进锁定减免池,
         // 由锁定结束起冷却时一次性抵扣(不在这里改任何冷却数值)
@@ -147,24 +147,24 @@ public class JasmineSignItem extends BaseSignItem {
         walkAccumMap.put(uuid, total);
     }
 
-    // === 被动:交替增加攻击力/防御力(骰神赐福点数,各自上限 GameplayConstants.JASMINE_MAX_BONUS) ===
+    // === 被动:交替增加攻击力/防御力(骰神赐福点数,各自上限 AstralGameplayConstants.JASMINE_MAX_BONUS) ===
     private static void applyMovementBonus(Player player, ItemStack stack) {
         int atkBonus = stack.getOrDefault(ModDataComponents.JASMINE_ATK_BONUS.get(), 0);
         int defBonus = stack.getOrDefault(ModDataComponents.JASMINE_DEF_BONUS.get(), 0);
 
         // 按交替顺序决定本次增加项;若该项已达上限则改加另一项
         boolean tryAtk = (atkBonus + defBonus) % 2 == 0;
-        if (tryAtk && atkBonus >= GameplayConstants.JASMINE_MAX_BONUS) {
+        if (tryAtk && atkBonus >= AstralGameplayConstants.JASMINE_MAX_BONUS) {
             tryAtk = false;
-        } else if (!tryAtk && defBonus >= GameplayConstants.JASMINE_MAX_BONUS) {
+        } else if (!tryAtk && defBonus >= AstralGameplayConstants.JASMINE_MAX_BONUS) {
             tryAtk = true;
         }
 
         if (tryAtk) {
-            if (atkBonus >= GameplayConstants.JASMINE_MAX_BONUS) return; // 两者均已到上限
+            if (atkBonus >= AstralGameplayConstants.JASMINE_MAX_BONUS) return; // 两者均已到上限
             stack.set(ModDataComponents.JASMINE_ATK_BONUS.get(), atkBonus + 1);
         } else {
-            if (defBonus >= GameplayConstants.JASMINE_MAX_BONUS) return; // 两者均已到上限
+            if (defBonus >= AstralGameplayConstants.JASMINE_MAX_BONUS) return; // 两者均已到上限
             stack.set(ModDataComponents.JASMINE_DEF_BONUS.get(), defBonus + 1);
         }
     }
