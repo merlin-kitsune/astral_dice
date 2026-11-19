@@ -8,7 +8,7 @@ import com.merlinkitsune.astral_dice.effect.HannaDollCompleteEffect;
 import com.merlinkitsune.astral_dice.effect.HannaDollCraftEffect;
 import com.merlinkitsune.astral_dice.effect.HannaFloatEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import com.merlinkitsune.astral_dice.compat.curios.CuriosApi;

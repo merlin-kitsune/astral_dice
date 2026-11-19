@@ -35,7 +35,7 @@ import com.merlinkitsune.starengine.api.astral.data.DiceLoadout;
 import com.merlinkitsune.starengine.api.astral.data.DiceTierView;
 import com.merlinkitsune.starengine.api.astral.event.AstralEvent;
 import com.merlinkitsune.starengine.api.astral.event.AstralEventTrigger;
-import com.merlinkitsune.starengine.api.astral.platform.AstralDicePlatform;
+import com.merlinkitsune.astral_dice.platform.AstralDicePlatform;
 import com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeCapability;
 import com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeHandler;
 import com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeWallet;

@@ -22,7 +22,7 @@ import com.merlinkitsune.astral_dice.platform.event.entity.living.LivingDeathEve
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import net.minecraft.world.entity.LivingEntity;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 诅咒之剑筹码:装备时始终受到"青之诅咒"影响。

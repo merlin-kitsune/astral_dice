@@ -29,7 +29,7 @@
 | api.data.*（3） | api.astral.data.* |
 | api.client.*（3） | api.astral.client.* |
 | api.playerlike.*（4） | api.astral.playerlike.* |
-| api.platform.AstralDicePlatform | api.astral.platform.AstralDicePlatform |
+| api.platform.AstralDicePlatform | 主模组 `astral_dice.platform.AstralDicePlatform`（P0 已归位；库不承载） |
 | api.choice.CardChoiceType | api.astral.choice.CardChoiceType |
 | api.event.*（5） | api.astral.event.* |
 
@@ -43,3 +43,10 @@
 - 库 lib_version 26.4-SNAPSHOT.14 → .15；主模组 mod_version .93 → .94；TLMDice .88 → .89。
 - 验证：五线 assemble 成功；`starengine-*.jar` 含 `api/astral/**`；`astral_dice-*.jar` 不含 `com/merlinkitsune/astral_dice/api/`；TLMDice 两线 assemble 成功；mods.toml / fabric.mod.json 区间下限 .15。
 - 主线（multi-main + starengine main）本批不动，dev 验证通过后再以 1.2.1 搬。
+
+## 7. P0/P1 落地（26.4-SNAPSHOT.95 / 库 .16）
+
+- P0：`AstralDicePlatform` 已从库 `api.astral.platform` 搬回主模组 `com.merlinkitsune.astral_dice.platform`，库内无同类型；主模组 `AstralDiceServiceImpl` 与五线 loader 实现改指新包，库侧两条死 import 删除。库升 `.16`、主模组升 `.95`。
+- P1：三条线共删除 13 个同名本地副本（`PartyRelations` / `EffectTimerGuard` / `EliteTargets` / `HoldToSelect` / `SelfTargetable`），134 个文件改写 import/FQN；两条 Fabric 在门面 install 后补 `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())`，`fabric-1.20.1` 队伍诊断前缀统一为 `AP_PARTY:`。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL（37 s，EXIT=0）；产物无本地副本 class，NeoForge jar 636 / Forge jar 660 个 class 条目。
+- 未完成：TLMDice 跟随 `.90`；P2 内容归属（效果/稀有度/星币命令）分类与影响面；P3 README 自述修正；实机验证。

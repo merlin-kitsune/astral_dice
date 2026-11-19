@@ -33,6 +33,8 @@
 
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;

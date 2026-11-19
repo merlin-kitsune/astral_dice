@@ -2,13 +2,13 @@ package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.starengine.api.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
-import com.merlinkitsune.astral_dice.event.EffectTimerGuard;
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
 import com.merlinkitsune.astral_dice.event.WeirdDiceHandler;
 import com.merlinkitsune.astral_dice.item.HealingManager;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.item.chip.FriendshipBadgeChipItem;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
+import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 史莱姆立牌。

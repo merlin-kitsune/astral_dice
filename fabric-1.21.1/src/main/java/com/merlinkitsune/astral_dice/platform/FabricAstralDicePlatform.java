@@ -1,6 +1,5 @@
 package com.merlinkitsune.astral_dice.platform;
 
-import com.merlinkitsune.starengine.api.astral.platform.AstralDicePlatform;
 
 import com.merlinkitsune.astral_dice.screen.ModMenuTypes;
 import net.minecraft.server.level.ServerPlayer;

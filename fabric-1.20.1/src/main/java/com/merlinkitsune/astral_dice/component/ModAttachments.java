@@ -1062,10 +1062,10 @@ public class ModAttachments {
     // 计时器守卫:本模组有时长效果的结束时刻记录(效果注册名 → 结束 tick + 重施加参数)。
     // 仅服务端使用,序列化持久化;由 EffectTimerGuard 维护,保证效果严格按 20t/s 流动。
     public static final AttachedDataKey<Map<String,
-            com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry>> EFFECT_TIMER_ENDS =
+            com.merlinkitsune.starengine.event.EffectTimerGuard.TimerEntry>> EFFECT_TIMER_ENDS =
             register(AttachedDataKey.builder("effect_timer_ends",
                     Codec.unboundedMap(Codec.STRING,
-                            com.merlinkitsune.astral_dice.event.EffectTimerGuard.TimerEntry.CODEC),
+                            com.merlinkitsune.starengine.event.EffectTimerGuard.TimerEntry.CODEC),
                     HashMap::new).build());
 
     // === 新筹码:原初核心 / 电击手套 / 安全气囊 ===

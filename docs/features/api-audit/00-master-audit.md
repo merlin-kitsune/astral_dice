@@ -251,3 +251,122 @@
 - **顺带纠正**：`.93` 的 fabric 两线仍残留 `>=1.2.0-pre.1 <2.0.0` 区间（与实际定的 .14 依赖矛盾），本批一并改为 `>=26.4-SNAPSHOT.15 <27.0.0`。
 - **破坏性声明**：附属 import 从 `astral_dice.api.*` 改为 `starengine.api.astral.*`，且必须同时依赖 StarEngine `>=26.4-SNAPSHOT.15`；`AstralDiceApi.platform()` 消失；门面在 mod 构造期安装，附属不得更早调用。主线（multi-main + StarEngine 1.2.0-pre.1）本批不动，dev-next 实机验证后再以 1.2.1 搬。
 - 消费方级联：TLMDice 两线 14 处 import 改 `starengine.api.astral.*`（6 文件），pin 换 `.94` + StarEngine `.15`，`mod_version` 升 `26.4-SNAPSHOT.89`。
+
+## 11. StarEngine 下沉审计（2026-11-19）
+
+- 触发：用户约定（2026-11-19）——main 线跟随 main 库、dev-next 线跟随 next 库，禁止跨区；调用 API 一律走 StarEngine，禁止再把 api 放在主模组；主模组必须是库 API 的实现方。随后要求（同日）：检查 StarEngine 库，看是否有本应在主模组实现的功能被下沉到库中，导致调用混乱。
+- 范围：`starengine_next`（dev 线，`26.4-SNAPSHOT.15`）与 `astral_dice_multiloader-next`（`.94`）两仓源码；**只读审计，未改任何代码**。
+- 方法：逐包清点（common 共享源 + 五条平台线 + vendored 排除）、主模组五线 `starengine.*` import 统计、门面/SPI 与实现的逐方法对照、库 README/AGENTS 自述与代码现状对照。
+
+### 11.1 结论摘要
+
+1. **契约层（`api.astral`）是干净的**：37 个类 2289 行，`AstralDiceApi` 门面 100 个静态方法全部委托 `AstralDiceService`；service 实现只在主模组 `apiimpl.AstralDiceServiceImpl`（101 个 public 方法 = 100 SPI + `matchesCardChoice`），库内无实现。
+2. **平台接口错位**：`api/astral/platform/AstralDicePlatform` 放在库契约包，但库从不使用它；它是主模组内部架构（loader 实现 + 服务定位），应搬回主模组。
+3. **同名类双实现/分线分叉**：`PartyRelations`、`EffectTimerGuard`、`EliteTargets`、`HoldToSelect`、`SelfTargetable` 在部分线保留主模组副本；其中 `fabric-1.20.1` 同一条线同时有 31 个文件用本地 `PartyRelations`、5 个文件用库版，属于真实的调用混乱。
+4. **星骰内容实现留在库**：18 个 `MobEffect` 子类、`Rarity`/`AstralRarities`、`GameplayConstants`、`StarCoinCommand`/`StarCoinWalletState` 都是星骰专属内容，但类体、常量、命令与 UI 缓存都在库里，主模组只负责注册/注入。
+5. **库的自述与实现不一致**：`README_ZH.md` §1.1 写「库不新增玩法注册内容」，但 §3 的下沉记录引用的 `temp/sink-manifest-20260917.md` 在仓内不存在；库实际定位是「共享实现库」，不是纯契约库。
+
+### 11.2 发现与证据
+
+**F1 平台接口混入契约包（明确应整改）**
+
+- 文件：`common/src/main/java/com/merlinkitsune/starengine/api/astral/platform/AstralDicePlatform.java`，207 行、29 个 default 空实现（`install` / `registerPlayerLike` / `activateSign` / `hasDiceBlessing` / 7 个战斗注册口 / 效果与星界事件 / 星币与配置读 / `openCardInventory`）。
+- 类 javadoc（:22、:24）自称「主项目 common 源码根里唯一允许出现的平台身份概念」，并说明各子项目在 `AstralDiceMod` 注册实现——这是主模组架构描述，不是对外契约。
+- 库内引用只有两处**未使用的 import**：`api/astral/AstralDiceApi.java:25`、`api/astral/AstralDiceService.java:25`；库内没有任何方法以该类型为参数或返回值。
+- 实际消费者全在主模组：`common/.../apiimpl/AstralDiceServiceImpl.java:621/:633/:809/:1084/:1181`、`common/.../platform/AstralDicePlatforms.java`、五线 `platform/*AstralDicePlatform.java` 与 `AstralDiceMod` 安装点。
+
+**F2 同名类多实现（调用混乱的直接来源）**
+
+| 类 | 库版 | 主模组本地副本 | 使用分布 |
+|---|---|---|---|
+| `PartyRelations` | `common/combat/PartyRelations.java` 221 行，同队判定转发 `EventTargetCollector.isSameTeamAmongEnabledSystems`（:182-184） | `fabric-1.20.1/.../combat/PartyRelations.java` 572 行，自带 Ftb/Opac 反射 | fabric-1.20.1：31 文件 import 本地版 + 5 文件 import 库版；fabric-1.21.1：39 文件库版；neo/forge：各 39 文件库版；neoforge-26.1.2：另有一份 582 行本地副本但 0 引用（死文件） |
+| `EffectTimerGuard` | `common/event/EffectTimerGuard.java` 212 行，经 `TimerSource` 读写计时表，平台差异由 `EffectTimerAccess` 吸收 | `fabric-1.20.1` 与 `fabric-1.21.1` 各 175 行，直接 import `component.ModAttachments` | 两条 fabric 线各 19 文件用本地版、0 用库版；neo 12、forge 12、neo26 16 用库版 |
+| `EliteTargets` | `common/combat/EliteTargets.java` 57 行，委托 `StarengineThirdParty.isEliteOrBoss`（反射 Apotheosis，fabric 无 `getPersistentData` 时降级 false） | `fabric-1.20.1` / `fabric-1.21.1` 各 70 行，直接返回 false | fabric 两线各 2 文件用本地版；neo26 本地副本 0 引用（死文件） |
+| `HoldToSelect` | 28 行 | 34 行 | neo26 1、fabric-1.20.1 1、fabric-1.21.1 1 文件用本地版 |
+| `SelfTargetable` | 26 行 | 36 行 | neo26 5、fabric-1.20.1 4、fabric-1.21.1 5 文件用本地版 |
+
+- 反例（属预期形态）：五线各一份 19–20 行的 `AttackPowerModifier` / `DefensePowerModifier` / `SpellDamageModifier`，是主模组对库侧 `api.astral.combat` 接口的适配器，不算分叉。
+- 风险：同一个逻辑在不同线的行为可能不同。例如 `EffectTimerGuard` 的库版要求消费方在初始化时 `setTimerSource` 注入计时表，本地版直接读写 `ModAttachments`；若把 fabric 切到库版而不补注入，守卫会静默失效（库版未注入时全部安全返回、不报错）。
+
+**F3 星骰内容/玩法实现下沉到库**
+
+- 效果：库 `common/effect/` 有 18 个 `MobEffect` 子类（`BerserkEffect`、`PandamanTauntEffect`、`MosesBrokenEffect` 等，9–18 行，含角色名与时长/颜色注释），全部由主模组 `effect/ModEffects` 注册（`neoforge-1.21.1/.../effect/ModEffects.java:35` king_power、`:38` berserk、`:44` marked、`:64` dice_blessing、`:73` misaki_burst、`:76` living_page、`:84` weak_mark、`:88` fate_guidance、`:92` papara_bite、`:96` undercover_investigation、`:100` investigation_bonus、`:110` healing、`:114` cutter_ready、`:194` nancy_lu_hack、`:198` revenge_halberd、`:217` moses_broken、`:221` pandaman_taunt；其余线同构）。
+- 稀有度：库 `item/Rarity.java` 223 行，`RARE("ASTRAL_DICE_RARE", "astral_dice:rare", 0x55FFFF)` 与 EPIC/LEGENDARY/PINNACLE/BIZARRE 共 5 档（:43-57），含 `RAINBOW_CYCLE_MILLIS = 3000L`、`hsvToRgb`、彩虹描边起止；javadoc 自称「本模组（含消费方 mod）的稀有度等级定义」，是内容命名与配色的权威。per-loader `item/AstralRarities.java` 持有 `EnumProxy`，主模组 import 26 次。
+- 数值：库 `component/GameplayConstants.java` 130 行（星光点上限、标记层数、效果牌冷却、充能上限等星骰玩法数值）+ `GameplayConfigValues` 26 行；配置 schema 在主模组，库只提供 seam。
+- 经济：库 `economy/StarCoinCommand.java` 189 行，完整 `/starcoin` 命令（add/set/remove 权限 2、get、rank 含离线玩家），由库的平台存储自行注册（`FabricEconomyStorage.java:174/:183`、`ForgeEconomyStorage.java:121`、`NeoForgeEconomyStorage.java:126/:147` 调 `StarCoinCommand.register`）；`StarCoinWalletState.java` 35 行客户端余额缓存，javadoc:5 写明「2026-09-22 自主模组 economy.StarCoinWalletState 下沉;口径逐字未变」，主模组 12 处 import。`StarEngineEconomy`（101 行）是真共享（TLMDice 也在用）。
+
+**F4 边界执行情况（consumers）**
+
+- 主模组大量直连库的 legacy 包：`GameplayConstants` 281 处、`ModEffectRemoval` 164、`PartyRelations` 158、`TargetType` 142、`CuriosCompat` 79、`HostileTargets` 102、`StarEngineEconomy` 40、`TargetSelectionRegistry` 70、`AstralRarities` 26、`EffectTimerGuard` 40、`Rarity` 21、`StarCoinWalletState` 12。契约层 `api.astral` 只覆盖了后加的 36 个类型，legacy 包没有对应的 `api.*` 门面。
+- TLMDice 只用到：`api.astral.playerlike.*`（14 处）、`event.EventTargetCollector`（2）、`economy.StarEngineEconomy`（2）、`combat.TargetCategory`（2）。⇒ legacy 包中真正被第二个 mod 消费的只有三个类，其余是主模组自用。
+
+**F5 库内无消费方引用的类（不等于死代码）**
+
+- 全仓（两消费方）显式引用为 0：`ApotheosisMarkers`、`AstralHudLayer`、`CommandPermissionGate`、`ContentDescriptor`、`ContentRegistry`、`DefaultedFloat`、`EconomyStorage`、`EventInvoker`、`PlayerWallet`、`StarCoinCommand`、`StarEnginePlatform`、`StarEnginePlatforms`、`StarengineThirdParty`。
+- 其中多数是库内自用：`ApotheosisMarkers` ← `StarengineThirdParty` 静态块；`CommandPermissionGate` / `StarCoinCommand` ← 平台经济存储；`EconomyStorage` ← 各平台存储；`StarEnginePlatform` ← `StarEnginePlatforms`。真正待复核的是 `AstralHudLayers` / `AstralKeyBindings` 在主模组五线 client 的消费（上批 grep 输出被截断，未定论）。
+
+**F6 文档/清单缺口**
+
+- `README_ZH.md:310` 引用 `temp/sink-manifest-20260917.md` 作为「其余 52 个同源候选的排除理由」，该文件在 `starengine_next` 内不存在（`temp/` 只有 `msg_forgepin.txt`、`msg_gecko.txt`）。
+- `README_ZH.md` §1.1「库不新增玩法注册内容」与 §2 要求平台线提供 `AstralRarities`、`ModEffectRemoval`、`ActionBarManager` 等星骰专属 shim 自相矛盾；平台清单仍写「四平台」，实际仓内五条线（多 `fabric-1.21.1`）。
+
+### 11.3 归属判定
+
+| 类别 | 现状 | 判定 |
+|---|---|---|
+| `api.astral` 36 契约 + 门面 + SPI | 库 | **保留**：符合「API 走库、主模组实现」 |
+| `AstralDicePlatform` | 库契约包 | **搬回主模组**：库无消费者，且 javadoc 描述的是主模组内部架构 |
+| 五类同名本地副本（`PartyRelations` / `EffectTimerGuard` / `EliteTargets` / `HoldToSelect` / `SelfTargetable`） | 部分线本地、部分线库版 | **统一到库版并删除本地副本**；切换前逐类核对行为差异（尤其 `EffectTimerGuard` 的 `setTimerSource` 注入） |
+| 18 个 `MobEffect` 子类 | 库 | **建议搬回主模组**（内容专属）；若保留，须在 README 明确「库可承载消费方内容类」并给出规则 |
+| `Rarity` / `AstralRarities` | 库 | **建议搬回主模组**：`astral_dice:rare` 等注册名与配色是内容权威，不是通用引擎 |
+| `GameplayConstants` / `GameplayConfigValues` | 库 | 通用部分（配置 seam、跨线共享常量）可留；星骰专属数值应回主模组——**需裁决切分线** |
+| `StarCoinCommand` / `StarCoinWalletState` | 库，且由库平台存储自动注册 | **搬回主模组**：星币是星骰功能，命令注册应由主模组做；`StarEngineEconomy` 保留（TLMDice 共用） |
+| legacy `target` / `combat` / `event` 通用引擎 | 库 | **保留**，但补一条外部消费白名单：附属只允许 `api.astral.*` + `EventTargetCollector` / `TargetCategory` / `StarEngineEconomy` |
+
+### 11.4 整改建议（分阶段，均需重新编译与版本 bump）
+
+> 2026-11-19 更新：P0、P1 已执行，见 §12；以下为当时的建议原文。
+
+- **P0 平台接口归位**（改动小、无行为变化）：把 `AstralDicePlatform.java` 搬回主模组（建议 `common/.../apiimpl/platform/` 或原 `platform` 包），删掉库内两个未使用 import；更新 `AstralDiceServiceImpl` 五处引用与五线 loader 实现。库升 `26.4-SNAPSHOT.16`、主模组升 `.95`；TLMDice 不引用该类型，只需跟随 pin（`.90`）。
+- **P1 去重**：先在 fabric 两线补 `EffectTimerGuard.setTimerSource` 注入（若当前未注入），再逐类 diff 后删除五类本地副本、统一 import 库版；清掉 neoforge-26.1.2 的两个 0 引用死文件。必须五线 `assemble` + 行为核对（尤其队伍判定与计时守卫）。
+- **P2 内容归属**（改动大、影响 TLMDice 与后续 Extra）：按 11.3 把效果/稀有度/星币命令与缓存搬回主模组，或反向裁决「库=共享实现库」并补文档与稳定 API 白名单。**此项需用户先定方向**。
+- **P3 文档**：修 `README_ZH.md` §1.1/§2/§3/§4 的自述与平台清单、补回或删除 `sink-manifest` 引用、在库 `AGENTS.md` 写明「什么可以下沉、什么必须留在消费方」。
+
+### 11.5 未决与待复核
+
+- `AstralHudLayers` / `AstralKeyBindings` 在五线 client 的消费未复核（上批 grep 被文件数截断）。
+- `PartyRelations` 库版与 fabric 本地版的行为等价性未逐行 diff；库版依赖 `EventTargetCollector` 的反射后端状态。
+- fabric 两线当前是否已调用 `EffectTimerGuard.setTimerSource` 未核（决定 P1 是否必须先补注入）。
+- 18 个效果类是否有第三方（Extra/TLMDice）直接 import 未核；TLMDice 的 import 画像显示只碰 `api.astral` + 三个 legacy 类，理论无影响。
+- 本审计只读，未改代码、未 bump、未提交。
+
+## 12. P0/P1 整改记录（26.4-SNAPSHOT.95 / 库 .16，2026-11-19）
+
+> §11.4 的 P0、P1 已执行；P2（内容归属）与 P3（文档）未动。以下只记执行结果与验证读数。
+
+### 12.1 P0 平台接口归位
+
+- 库侧删除 `common/src/main/java/com/merlinkitsune/starengine/api/astral/platform/AstralDicePlatform.java`（207 行 / 29 个 default），同时删掉 `api/astral/AstralDiceApi.java:25`、`api/astral/AstralDiceService.java:25` 两条未使用 import。
+- 主模组新增 `common/src/main/java/com/merlinkitsune/astral_dice/platform/AstralDicePlatform.java`，package 为 `com.merlinkitsune.astral_dice.platform`；`apiimpl/AstralDiceServiceImpl.java` 的 import 改指新包；`platform/AstralDicePlatforms` 与五线 `platform/*AstralDicePlatform` 同包，删除多余 import。
+- 复核：全仓 `starengine.api.astral.platform.AstralDicePlatform` 残留 0；`AstralDiceApi` / `AstralDiceService` 不再引用平台类型。
+- 版本：库五平台 .15 → .16（`publishToMavenLocal` 成功，`~/.m2` 五件 `26.4-SNAPSHOT.16`）；主模组 .94 → .95，`starengine_version` .15 → .16，Fabric 两线区间 `>=26.4-SNAPSHOT.16 <27.0.0`。
+
+### 12.2 P1 五类去重
+
+- 删除 13 个本地副本：`fabric-1.20.1` 的 `combat/PartyRelations`、`event/EffectTimerGuard`、`combat/EliteTargets`、`target/HoldToSelect`、`target/SelfTargetable`；`fabric-1.21.1` 后四者；`neoforge-26.1.2` 的 `combat/PartyRelations`、`combat/EliteTargets`、`target/HoldToSelect`、`target/SelfTargetable`。
+- 134 个源码文件改写 import / FQN，或为原同包引用补 `com.merlinkitsune.starengine.{combat,event,target}.*` import；残留 FQN grep 为空。
+- 计时 seam：两条 Fabric 原来**未**调用 `setTimerSource`；现于 `fabric-1.20.1/.../AstralDiceMod.java:61-63` 与 `fabric-1.21.1/.../AstralDiceMod.java:61-63` 的门面 install 之后注入 `new SignTimerSourceAdapter()`。适配器改为库版 `TimerEntry` 直接类型拷贝，`getTimers` 返回副本、`setTimers` 写副本、`now=level().getGameTime()`；此前的双 `TimerEntry` 转换删除。
+- 队伍判定：`fabric-1.20.1` 改调库版 `PartyRelations`，诊断前缀 `AP_FAB_PARTY:` → `AP_PARTY:`（库 `combat/PartyRelations.java:206-207`）；`scripts/test/cases/PARTY-BACKENDS-fabric-1.20.1.json:20`、`scripts/test/fabric/cases/FAB-PARTY-BACKENDS.json:18`、`scripts/test/fabric/README.md`、`docs/agent/AGENTS-full.md:474`、`KNOWN-ISSUES.md:527` 已同步。
+- 死文件清理：`neoforge-26.1.2` 的两份 0 引用副本随删除清单移除。
+
+### 12.3 构建与产物验证
+
+- 命令：`JAVA_HOME='C:/Program Files/Microsoft/jdk-21.0.13.102-hotspot' ./gradlew.bat assemble --offline --continue --no-daemon`（日志 `work/assemble-p1.log`），BUILD SUCCESSFUL in 37s，EXIT=0。
+- 五份 `astral_dice-26.4-SNAPSHOT.95+<loader>.jar` 均在 `build/libs`；逐 jar 检查五类本地 class 均不存在（排除增量残留）。
+- `neoforge-1.21.1` jar 636 个 `.class` 条目、`forge-1.20.1` 660；`META-INF/astral_dice/build-info.json` 在包内。
+- `git diff --check` 无输出。
+
+### 12.4 边界与未完成
+
+- 本批未跑实机。`fabric-1.20.1` 的 FTB/OPAC 反射实现换成库版后，只有实机装对应后端才能确认 `AP_PARTY` 报 `on`；计时 seam 若某条线漏装，库版守卫会静默退回空实现。
+- TLMDice 已跟随 pin 到 `.95` / StarEngine `.16` 并升 `.90`（两线 clean assemble 9 s，EXIT=0；不引用平台类型，无源码改动）；`P2` 内容归属分类 / 影响面、`P3` 文档修正未开始。

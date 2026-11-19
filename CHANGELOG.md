@@ -4,6 +4,18 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.95
+
+### This line
+
+- P0 ownership fix: the platform abstraction that only the mod uses is back in the mod. `com.merlinkitsune.starengine.api.astral.platform.AstralDicePlatform` (207 lines, 29 default methods) moved to `com.merlinkitsune.astral_dice.platform.AstralDicePlatform`; the library no longer carries any `api/astral/platform` type or the two unused imports that pointed at it. This was never a facade contract: addons keep calling `AstralDiceApi`, not the platform type.
+- P1 de-duplication: deleted 13 same-name local copies on the three lines that still had them. `fabric-1.20.1` loses `combat/PartyRelations`, `event/EffectTimerGuard`, `combat/EliteTargets`, `target/HoldToSelect` and `target/SelfTargetable`; `fabric-1.21.1` loses the latter four; `neoforge-26.1.2` loses `combat/PartyRelations`, `combat/EliteTargets` and the two target types. Every reference now resolves to `com.merlinkitsune.starengine.{combat,event,target}`; 134 files were rewritten (imports / FQNs and same-package imports added where the deleted class used to sit in the same package).
+- Both Fabric lines now inject the timer seam during mod construction: `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())`, immediately after the facade install, so the library guard reads and writes the existing `ModAttachments.EFFECT_TIMER_ENDS` table. The adapter is a direct typed copy over the library `TimerEntry`; the old dual-`TimerEntry` conversion is gone.
+- Fabric-1.20.1 now calls the library `PartyRelations`, so its diagnostic prefix changes from `AP_FAB_PARTY:` to `AP_PARTY:` (same `sw_* / back_* / why_*` fields). The live fixtures `PARTY-BACKENDS-fabric-1.20.1.json` and `FAB-PARTY-BACKENDS.json`, the fabric test README and the rule note in `docs/agent/AGENTS-full.md` were updated.
+- Dependency pin: all five lines require StarEngine `26.4-SNAPSHOT.16`; the NeoForge/Forge range stays `[${starengine_version},27.0.0)` and both Fabric lines use `">=26.4-SNAPSHOT.16 <27.0.0"`.
+- Verification: five-line `assemble --offline` BUILD SUCCESSFUL (37 s, EXIT=0); each jar was checked and contains none of `astral_dice/combat/PartyRelations.class`, `event/EffectTimerGuard.class`, `combat/EliteTargets.class`, `target/HoldToSelect.class` or `target/SelfTargetable.class` (no stale incremental output); the residual-FQN grep over the three edited source roots is empty; the NeoForge jar lists 636 class entries, the Forge jar 660.
+- Honest boundary: no live-game run in this batch. The Fabric-1.20.1 party switch replaces a local 572-line FTB/OPAC reflection implementation with the library single-source version — that contract is the intended one, but only a live FTB/OPAC run can confirm the backend reports `on`. The timer seam is injected at construction; a future line that skips the install silently keeps the library's no-op guard.
+
 ## 26.4-SNAPSHOT.94
 
 ### This line

@@ -1,5 +1,9 @@
 package com.merlinkitsune.astral_dice.target;
 
+import com.merlinkitsune.starengine.target.SelfTargetable;
+
+import com.merlinkitsune.starengine.target.HoldToSelect;
+
 import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.starengine.component.GameplayConstants;

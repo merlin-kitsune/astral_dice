@@ -524,7 +524,7 @@ GlCommandEncoder.trySetup(:531) ← GlCommandEncoder.executeDraw(:406) ← GlRen
    刻意的偏向 = 宁可少走兜底，也不要把它放大成对全服生效）。
 5. **日志噪音**：失败原因分两档 —— `ClassNotFoundException`（= 没装，绝大多数玩家的正常状态）走 debug；
    其余（= 装了但签名不符，开发者才需要看）走 warn。
-6. **新增可断言机器行** `AP_FAB_PARTY`（`PartyRelations#reportBackends()`，挂在 `AstralDiceMod#onCommonSetup`，
+6. **新增可断言机器行** `AP_FAB_PARTY`（当次取证用；2026-11-19 起 fabric-1.20.1 已改用库版，前缀统一为 `AP_PARTY:`。`PartyRelations#reportBackends()`，挂在 `AstralDiceMod#onCommonSetup`，
    与其它 `AP_FAB_*` 同族）：
    ```
    AP_FAB_PARTY: sw_mc=.. sw_ftb=.. sw_opac=.. back_ftb=on|off back_opac=on|off why_ftb=.. why_opac=..

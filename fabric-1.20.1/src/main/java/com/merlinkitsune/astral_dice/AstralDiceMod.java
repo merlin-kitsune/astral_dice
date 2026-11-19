@@ -57,6 +57,10 @@ public class AstralDiceMod implements ModInitializer {
         // 库侧门面 AstralDiceApi 的 SPI 实现落位(平台装好之后、任何内容注册之前)。
         com.merlinkitsune.starengine.api.astral.AstralDiceApi.install(
                 new com.merlinkitsune.astral_dice.apiimpl.AstralDiceServiceImpl());
+
+        // 计时守卫统一走库版:本地 EffectTimerGuard 已删除,这里注入计时表 seam.
+        com.merlinkitsune.starengine.event.EffectTimerGuard.setTimerSource(
+                new com.merlinkitsune.astral_dice.component.SignTimerSourceAdapter());
         // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
         //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
         //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
@@ -369,7 +373,7 @@ public class AstralDiceMod implements ModInitializer {
         //    (GameplayConstants.applyConfig),此阶段配置已加载,读数才是真实生效值。
         //    三个后端全是反射,契约不符时会静默退回原版计分板 —— 这条机器行让
         //    「装了 FTB Teams / OPAC 却没生效」在日志里一眼可断言(2026-10-01 新增)。
-        com.merlinkitsune.astral_dice.combat.PartyRelations.reportBackends();
+        com.merlinkitsune.starengine.combat.PartyRelations.reportBackends();
         event.enqueueWork(() -> {
             // 网络通道注册(Fabric Networking;协议版本握手见 VersionGate)
             com.merlinkitsune.astral_dice.network.ModNetwork.register();

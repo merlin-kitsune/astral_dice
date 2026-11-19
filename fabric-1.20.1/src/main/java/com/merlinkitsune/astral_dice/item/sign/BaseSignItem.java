@@ -364,7 +364,7 @@ public abstract class BaseSignItem extends Item implements ICurioItem {
      * <b>且</b>本立牌的门控效果实例仍在 —— 后者只让锁定**提前**结束(如骇客被攻击破隐、
      * 效果被其它路径移除),外部把同一效果刷新得更长**不会**延长锁定(硬上界不随刷新重算)。
      *
-     * <p>效果严格按 20t/s 流动由 {@link com.merlinkitsune.astral_dice.event.EffectTimerGuard} 保证,
+     * <p>效果严格按 20t/s 流动由 {@link com.merlinkitsune.starengine.event.EffectTimerGuard} 保证,
      * 故效果实例的 {@code getDuration()} 即权威剩余时长;本判定**不硬编码任何时长表**,
      * 也**不复用** {@link com.merlinkitsune.astral_dice.item.card.EffectCardPeriod} 的
      * {@code EFFECT_PENDING_SOURCES}(那是"效果牌出牌锁"的语义域,与立牌主动无关)。

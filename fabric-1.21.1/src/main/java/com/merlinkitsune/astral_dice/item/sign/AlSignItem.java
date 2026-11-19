@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
 import com.merlinkitsune.astral_dice.shop.ChipShopDiscounts;
 import com.merlinkitsune.astral_dice.shop.ChipShopState;
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
+import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.economy.StarEngineEconomy;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;

@@ -29,7 +29,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import com.merlinkitsune.astral_dice.platform.event.SubscribeEvent;
 import com.merlinkitsune.astral_dice.platform.event.EventPriority;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 骇客立牌(命名:nancy_lu)。

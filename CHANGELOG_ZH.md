@@ -4,6 +4,18 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.95
+
+### 本线
+
+- P0 归属修正：只有本模组使用的平台抽象搬回本模组。`com.merlinkitsune.starengine.api.astral.platform.AstralDicePlatform`（207 行、29 个 default）迁到 `com.merlinkitsune.astral_dice.platform.AstralDicePlatform`；库内不再有任何 `api/astral/platform` 类型，也删掉了指向它的两条未使用 import。它本来就不是门面契约：附属应继续调用 `AstralDiceApi`，不要碰平台类型。
+- P1 去重：删掉三条线共 13 份同名本地副本。`fabric-1.20.1` 删 `combat/PartyRelations`、`event/EffectTimerGuard`、`combat/EliteTargets`、`target/HoldToSelect`、`target/SelfTargetable`；`fabric-1.21.1` 删后四者；`neoforge-26.1.2` 删 `combat/PartyRelations`、`combat/EliteTargets` 与两个 target 类型。所有引用改指 `com.merlinkitsune.starengine.{combat,event,target}`；共改写 134 个文件（import / FQN，以及被删类原同包文件的补 import）。
+- 两条 Fabric 线在 mod 构造期注入计时表 seam：门面 install 之后立即 `EffectTimerGuard.setTimerSource(new SignTimerSourceAdapter())`，库版守卫因此读写既有的 `ModAttachments.EFFECT_TIMER_ENDS` 附件。适配器改为库版 `TimerEntry` 的直接类型拷贝，原来的双 `TimerEntry` 转换已删除。
+- fabric-1.20.1 的 `PartyRelations` 改用库版，诊断前缀由 `AP_FAB_PARTY:` 变为 `AP_PARTY:`（字段仍是 `sw_* / back_* / why_*`）。同步更新实机用例 `PARTY-BACKENDS-fabric-1.20.1.json`、`FAB-PARTY-BACKENDS.json`、fabric 测试台 README 与 `docs/agent/AGENTS-full.md` 的规则说明。
+- 依赖钉版：五线要求 StarEngine `26.4-SNAPSHOT.16`；NeoForge/Forge 区间仍为 `[${starengine_version},27.0.0)`，Fabric 两线为 `">=26.4-SNAPSHOT.16 <27.0.0"`。
+- 验证：五线 `assemble --offline` BUILD SUCCESSFUL（37 s，EXIT=0）；逐 jar 检查，均不含 `astral_dice/combat/PartyRelations.class`、`event/EffectTimerGuard.class`、`combat/EliteTargets.class`、`target/HoldToSelect.class`、`target/SelfTargetable.class`（增量编译残留已排除）；三条改动源码根上的残留 FQN grep 为空；NeoForge jar 636 个 class 条目、Forge jar 660 个。
+- 诚实边界：本批未跑实机。fabric-1.20.1 的队伍判定从本地 572 行 FTB/OPAC 反射实现换成库侧单一事实源 —— 该契约就是目标实现，但只有实机装 FTB/OPAC 才能确认后端报 `on`；计时 seam 在构造期注入，将来若某条线漏装，库侧会静默退回空守卫。
+
 ## 26.4-SNAPSHOT.94
 
 ### 本线

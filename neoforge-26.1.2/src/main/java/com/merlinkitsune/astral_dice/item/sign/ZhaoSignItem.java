@@ -12,7 +12,7 @@ import com.merlinkitsune.astral_dice.item.card.FuCardItem;
 import com.merlinkitsune.astral_dice.item.card.HuoCardItem;
 import com.merlinkitsune.astral_dice.item.chip.CurrentCoreChipItem;
 import com.merlinkitsune.astral_dice.network.ActionBarPayload;
-import com.merlinkitsune.astral_dice.target.SelfTargetable;
+import com.merlinkitsune.starengine.target.SelfTargetable;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.starengine.event.EventTargetCollector;
 import com.merlinkitsune.starengine.target.TargetSelectionAction;

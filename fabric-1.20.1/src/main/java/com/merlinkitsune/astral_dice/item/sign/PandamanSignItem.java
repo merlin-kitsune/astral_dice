@@ -30,7 +30,7 @@ import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 肉弹战车立牌(命名:pandaman,稀有)。

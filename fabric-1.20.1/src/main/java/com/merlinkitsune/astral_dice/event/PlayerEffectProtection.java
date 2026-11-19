@@ -31,6 +31,8 @@
 
 package com.merlinkitsune.astral_dice.event;
 
+import com.merlinkitsune.starengine.event.EffectTimerGuard;
+
 import com.merlinkitsune.starengine.event.ModEffectRemoval;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;

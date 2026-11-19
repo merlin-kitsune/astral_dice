@@ -26,7 +26,7 @@ import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import com.merlinkitsune.astral_dice.combat.PartyRelations;
+import com.merlinkitsune.starengine.combat.PartyRelations;
 
 /**
  * 怪力侦探立牌(sherry,史诗)1.20.1 Forge 移植版。

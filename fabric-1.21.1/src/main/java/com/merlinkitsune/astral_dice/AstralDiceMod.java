@@ -57,6 +57,10 @@ public class AstralDiceMod implements ModInitializer {
         // 库侧门面 AstralDiceApi 的 SPI 实现落位(平台装好之后、任何内容注册之前)。
         com.merlinkitsune.starengine.api.astral.AstralDiceApi.install(
                 new com.merlinkitsune.astral_dice.apiimpl.AstralDiceServiceImpl());
+
+        // 计时守卫统一走库版:本地 EffectTimerGuard 已删除,这里注入计时表 seam.
+        com.merlinkitsune.starengine.event.EffectTimerGuard.setTimerSource(
+                new com.merlinkitsune.astral_dice.component.SignTimerSourceAdapter());
         // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
         //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
         //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
