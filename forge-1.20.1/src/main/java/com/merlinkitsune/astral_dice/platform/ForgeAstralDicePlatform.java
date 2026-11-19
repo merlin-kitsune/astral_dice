@@ -93,6 +93,11 @@ public final class ForgeAstralDicePlatform implements AstralDicePlatform {
         CombatApiAdapters.registerSpellDamageMatcher(modifier);
     }
 
+    @Override
+    public void registerSpellDamageModifier(SpellDamageModifier modifier) {
+        CombatApiAdapters.registerSpellDamageModifier(modifier);
+    }
+
     // ------------------------------------------------------------- B3 效果 / 星界事件
 
     @Override

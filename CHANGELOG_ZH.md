@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.92
+
+### 本线
+
+- 修掉 B2 战斗门面的静默空转：`AstralDiceApi.registerSpellDamageModifier(...)` 转发到 `AstralDicePlatform.registerSpellDamageModifier`，而那个 default 方法是空实现，五线平台实现又都没覆写它。调用照样打 `AP_COMBAT_API: registered=spell_damage_modifier`，但 `SpellDamageRegistry.registerModifier` 根本没被调到，附属模组注册的加成被无声丢掉。五线现均补上覆写并转调 `CombatApiAdapters.registerSpellDamageModifier`，与 `registerSpellDamageMatcher` 既有形状一致。
+- 由 LT-4 实机断言发现：经门面注册 +40 修饰器后 `SpellDamageRegistry.modifiers()` 仍是 10，任何法术伤害都没有加成；直接走内部注册的路径不受影响，所以 B2 批次从源码面看是正常的。
+- 验证（实机，neoforge-1.21.1 开发端，超平坦存档 `testworld`，护甲 0、MAX_HEALTH 1000 的尸壳，伤害经 `/damage ... by @s` 注入）：基线 `player_attack` 10 → 990；经门面注册 +40 但没有 matcher → 仍 990；注册 `msgId == player` 的 matcher 后 → 950；换成不被匹配的 `mob_attack` → 990。`SpellDamageRegistry.modifiers()` 从 10 变成 11 —— 修前停在 10，正是这条读数暴露了缺陷。
+- 真实法术对照，同一只尸壳、同一发法术（`irons_spellbooks:firebolt` 等级 1）：无修饰器 1000 → 992（8 点）；经门面注册 +40 后重新施放 1000 → 952（48 = 8 + 40）。该伤害已被内置 `fire_magic` matcher 命中，无需自定义 matcher。
+- 诚实边界：`SpellDamageModifier.onHit` 无法在探针里取证 —— Rhino 的 `JavaAdapter` 不覆写接口 default 方法（直接调 `m.onHit(view, 1)` 返回 `undefined` 并走空实现）。`isActive` / `apply` 是抽象方法、覆写正常且已断言；`onHit` 需要 Java 侧实现者。
+
 ## 26.4-SNAPSHOT.91
 
 ### 本线

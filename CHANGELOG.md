@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.92
+
+### This line
+
+- Fixed a silent no-op in the B2 combat facade: `AstralDiceApi.registerSpellDamageModifier(...)` forwarded to `AstralDicePlatform.registerSpellDamageModifier`, whose default body is empty, and none of the five platform implementations overrode it. The call still logged `AP_COMBAT_API: registered=spell_damage_modifier`, but `SpellDamageRegistry.registerModifier` was never reached, so any addon modifier was dropped without a word. All five lines now override the method and forward to `CombatApiAdapters.registerSpellDamageModifier`, matching the shape `registerSpellDamageMatcher` already had.
+- Found by the LT-4 live assertion: registering a +40 modifier through the facade left `SpellDamageRegistry.modifiers()` at 10 and added no bonus to any spell damage; the direct internal registration path was unaffected, which is why the B2 batch looked healthy from the source side.
+- Verification (live, dev client on neoforge-1.21.1, flat superflat save `testworld`, husk with armor 0 and MAX_HEALTH 1000, damage injected with `/damage ... by @s`): baseline `player_attack` 10 → 990; +40 modifier registered through the facade but no matcher → still 990; after registering a matcher for `msgId == player` → 950; `mob_attack` (matcher does not match) → 990. `SpellDamageRegistry.modifiers()` went 10 → 11; before the fix it stayed at 10.
+- Real-spell leg, same husk, same cast (`irons_spellbooks:firebolt` level 1): 1000 → 992 with no modifier (8 damage); after registering +40 through the facade a fresh cast went 1000 → 952 (48 = 8 + 40). The built-in `fire_magic` matcher already classifies this damage, so no custom matcher was needed.
+- Honest boundary: `SpellDamageModifier.onHit` could not be exercised from the probe — Rhino's `JavaAdapter` does not override interface default methods (a direct `m.onHit(view, 1)` returns `undefined` and runs the empty default). `isActive` / `apply`, both abstract, are overridden normally and were asserted; `onHit` needs a Java-side implementer.
+
 ## 26.4-SNAPSHOT.91
 
 ### This line

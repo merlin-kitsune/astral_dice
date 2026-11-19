@@ -192,6 +192,16 @@
 - **兼容性**：所有旧签名保留（`javap` 五份产物均可查到 5 参 `registerDiceTier`、`diceTier`、`diceTiers`），deprecation 只产生编译警告；无注册表或数据格式变更。
 - **验证**：五线 `assemble --offline` BUILD SUCCESSFUL（`work/assemble-b6a.log`，28 tasks）；产物同时含 `DiceTierView` 与三新方法；`ChipEquip` 五线均有同名类。未跑实机（本批无运行期行为变化，纯类型/补线整理）。
 
+### 6.11 LT-4 实机验收与门面缺陷修复（26.4-SNAPSHOT.92，2026-11-19）
+
+- 目的：B2 的 `SpellDamageMatcher` / `SpellDamageModifier` 当时只有注册锚点、没有行为断言（欠账表 LT-4）。本批用「注册自定义 matcher/modifier → 同一次伤害前后对拍」做断言，并补一发真实第三方法术做外部效度。
+- **查出缺陷**：门面 `AstralDiceApi.registerSpellDamageModifier`（common/.../api/AstralDiceApi.java:871）转发到 `AstralDicePlatform.registerSpellDamageModifier`（common/.../platform/AstralDicePlatform.java:102），而该 default 方法体为空；五线平台实现（`neoforge-1.21.1/.../platform/NeoForgeAstralDicePlatform.java`、`forge-1.20.1/.../ForgeAstralDicePlatform.java`、`fabric-1.20.1|fabric-1.21.1/.../FabricAstralDicePlatform.java`、`neoforge-26.1.2/.../NeoForgeAstralDicePlatform.java`）都只覆写到 `registerSpellDamageMatcher` 为止，**漏了 modifier 那一支**。调用照样打 `AP_COMBAT_API: registered=spell_damage_modifier`，但 `SpellDamageRegistry.registerModifier` 从未被调 ⇒ 附属注册被静默丢弃，且没有任何告警。`registerSpellDamageMatcher` 是通的，这也是 B2 从源码面看不出来的原因。
+- 修复：五线各补一段 `@Override public void registerSpellDamageModifier(...) { CombatApiAdapters.registerSpellDamageModifier(modifier); }`，与既有 matcher 覆写同形。五线 `assemble --offline` BUILD SUCCESSFUL（`work/assemble-92.log`，28 tasks）。
+- 实机读数一（人工伤害曲线，neoforge-1.21.1 dev 客户端，超平坦存档 `testworld`，尸壳 armor 0 / MAX_HEALTH 1000，伤害经 `damage <sel> 10 <type> by @s` 注入）：基线 `minecraft:player_attack` 1000 → 990；经门面注册 +40 修饰器但无 matcher → 仍 990（matcher 门控生效）；注册 `src.type().msgId() == "player"` 的 matcher 后 → 950（10 + 40）；换成不匹配的 `minecraft:mob_attack` → 990。`SpellDamageRegistry.modifiers()` 10 → 11；**修复前同一段脚本读到的始终是 10**。
+- 实机读数二（真实法术，同一只尸壳、同一发法术）：`irons_spellbooks:firebolt` 等级 1，无修饰器 1000 → 992（8 点）；经门面注册 +40 后重新施放 1000 → 952（48 = 8 + 40）。该伤害已被内置 `fire_magic` matcher 命中，无需自定义 matcher —— 这同时证明「第三方法术源 → 内置白名单 → 修饰器加成 → 折叠进同一次伤害」整条链成立。
+- 判据说明：`isSpellDamage`（neoforge-1.21.1/.../combat/SpellDamageRegistry.java:131-137）首个命中即短路，Firebolt 的 `fire_magic` 已在内置白名单（同文件 :52-96，13 个 irons_spellbooks 伤害类型）⇒ 后追加的观察型 matcher 永远不会被调用。探针要断言 matcher，必须用**能改变结果**的 matcher，不能靠观察型日志。
+- 诚实边界：`SpellDamageModifier.onHit` 未取证 —— Rhino 的 `JavaAdapter` 不覆写接口 default 方法（直接调 `m.onHit(view, 1)` 返回 `undefined` 并走空实现）；`isActive` / `apply` 是抽象方法，覆写正常且本次已断言。`onHit` 需要 Java 侧实现者才能验证。
+- 探针坑（同批沉淀）：① `DamageSource` 在 Rhino 里没有 `getMsgId`，用 `src.type().msgId()`；② `LivingEntity.hurt` / `actuallyHurt` 在该映射下不存在，叫 `damage`，而 `h.damage(src, n)` 会被 KubeJS 的 `DamageSourceWrapper` 抢参数（`Missing key in ... minecraft:10.0`）⇒ 用 `/damage` 命令注入；③ 锚点类是 `net.minecraft.commands.arguments.EntityAnchorArgument.Anchor`，不是 `EntityAnchor`；④ 只有走完整伤害管线的 `/damage` 才会派发 `LivingIncomingDamageEvent`，手工调 `damage` 也会，但参数包装不可控。
 **批次顺序理由**：B1 直接解 TLMDice「牌术士自动装牌 / 自动用效果牌」两条 seam；B2 让第三方能改骰战数值（当前只能靠改本仓源码）；B3/B4 是常见扩展需求；B5/B6 是收口与兼容。
 
 ## 7. 需要裁决的决策点
@@ -200,6 +210,7 @@
 2. **Signs / Chips 表要不要接到消费面**（§2 S1）：现在注册描述符不生效。接到消费面是**改行为**不只是补 API，需要单独设计（冷却来源、价格来源、权重来源三处都要定）。
 3. **第三方内容物扩展点**：立牌/筹码行为只能靠子类化内部 BaseSignItem / BaseChipItem。要不要在 api/ 出正式基类或行为接口（SignBehavior / ChipBehavior）？这决定「注册面有、消费面不认」是补消费面还是补行为面。
 4. **类型整理是否接受破坏性变更**：已裁决为**非破坏**——新增 `DiceTierView` 与 view 方法，旧方法保留并 `@Deprecated`（§6.10，26.4-SNAPSHOT.91）。
+5. **B2 门面漏覆写算不算行为变更**：按缺陷修（`.92`，§6.11）。修前经门面的 `registerSpellDamageModifier` 是静默丢弃，修后同一调用会真的改变伤害数值；不存在依赖「注册无效」的正当用法，故不宣布破坏性变更。
 
 ## 8. 抽查复核记录（本文件 §2/§3 的证据都重新验证过）
 
