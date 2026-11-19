@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 
-import com.merlinkitsune.astral_dice.api.combat.DiceBattleView;
-import com.merlinkitsune.astral_dice.api.combat.SpellDamageView;
+import com.merlinkitsune.starengine.api.astral.combat.DiceBattleView;
+import com.merlinkitsune.starengine.api.astral.combat.SpellDamageView;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -21,31 +21,31 @@ public final class CombatApiAdapters {
     private CombatApiAdapters() {
     }
 
-    public static void registerAttackModifier(com.merlinkitsune.astral_dice.api.combat.AttackPowerModifier modifier) {
+    public static void registerAttackModifier(com.merlinkitsune.starengine.api.astral.combat.AttackPowerModifier modifier) {
         DiceCombatModifiers.registerAttackModifier((ctx, attackPower) -> modifier.apply(view(ctx), attackPower));
     }
 
-    public static void registerDefenseModifier(com.merlinkitsune.astral_dice.api.combat.DefensePowerModifier modifier) {
+    public static void registerDefenseModifier(com.merlinkitsune.starengine.api.astral.combat.DefensePowerModifier modifier) {
         DiceCombatModifiers.registerDefenseModifier((ctx, defensePower) -> modifier.apply(view(ctx), defensePower));
     }
 
-    public static void registerExtraDamageModifier(com.merlinkitsune.astral_dice.api.combat.ExtraDamageModifier modifier) {
+    public static void registerExtraDamageModifier(com.merlinkitsune.starengine.api.astral.combat.ExtraDamageModifier modifier) {
         DiceCombatModifiers.registerExtraDamageModifier(ctx -> modifier.extraDamage(view(ctx)));
     }
 
-    public static void registerVictimDamageModifier(com.merlinkitsune.astral_dice.api.combat.VictimDamageModifier modifier) {
+    public static void registerVictimDamageModifier(com.merlinkitsune.starengine.api.astral.combat.VictimDamageModifier modifier) {
         DiceCombatModifiers.registerVictimDamageModifier((victim, source) -> modifier.multiplier(victim, source));
     }
 
-    public static void registerDiceCombatFactor(com.merlinkitsune.astral_dice.api.combat.DiceCombatFactor factor) {
+    public static void registerDiceCombatFactor(com.merlinkitsune.starengine.api.astral.combat.DiceCombatFactor factor) {
         DiceCombatEvents.registerDiceCombatFactor((attacker, target, damage) -> factor.modify(attacker, target, damage));
     }
 
-    public static void registerSpellDamageMatcher(com.merlinkitsune.astral_dice.api.combat.SpellDamageMatcher matcher) {
+    public static void registerSpellDamageMatcher(com.merlinkitsune.starengine.api.astral.combat.SpellDamageMatcher matcher) {
         SpellDamageRegistry.registerMatcher((source, direct) -> matcher.matches(source, direct));
     }
 
-    public static void registerSpellDamageModifier(com.merlinkitsune.astral_dice.api.combat.SpellDamageModifier modifier) {
+    public static void registerSpellDamageModifier(com.merlinkitsune.starengine.api.astral.combat.SpellDamageModifier modifier) {
         SpellDamageRegistry.registerModifier(new SpellDamageModifier() {
             @Override
             public boolean isActive(SpellDamageContext ctx) {

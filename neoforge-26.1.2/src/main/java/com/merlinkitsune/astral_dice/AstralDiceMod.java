@@ -52,6 +52,9 @@ public class AstralDiceMod {
         // 之后 common 里的 AstralDiceApi 才能取到正确的平台 id。仅 set + install,零行为变化。
         com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
                 new com.merlinkitsune.astral_dice.platform.NeoForgeAstralDicePlatform());
+        // 库侧门面 AstralDiceApi 的 SPI 实现落位(平台装好之后、任何内容注册之前)。
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.install(
+                new com.merlinkitsune.astral_dice.apiimpl.AstralDiceServiceImpl());
         // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查放在 common setup:
         //    那里走平台统一的 ModLoadingException 链路,能把本类文案原样显示在加载错误界面。
         //    2026-11-09 起该黑名单为**永久不兼容**,不再依赖「星币钱包」开关,也不需要读配置。
@@ -217,7 +220,7 @@ public class AstralDiceMod {
      * {@link IllegalStateException}。ServerStartedEvent 晚于脚本加载，届时注册已完成。
      */
     private static void onServerStarted(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
-        com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.freezeContent();
         LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
     }
 }

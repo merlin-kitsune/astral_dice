@@ -1,8 +1,8 @@
 package com.merlinkitsune.astral_dice.item.card;
 
-import com.merlinkitsune.astral_dice.api.AstralDiceApi;
-import com.merlinkitsune.astral_dice.api.data.DiceLoadout;
-import com.merlinkitsune.astral_dice.api.data.InstalledCard;
+import com.merlinkitsune.starengine.api.astral.AstralDiceApi;
+import com.merlinkitsune.starengine.api.astral.data.DiceLoadout;
+import com.merlinkitsune.starengine.api.astral.data.InstalledCard;
 import com.merlinkitsune.astral_dice.combat.CardRegistry;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.WeaponEnhancement;

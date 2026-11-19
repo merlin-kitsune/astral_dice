@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.astral_dice.api.event.AstralEvent;
+import com.merlinkitsune.starengine.api.astral.event.AstralEvent;
 import com.merlinkitsune.astral_dice.event.AstralEventRegistry;
 import com.merlinkitsune.astral_dice.event.EventCardService;
 import net.minecraft.client.DeltaTracker;
@@ -214,7 +214,7 @@ public final class EventCardOverlay implements LayeredDraw.Layer {
     public static String iconPath(ResourceLocation eventId, int tier) {
         String base = eventId.getPath();
         if (tier > 0) {
-            String suffix = com.merlinkitsune.astral_dice.api.event.AstralEventTier.of(tier).iconSuffix();
+            String suffix = com.merlinkitsune.starengine.api.astral.event.AstralEventTier.of(tier).iconSuffix();
             if (suffix != null && !suffix.isEmpty()) return base + "_" + suffix;
         }
         return base;

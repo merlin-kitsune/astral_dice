@@ -1,4 +1,7 @@
-package com.merlinkitsune.astral_dice.api.playerlike;
+package com.merlinkitsune.astral_dice.apiimpl;
+
+import com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeCapability;
+import com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeHandler;
 
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
 import java.util.Objects;

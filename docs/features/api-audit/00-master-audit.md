@@ -236,3 +236,18 @@
 - **破坏性声明**：包路径改名不看旧路径 —— 附属必须改 import（或用新 FQN）并同时把 `starengine` 钉到 `26.4-SNAPSHOT.14`；只保留旧签名、不保留旧包路径别名。
 - 消费方级联：TLMDice 两线 pin 换 `.93` + StarEngine `26.4-SNAPSHOT.14`，`mod_version` 升 `26.4-SNAPSHOT.88`；只用到 `AstralDiceApi` 与 `api.playerlike.*`，代码零改动，两线 `assemble` 通过。
 
+## 10. API 归属翻转（26.4-SNAPSHOT.94，2026-11-19）
+
+- 用户约定（本批新增，2026-11-19）：**main 线跟随 main 库、dev-next 线跟随 next 库，禁止跨区调用**；调用 API 一律走 StarEngine，**禁止再把 api 放在主模组**；**主模组必须是库 API 的实现方**。
+- 目标形态与映射表：`docs/design/07-api-ownership.md`；执行计划：`docs/superpowers/plans/2026-11-19-api-ownership-migration.md`。
+- **库侧（StarEngine 26.4-SNAPSHOT.15）**：新增 `com.merlinkitsune.starengine.api.astral.*` —— 36 个接口/枚举（client 3、combat 20、data 3、choice 1、event 5、platform 1、playerlike 4）+ `AstralDiceApi` 门面（776 行，保留 100 个静态方法）+ `AstralDiceService` SPI（179 行，上述方法的实例版）。门面 `install(service)` / `service()`：未安装时任何调用抛 `IllegalStateException`。
+- **摘掉的两个方法**：`platform()`（全仓零调用，且把模组内部类型写进对外签名）与已弃用的 `registerDiceTier(String,Supplier,int,IntUnaryOperator)`（返回模组内部 `item.dice.DiceTier`，签名无法进库）。同名的库侧 `registerDiceTier(String,int,IntUnaryOperator)` 保留。
+- **主模组（26.4-SNAPSHOT.94）**：`common/.../api/**`（31 文件 + 门面）与五线 `*/api/{event,choice}/**` 整批删除；新增 `apiimpl.AstralDiceServiceImpl`（约 1170 行，实现 100 个方法 + `matchesCardChoice`，私有 `platform()` 转接 `AstralDicePlatforms.get()`），`PlayerLikeTargetsAdapter` 移入 `apiimpl`。146 个源码文件 382 处 `astral_dice.api.` FQN 改为 `starengine.api.astral.`。
+- **两处耦合拆除**：`CardChoiceType.matches(ItemStack)` 不再直接读 `item.ModItems`（fabric 两条线甚至没有 isCombatCard/isEffectCard），改为委托门面新方法 `AstralDiceApi.matchesCardChoice(type, stack)`；`AstralEvent` javadoc 不再 `{@link}` 模组类 `AstralEventSystem`，改纯文本说明。
+- **`AstralEvent` 双份**：四条线用 `ResourceLocation`、26.1.2 用 `Identifier`。库侧把 ResourceLocation 版放 `common/src/main/java-rl`（四条线的 build.gradle 各自加该 srcDir），26.1.2 线单放一份仅这两个字段类型不同的副本。Gradle 把 `fileTree`+exclude 摊进 srcDir 会报 `Source directory ... is not a directory`，故用独立目录而不是过滤。
+- **安装点**：五线 `AstralDiceMod` 构造器在 `AstralDicePlatforms.install(new XxxAstralDicePlatform())` 之后调 `AstralDiceApi.install(new AstralDiceServiceImpl())`（neoforge-1.21.1:51、forge-1.20.1:54、neoforge-26.1.2:53、fabric-1.21.1:55、fabric-1.20.1:55 附近）。
+- **依赖钉版**：五线 `starengine_version` = `26.4-SNAPSHOT.15`；NeoForge/Forge 区间 `[${starengine_version},27.0.0)`；Fabric 两线 `starengine_version_range` = `>=26.4-SNAPSHOT.15 <27.0.0`（`fabric-1.20.1/gradle.properties:42`、`fabric-1.21.1/gradle.properties:32`）。
+- **验证**：库五线 `compileJava --offline` 与 `publishToMavenLocal --offline` 均 BUILD SUCCESSFUL（`work/publish-15.log`）；主模组五线 `assemble --offline` BUILD SUCCESSFUL；`unzip -l` 五份产物 `com/merlinkitsune/astral_dice/api/` 类数为 0（只剩 `apiimpl/` 5 类），无 `AstralDiceApi.class`，包内区间为 `[26.4-SNAPSHOT.15,27.0.0)` / `>=26.4-SNAPSHOT.15 <27.0.0`。
+- **顺带纠正**：`.93` 的 fabric 两线仍残留 `>=1.2.0-pre.1 <2.0.0` 区间（与实际定的 .14 依赖矛盾），本批一并改为 `>=26.4-SNAPSHOT.15 <27.0.0`。
+- **破坏性声明**：附属 import 从 `astral_dice.api.*` 改为 `starengine.api.astral.*`，且必须同时依赖 StarEngine `>=26.4-SNAPSHOT.15`；`AstralDiceApi.platform()` 消失；门面在 mod 构造期安装，附属不得更早调用。主线（multi-main + StarEngine 1.2.0-pre.1）本批不动，dev-next 实机验证后再以 1.2.1 搬。
+- 消费方级联：TLMDice 两线 14 处 import 改 `starengine.api.astral.*`（6 文件），pin 换 `.94` + StarEngine `.15`，`mod_version` 升 `26.4-SNAPSHOT.89`。

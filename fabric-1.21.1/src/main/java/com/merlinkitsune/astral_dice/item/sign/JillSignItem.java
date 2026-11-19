@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.item.sign;
 
 import com.merlinkitsune.astral_dice.choice.CardChoiceManager;
-import com.merlinkitsune.astral_dice.api.choice.CardChoiceType;
+import com.merlinkitsune.starengine.api.astral.choice.CardChoiceType;
 import com.merlinkitsune.astral_dice.compat.curios.SlotContext;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.component.SignAttachments;

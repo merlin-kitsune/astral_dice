@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.astral_dice.api.AstralDiceApi;
+import com.merlinkitsune.starengine.api.astral.AstralDiceApi;
 import com.merlinkitsune.astral_dice.platform.fml.ModList;
 
 import com.merlinkitsune.astral_dice.component.AppliedStone;

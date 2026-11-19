@@ -2,8 +2,8 @@ package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
-import com.merlinkitsune.astral_dice.api.combat.CombatResolutionListeners;
-import com.merlinkitsune.astral_dice.api.combat.CombatResolutionView;
+import com.merlinkitsune.starengine.api.astral.combat.CombatResolutionListeners;
+import com.merlinkitsune.starengine.api.astral.combat.CombatResolutionView;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.starengine.component.GameplayConstants;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
@@ -131,7 +131,7 @@ public class DiceCombatEvents {
         // 服务端确认)直接调它 ⇒ 消费方无法插手,故由库留 seam、本模组在此注入。
         // 未注入时库退回原口径(假人不算敌对),即本注入是**纯增益**、不影响其它实体。
         // 2026-11-18：改走门面复合探针，避免多个附属直连库时互相顶掉。
-        com.merlinkitsune.astral_dice.api.AstralDiceApi.registerHostileProbe(
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.registerHostileProbe(
                 DiceCombatEvents::isTrainingDummy);
     }
 
@@ -964,20 +964,20 @@ public class DiceCombatEvents {
         float attackCooldown = diceBattleAttackStrengthScale(player);
         double attackPower = rawAttackDamage * (0.2 + attackCooldown * attackCooldown * 0.8);
         // 骰战属性钩子:上下文只构造一次,后续各阶段复用。display=false 才是真实结算。
-        com.merlinkitsune.astral_dice.api.combat.CombatStatContext statContext =
-                new com.merlinkitsune.astral_dice.api.combat.CombatStatContext(player, target, source, false);
-        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.BASE, attackPower);
+        com.merlinkitsune.starengine.api.astral.combat.CombatStatContext statContext =
+                new com.merlinkitsune.starengine.api.astral.combat.CombatStatContext(player, target, source, false);
+        attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.BASE, attackPower);
         for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
             attackPower = modifier.apply(ctx, attackPower);
         }
-        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.ADDITIVE, attackPower);
-        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.MULTIPLICATIVE, attackPower);
+        attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.ADDITIVE, attackPower);
+        attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.MULTIPLICATIVE, attackPower);
         int attackCardSum = ctx.attackCardSum;
         boolean hasShadowStrike = ctx.hasShadowStrike;
         boolean hasFullPower = ctx.hasFullPower;
@@ -1119,9 +1119,9 @@ public class DiceCombatEvents {
                                     effectiveArmor, toughness);
                 }
                 // 防御力 BASE 在公式之后、防御骰/防御牌加入之前替换初始值。
-                defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                        com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                        com.merlinkitsune.astral_dice.api.combat.CombatStatStage.BASE, defensePower);
+                defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                        com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                        com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.BASE, defensePower);
                 defensePower += defenseBaseDice + ctx.defenseCardSum;
             }
 
@@ -1132,22 +1132,22 @@ public class DiceCombatEvents {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;
             }
             // 防御力 ADDITIVE / MULTIPLICATIVE / FINAL:在破防替换之后、骰战解析器之前。
-            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.ADDITIVE, defensePower);
-            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.MULTIPLICATIVE, defensePower);
-            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.FINAL, defensePower);
+            defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.ADDITIVE, defensePower);
+            defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.MULTIPLICATIVE, defensePower);
+            defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.FINAL, defensePower);
 
             // 骰战层:库统一口径「max(绝对下限 1 点, 攻击点 ×15%, 攻击点 − 防御点)」
             // (2026-09-26 裁决⑥:相对下限入库 —— 修「高防+低攻档位恒定触底 ⇒ 任何修饰器读数都退化为 0」)
             // 攻击力 FINAL:进入骰战解析器之前的最后修正。
-            attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.FINAL, attackPower);
+            attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.FINAL, attackPower);
             finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
                     .resolve(attackPower, defensePower);
 

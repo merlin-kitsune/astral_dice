@@ -510,6 +510,8 @@ def buildInfoClassesDir = layout.buildDirectory.dir("classes/java/main")
 def buildInfoVersion = project.version.toString()
 def buildInfoGitRoot = rootProject.projectDir
 tasks.register("generateBuildInfo") {
+    // 必须先编译：clean 构建下若与 jar 并行，计数会是 0（2026-11-19 修复）
+    dependsOn tasks.named("compileJava")
     outputs.dir(buildInfoOutDir)
     outputs.upToDateWhen { false }
     inputs.property("version", project.version.toString())

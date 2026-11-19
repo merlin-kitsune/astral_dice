@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
-import com.merlinkitsune.astral_dice.api.combat.DamageCategory;
+import com.merlinkitsune.starengine.api.astral.combat.DamageCategory;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.component.GameplayConstants;

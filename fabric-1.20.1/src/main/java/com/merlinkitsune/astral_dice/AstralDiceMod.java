@@ -54,6 +54,9 @@ public class AstralDiceMod implements ModInitializer {
         // (仅 set + install,零行为变化),之后 AstralDiceApi 才能取到正确的平台 id。
         com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
                 new com.merlinkitsune.astral_dice.platform.FabricAstralDicePlatform());
+        // 库侧门面 AstralDiceApi 的 SPI 实现落位(平台装好之后、任何内容注册之前)。
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.install(
+                new com.merlinkitsune.astral_dice.apiimpl.AstralDiceServiceImpl());
         // ⚠️ 必须在这里(**mod 初始化期**)强制附件键注册 —— 它的静态初始化是惰性的,
         //    若推迟到「第一次读写附件」(= 玩家登录处理器)才跑,则玩家 NBT 反序列化时
         //    注册表里还没有这些 id,Fabric 会逐条 "Unknown attachment type ... skipping"
@@ -94,7 +97,7 @@ public class AstralDiceMod implements ModInitializer {
         FabricBridges.install();
         // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)。
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+            com.merlinkitsune.starengine.api.astral.AstralDiceApi.freezeContent();
             LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
         });
         // Trinkets 通道(硬→软:2026-09-29 起 Trinkets 与 Accessories **二选一**即可)。
