@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.6.0-pre.3 (2026-11-19)
+
+### This release
+
+- A/B content ownership: moved the 18 StarEngine MobEffect classes to `common/src/main/java/com/merlinkitsune/astral_dice/effect`, `Rarity` to `.../astral_dice/item`, and the five per-line `AstralRarities` shims to each line's `.../astral_dice/item`. 24 new source files.
+- Rewrote 100 `starengine.effect` references, 25 `starengine.item.Rarity` references and 40 `starengine.item.AstralRarities` references; removed 95 same-package imports; retargeted both NeoForge `META-INF/enumextensions.json` files (5 entries each) to `com/merlinkitsune/astral_dice/item/AstralRarities`.
+- Pin StarEngine `1.2.0-pre.3`; five-line `clean assemble --offline --no-daemon` passed. Artifact checks: five `1.6.0-pre.3` jars contain all 18 new effects plus `Rarity`/`AstralRarities`, no old `starengine` effect/Rarity classes; five library `1.2.0-pre.3` jars contain no old classes (`AB_VERIFY_OK`).
+- No gameplay logic changed; the move is package ownership only. NeoForge enum-extension paths changed, so a live launch is still needed to confirm the five rarity entries resolve. No live client/server smoke was run in this batch.
+
 ## 1.6.0-pre.2 (2026-11-19)
 
 ### This release

@@ -7,24 +7,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.registries.DeferredRegister;
 
-import com.merlinkitsune.starengine.effect.BerserkEffect;
-import com.merlinkitsune.starengine.effect.CounterEffect;
-import com.merlinkitsune.starengine.effect.CutterReadyEffect;
-import com.merlinkitsune.starengine.effect.DiceBlessingEffect;
-import com.merlinkitsune.starengine.effect.FateGuidanceEffect;
-import com.merlinkitsune.starengine.effect.HealingEffect;
-import com.merlinkitsune.starengine.effect.InvestigationBonusEffect;
-import com.merlinkitsune.starengine.effect.KingPowerEffect;
-import com.merlinkitsune.starengine.effect.LivingPageEffect;
-import com.merlinkitsune.starengine.effect.MarkedEffect;
-import com.merlinkitsune.starengine.effect.MisakiBurstEffect;
-import com.merlinkitsune.starengine.effect.MosesBrokenEffect;
-import com.merlinkitsune.starengine.effect.NancyLuHackEffect;
-import com.merlinkitsune.starengine.effect.PandamanTauntEffect;
-import com.merlinkitsune.starengine.effect.PaparaBiteEffect;
-import com.merlinkitsune.starengine.effect.RevengeHalberdEffect;
-import com.merlinkitsune.starengine.effect.UndercoverInvestigationEffect;
-import com.merlinkitsune.starengine.effect.WeakMarkEffect;
 import java.util.Collection;
 
 public class ModEffects {

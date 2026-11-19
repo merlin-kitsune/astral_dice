@@ -4,7 +4,6 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starengine.item.AstralRarities;
 
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
@@ -1156,37 +1155,37 @@ public class ModItems {
     // ── 2026-11-08 少主立牌（al，史诗）：主动选玩家→选 1~3 张卡转交 + 星币；被动给牌星光 / 主动后双方筹码折扣+刷新 ──
     public static final RegistryObject<Item> AL_SIGN = registerItem("al_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.epic())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.epic())));
     public static final RegistryObject<Item> JILL_SIGN = registerItem("jill_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.JillSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.bizarre())));
     public static final RegistryObject<Item> DOROTHY_SIGN = registerItem("dorothy_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.DorothySignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.bizarre())));
     public static final RegistryObject<Item> ALANA_SIGN = registerItem("alana_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.AlanaSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.rare())));
     public static final RegistryObject<Item> DEEPSEEK_SIGN = registerItem("deepseek_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.DeepseekSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.bizarre())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.bizarre())));
 
     // 金鲤立牌(souri,传奇,2026-11-09):主动「把酒言欢」放置葫芦饮(化龙后为仙酿),被动「不醉不归」
     // (成功进入反击状态时叠金鳞、他人拾饮叠可激活反击次数),4 层金鳞触发「金鲤化龙」。
     public static final RegistryObject<Item> SOURI_SIGN = registerItem("souri_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.legendary())));
 
     // 魔渊幼体立牌（本模组原创，传奇）：主动「魔域转化」放置魔渊触须，被动「触须深渊」叠渊蚀印记。
     public static final RegistryObject<Item> SYKES_SIGN = registerItem("sykes_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SykesSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.legendary())));
 
     // 小猎手立牌(inkshadow,稀有,2026-11-10 用户裁决「史诗→稀有」):主动「暗影之门」30 秒内两处各放一扇
     // 【传送门】成对(可跨维度,成对后存活 3:00,放置期 +10% 移速且禁攻击/切武器/交互);被动「双生之影」
     // 每名玩家首次穿越一扇门 ⇒ 门主人 +2 攻击(随门对存活,可叠加),敌对目标靠近门受 2 点魔法伤害。
     public static final RegistryObject<Item> INKSHADOW_SIGN = registerItem("inkshadow_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.InkShadowSignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.rare())));
 
     // 垃圾桶立牌(z3000,稀有):主动「过来把你」16 格拖拽 + 5 点技能伤害,被动「回收利用」。
     // 原型：Z3000 抓钩的管道节 / 吸尘头模型载体；不进创造栏、无配方。
@@ -1195,7 +1194,7 @@ public class ModItems {
 
     public static final RegistryObject<Item> Z3000_SIGN = registerItem("z3000_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.Z3000SignItem(new Item.Properties()
-                    .stacksTo(1).rarity(com.merlinkitsune.starengine.item.AstralRarities.rare())));
+                    .stacksTo(1).rarity(com.merlinkitsune.astral_dice.item.AstralRarities.rare())));
 
     // 机械师立牌(命名:megas,传奇):被动「物资补充」(手牌<6 张时每 1:00 自动获得 1 张随机卡牌)
     // + 主动「轨道轰炸」(指定 1 个敌对目标,消耗物品栏全部手牌,对目标及其周围 12 格范围轰炸;

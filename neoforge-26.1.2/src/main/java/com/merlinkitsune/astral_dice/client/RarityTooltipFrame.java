@@ -1,8 +1,8 @@
 package com.merlinkitsune.astral_dice.client;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
-import com.merlinkitsune.starengine.item.AstralRarities;
-import com.merlinkitsune.starengine.item.Rarity;
+import com.merlinkitsune.astral_dice.item.AstralRarities;
+import com.merlinkitsune.astral_dice.item.Rarity;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;

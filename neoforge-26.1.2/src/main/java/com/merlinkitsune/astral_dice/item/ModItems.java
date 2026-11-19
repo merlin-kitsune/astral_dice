@@ -7,7 +7,6 @@ import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.item.EventDrawItem;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starengine.item.AstralRarities;
 
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;

@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.client;
 
-import com.merlinkitsune.starengine.item.AstralRarities;
-import com.merlinkitsune.starengine.item.Rarity;
+import com.merlinkitsune.astral_dice.item.AstralRarities;
+import com.merlinkitsune.astral_dice.item.Rarity;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Arrays;

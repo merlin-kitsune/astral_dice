@@ -4,6 +4,15 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.6.0-pre.3 (2026-11-19)
+
+### 本次发布
+
+- A/B 内容归属：18 个 StarEngine MobEffect 类搬到 `common/src/main/java/com/merlinkitsune/astral_dice/effect`，`Rarity` 搬到 `.../astral_dice/item`，五线 `AstralRarities` shim 搬到各线 `.../astral_dice/item`；新增 24 个源文件。
+- 改写 100 处 `starengine.effect` 引用、25 处 `starengine.item.Rarity` 引用、40 处 `starengine.item.AstralRarities` 引用；清理 95 条同包 import；两份 NeoForge `META-INF/enumextensions.json` 各 5 条改指 `com/merlinkitsune/astral_dice/item/AstralRarities`。
+- StarEngine pin 升至 `1.2.0-pre.3`；五线 `clean assemble --offline --no-daemon` 通过。产物校验：五份 `1.6.0-pre.3` jar 均含 18 个新效果与 `Rarity`/`AstralRarities`，不含旧 `starengine` effect/Rarity 类；五份库 `1.2.0-pre.3` jar 不含旧类（`AB_VERIFY_OK`）。
+- 未改玩法逻辑，本次只是包归属迁移；NeoForge 枚举扩展路径已变，仍需实机启动确认 5 个稀有度条目解析。本批未跑实机客户端/服务端冒烟。
+
 ## 1.6.0-pre.2 (2026-11-19)
 
 ### 本次发布

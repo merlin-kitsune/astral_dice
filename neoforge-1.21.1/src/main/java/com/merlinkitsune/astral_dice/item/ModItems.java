@@ -5,7 +5,6 @@ import com.merlinkitsune.astral_dice.block.ModBlocks;
 import net.minecraft.world.item.BlockItem;
 import com.merlinkitsune.astral_dice.component.AppliedStone;
 import com.merlinkitsune.astral_dice.component.ModDataComponents;
-import com.merlinkitsune.starengine.item.AstralRarities;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -1177,7 +1176,7 @@ public class ModItems {
     public static final DeferredItem<Item> SOURI_SIGN = registerItem("souri_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.SouriSignItem(new Item.Properties()
                     .stacksTo(1)
-                    .rarity(com.merlinkitsune.starengine.item.AstralRarities.legendary())));
+                    .rarity(com.merlinkitsune.astral_dice.item.AstralRarities.legendary())));
 
     public static final DeferredItem<Item> AL_SIGN = registerItem("al_sign",
             () -> new com.merlinkitsune.astral_dice.item.sign.AlSignItem(new Item.Properties()
