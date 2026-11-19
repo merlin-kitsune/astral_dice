@@ -53,6 +53,8 @@ public class AstralDiceMod {
         // 之后 common 里的 AstralDiceApi 才能取到正确的平台 id。仅 set + install,零行为变化。
         com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
                 new com.merlinkitsune.astral_dice.platform.ForgeAstralDicePlatform());
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.install(
+                new com.merlinkitsune.astral_dice.apiimpl.AstralDiceServiceImpl());
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         // ⚠️ 不兼容模组黑名单(Magic Coins / SG-Economy)的检查**不能放在这里**:它是否拒绝取决于
         //    「星币钱包」开关(config/ModCommonConfig 的 enable_star_coin_wallet),而配置要到**本阶段之后**
@@ -215,9 +217,9 @@ public class AstralDiceMod {
             // 把内置立牌 / 筹码接进 StarEngine 内容注册表(冻结在服务器启动后)。
             com.merlinkitsune.astral_dice.content.BuiltinContent.register();
             // 对外公开的伤害分类与骰战属性钩子:仅本线安装,其余加载器线编译通过但不接线。
-            com.merlinkitsune.astral_dice.api.AstralDiceApi.installDamageCategoryResolver(
+            com.merlinkitsune.starengine.api.astral.AstralDiceApi.installDamageCategoryResolver(
                     com.merlinkitsune.astral_dice.combat.SpellDamageRegistry::damageCategory);
-            com.merlinkitsune.astral_dice.api.AstralDiceApi.installCombatStatSupport();
+            com.merlinkitsune.starengine.api.astral.AstralDiceApi.installCombatStatSupport();
             LOGGER.info("Astral Dice mod loaded.");
             LOGGER.info("May the god of the dice be with you!");
         });
@@ -231,7 +233,7 @@ public class AstralDiceMod {
      * {@link IllegalStateException}。ServerStartedEvent 晚于脚本加载，届时注册已完成。
      */
     private static void onServerStarted(net.minecraftforge.event.server.ServerStartedEvent event) {
-        com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.freezeContent();
         LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
     }
 }

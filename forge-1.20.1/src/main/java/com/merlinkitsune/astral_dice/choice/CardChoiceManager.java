@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.choice;
+import com.merlinkitsune.starengine.api.astral.choice.CardChoiceType;
 
 import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.CardChoiceCloseMessage;

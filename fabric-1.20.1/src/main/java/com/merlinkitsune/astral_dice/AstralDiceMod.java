@@ -54,6 +54,8 @@ public class AstralDiceMod implements ModInitializer {
         // (仅 set + install,零行为变化),之后 AstralDiceApi 才能取到正确的平台 id。
         com.merlinkitsune.astral_dice.platform.AstralDicePlatforms.install(
                 new com.merlinkitsune.astral_dice.platform.FabricAstralDicePlatform());
+        com.merlinkitsune.starengine.api.astral.AstralDiceApi.install(
+                new com.merlinkitsune.astral_dice.apiimpl.AstralDiceServiceImpl());
 
         // 计时守卫统一走库版:本地 EffectTimerGuard 已删除,这里注入计时表 seam.
         com.merlinkitsune.starengine.event.EffectTimerGuard.setTimerSource(
@@ -98,7 +100,7 @@ public class AstralDiceMod implements ModInitializer {
         FabricBridges.install();
         // 内容注册表在服务器启动后冻结(KubeJS 服务器脚本此时已加载完成)。
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            com.merlinkitsune.astral_dice.api.AstralDiceApi.freezeContent();
+            com.merlinkitsune.starengine.api.astral.AstralDiceApi.freezeContent();
             LOGGER.info("[Astral Dice] 内容注册表已在服务器启动后冻结。");
         });
         // Trinkets 通道(硬→软:2026-09-29 起 Trinkets 与 Accessories **二选一**即可)。

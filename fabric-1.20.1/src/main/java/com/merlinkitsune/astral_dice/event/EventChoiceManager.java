@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.astral_dice.event.api.AstralEvent;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.starengine.api.astral.event.AstralEvent;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventTrigger;
 import com.merlinkitsune.astral_dice.network.EventChoiceCloseMessage;
 import com.merlinkitsune.astral_dice.network.EventChoiceStartMessage;
 import com.merlinkitsune.astral_dice.network.EventChoiceTickMessage;

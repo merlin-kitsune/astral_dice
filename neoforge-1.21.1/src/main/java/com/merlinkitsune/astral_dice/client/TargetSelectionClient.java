@@ -6,7 +6,7 @@ import com.merlinkitsune.astral_dice.network.TargetSelectConfirmPayload;
 import com.merlinkitsune.astral_dice.target.PlayerLikeTargets;
 import com.merlinkitsune.starengine.target.SelectorTargets;
 import com.merlinkitsune.starengine.client.ActionBarManager;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;

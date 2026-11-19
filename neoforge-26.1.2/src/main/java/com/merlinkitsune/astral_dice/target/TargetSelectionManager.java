@@ -35,7 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import com.merlinkitsune.starengine.target.TargetSelectionAction;
 import com.merlinkitsune.starengine.target.TargetSelectionRegistry;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import com.merlinkitsune.starengine.target.SelectorTargets;
 import com.merlinkitsune.starengine.target.SignSelectionGate;
 /**

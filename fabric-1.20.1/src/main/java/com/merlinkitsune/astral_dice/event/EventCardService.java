@@ -2,7 +2,7 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.audio.ModSounds;
 import com.merlinkitsune.astral_dice.audio.SoundPlayback;
-import com.merlinkitsune.astral_dice.event.api.AstralEvent;
+import com.merlinkitsune.starengine.api.astral.event.AstralEvent;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;

@@ -1,8 +1,9 @@
 package com.merlinkitsune.astral_dice.target;
 
 import com.merlinkitsune.astral_dice.item.chip.VitaminPillChipItem;
+import com.merlinkitsune.astral_dice.resource.ResourceConversion;
 import com.merlinkitsune.astral_dice.item.sign.CardGivenHooks;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -162,10 +163,19 @@ public final class PlayerLikeTargets {
         };
     }
 
-    /** 交付一件物品给类玩家目标（玩家始终 {@code false}：由调用方走玩家物品栏逻辑）。 */
+    /**
+     * 交付一件物品给目标：玩家走中央漏斗（星币入钱包 → 进包 → 掉地），注册生物走 handler。
+     *
+     * <p>两类接收方同口径：返回值只表示「是否已交付」，玩家分支恒 {@code true}
+     * （进包失败由 {@code ResourceConversion.giveItem} 就地掉地，不会丢失）。客户端不发放，返回 {@code false}。
+     */
     public static boolean giveItem(LivingEntity receiver, ItemStack stack) {
         if (receiver == null || stack == null || stack.isEmpty()) return false;
-        if (receiver instanceof Player) return false;
+        if (receiver instanceof Player player) {
+            if (player.level().isClientSide()) return false;
+            ResourceConversion.giveItem(player, stack);
+            return true;
+        }
         Handler handler = find(receiver);
         return handler != null && handler.giveItem(receiver, stack);
     }

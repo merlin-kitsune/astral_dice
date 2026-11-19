@@ -1,7 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
-import com.merlinkitsune.astral_dice.api.combat.DamageCategory;
+import com.merlinkitsune.starengine.api.astral.combat.DamageCategory;
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.starengine.component.GameplayConstants;
@@ -23,7 +23,7 @@ import java.util.Locale;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.chip.MagicQuiverChipItem;
 import com.merlinkitsune.astral_dice.item.chip.PiercingGunChipItem;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 
 /**
  * 法伤(远程/魔法伤害)模块:作用域判定(白名单 matcher + 军火黑名单保险)与加成修饰器注册表。

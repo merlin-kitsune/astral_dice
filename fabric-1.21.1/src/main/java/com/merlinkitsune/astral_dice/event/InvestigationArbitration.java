@@ -1,4 +1,5 @@
 package com.merlinkitsune.astral_dice.event;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventTrigger;
 
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.component.ModAttachments;

@@ -4,7 +4,7 @@ import com.merlinkitsune.astral_dice.AstralDiceMod;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 import com.merlinkitsune.starengine.target.SelectorTargets;
 import com.merlinkitsune.starengine.client.ActionBarManager;
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;

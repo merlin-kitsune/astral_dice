@@ -7,7 +7,7 @@ import com.merlinkitsune.astral_dice.effect.ConcealmentEffect;
 import com.merlinkitsune.astral_dice.effect.ModEffects;
 import com.merlinkitsune.astral_dice.event.AstralEventDispatcher;
 import com.merlinkitsune.astral_dice.event.AstralEventIds;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventTrigger;
 import com.merlinkitsune.starengine.event.EventTargetCollector;
 import com.merlinkitsune.astral_dice.network.ModNetwork.ActionBarMessage;
 import net.minecraft.ChatFormatting;

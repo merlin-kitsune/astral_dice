@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.content;
 
-import com.merlinkitsune.astral_dice.api.AstralDiceApi;
+import com.merlinkitsune.starengine.api.astral.AstralDiceApi;
 import com.merlinkitsune.starengine.api.content.chip.ChipCategory;
 import com.merlinkitsune.starengine.api.content.chip.ChipSchool;
 import com.merlinkitsune.astral_dice.component.AstralGameplayConstants;

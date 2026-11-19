@@ -1,4 +1,7 @@
 package com.merlinkitsune.astral_dice.combat;
+
+import com.merlinkitsune.starengine.api.astral.combat.CombatResolutionListeners;
+import com.merlinkitsune.starengine.api.astral.combat.CombatResolutionView;
 import com.merlinkitsune.starengine.item.CuriosCompat;
 import com.merlinkitsune.astral_dice.network.ModNetwork;
 
@@ -77,7 +80,7 @@ import com.merlinkitsune.astral_dice.combat.DiceCombatModifiers;
 import com.merlinkitsune.astral_dice.combat.DiceCombatAbilities;
 import com.merlinkitsune.astral_dice.combat.DiceCombatParticipants;
 import com.merlinkitsune.astral_dice.item.card.FateGuidanceCardItem;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 import com.merlinkitsune.starengine.combat.PartyRelations;
 import com.merlinkitsune.astral_dice.event.PlayerEffectProtection;
 
@@ -129,7 +132,7 @@ public class DiceCombatEvents {
         // 而它的判定点有一部分落在库内 —— target/SelectorTargets 的可选中判定(客户端射线/半径高亮/
         // 服务端确认)直接调它 ⇒ 消费方无法插手,故由库留 seam、本模组在此注入。
         // 未注入时库退回原口径(假人不算敌对),即本注入是**纯增益**、不影响其它实体。
-        com.merlinkitsune.starengine.combat.HostileTargets.installExtraHostileProbe(
+        com.merlinkitsune.starengine.api.combat.HostileTargets.installExtraHostileProbe(
                 DiceCombatEvents::isTrainingDummy);
     }
 
@@ -962,20 +965,20 @@ public class DiceCombatEvents {
         float attackCooldown = diceBattleAttackStrengthScale(player);
         double attackPower = rawAttackDamage * (0.2 + attackCooldown * attackCooldown * 0.8);
         // 骰战属性钩子:上下文只构造一次,后续各阶段复用。display=false 才是真实结算。
-        com.merlinkitsune.astral_dice.api.combat.CombatStatContext statContext =
-                new com.merlinkitsune.astral_dice.api.combat.CombatStatContext(player, target, source, false);
-        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.BASE, attackPower);
+        com.merlinkitsune.starengine.api.astral.combat.CombatStatContext statContext =
+                new com.merlinkitsune.starengine.api.astral.combat.CombatStatContext(player, target, source, false);
+        attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.BASE, attackPower);
         for (var modifier : com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.attackModifiers()) {
             attackPower = modifier.apply(ctx, attackPower);
         }
-        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.ADDITIVE, attackPower);
-        attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                com.merlinkitsune.astral_dice.api.combat.CombatStatStage.MULTIPLICATIVE, attackPower);
+        attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.ADDITIVE, attackPower);
+        attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.MULTIPLICATIVE, attackPower);
         int attackCardSum = ctx.attackCardSum;
         boolean hasShadowStrike = ctx.hasShadowStrike;
         boolean hasFullPower = ctx.hasFullPower;
@@ -1117,9 +1120,9 @@ public class DiceCombatEvents {
                                     effectiveArmor, toughness);
                 }
                 // 防御力 BASE 在公式之后、防御骰/防御牌加入之前替换初始值。
-                defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                        com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                        com.merlinkitsune.astral_dice.api.combat.CombatStatStage.BASE, defensePower);
+                defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                        com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                        com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.BASE, defensePower);
                 defensePower += defenseBaseDice + ctx.defenseCardSum;
             }
 
@@ -1130,22 +1133,22 @@ public class DiceCombatEvents {
                 defensePower = defenseBaseDice + ctx.defenseCardSum;
             }
             // 防御力 ADDITIVE / MULTIPLICATIVE / FINAL:在破防替换之后、骰战解析器之前。
-            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.ADDITIVE, defensePower);
-            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.MULTIPLICATIVE, defensePower);
-            defensePower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.DEFENSE,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.FINAL, defensePower);
+            defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.ADDITIVE, defensePower);
+            defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.MULTIPLICATIVE, defensePower);
+            defensePower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.DEFENSE,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.FINAL, defensePower);
 
             // 骰战层:库统一口径「max(绝对下限 1 点, 攻击点 ×15%, 攻击点 − 防御点)」
             // (2026-09-26 裁决⑥:相对下限入库 —— 修「高防+低攻档位恒定触底 ⇒ 任何修饰器读数都退化为 0」)
             // 攻击力 FINAL:进入骰战解析器之前的最后修正。
-            attackPower = com.merlinkitsune.astral_dice.api.combat.CombatStatHooks.apply(statContext,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStat.ATTACK,
-                    com.merlinkitsune.astral_dice.api.combat.CombatStatStage.FINAL, attackPower);
+            attackPower = com.merlinkitsune.starengine.api.astral.combat.CombatStatHooks.apply(statContext,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStat.ATTACK,
+                    com.merlinkitsune.starengine.api.astral.combat.CombatStatStage.FINAL, attackPower);
             finalDmg = com.merlinkitsune.starengine.combat.DiceBattleResolver
                     .resolve(attackPower, defensePower);
 
@@ -1214,8 +1217,10 @@ public class DiceCombatEvents {
         // 攻击力快照 —— 即「严格排除」),改为命中落地后按**独立伤害类型**单独结算(额外加伤)。
         // 复用大当家溅射的既有范式:主目标此刻正处在自己这次伤害事件内部(原版 hurt 已先写
         // invulnerableTime/lastHurt),不临时清零无敌帧就会被"无敌帧内不更低伤害被丢弃"整段吞掉。
+        int extraSettled = 0;
         if (!player.level().isClientSide()) {
             int extraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(ctx);
+            extraSettled = extraDamage;
             if (extraDamage > 0) {
                 int savedInvulnerable = target.invulnerableTime;
                 beginAoe();
@@ -1339,6 +1344,9 @@ public class DiceCombatEvents {
         if (!player.level().isClientSide() && triggeredBlessing) {
             consumeAttackCardDurabilityOnce(player, diceStack, enhancement);
         }
+
+        CombatResolutionListeners.fire(new CombatResolutionView(player, target, finalDmg,
+                applied, extraSettled, diceStack, enhancement == null ? 0 : enhancement.starLevel()));
     }
 
     // 攻击牌耐久消耗(仅在触发骰神赐福的那次攻击执行一次;防御牌/蓄力不消耗)。
@@ -1617,8 +1625,10 @@ public class DiceCombatEvents {
         // === G6(2026-11-08):参与者的「额外加伤」通道(星光/星币/治愈点三项) ===
         // 玩家路径在 onLivingDamagePre 里按 ctx 结算 astral_dice:extra_damage;参与者原先只吃攻击力修饰器,
         // 连带「手电筒-爆闪」这类走本通道的筹码对注册生物整段失效(2026-11-08 实机发现)。此处按同一口径补结算。
+        int g6ExtraSettled = 0;
         if (g6Ctx != null && !target.level().isClientSide()) {
             int g6ExtraDamage = com.merlinkitsune.astral_dice.combat.DiceCombatModifiers.extraDamageOf(g6Ctx);
+            g6ExtraSettled = g6ExtraDamage;
             if (g6ExtraDamage > 0) {
                 int savedInvulnerable = target.invulnerableTime;
                 beginAoe();
@@ -1644,6 +1654,10 @@ public class DiceCombatEvents {
             mob.addEffect(new MobEffectInstance(ModEffects.DICE_BLESSING.get(),
                     AstralGameplayConstants.DICE_BLESSING_DURATION_TICKS, 0, false, false, true));
         }
+
+        float mobLanding = finalDmg - Math.min(finalDmg, target.getAbsorptionAmount());
+        CombatResolutionListeners.fire(new CombatResolutionView(mob, target, finalDmg, mobLanding,
+                g6ExtraSettled, attackerDie, g6Ctx == null || g6Ctx.enhancement == null ? 0 : g6Ctx.enhancement.starLevel()));
     }
 
     // ============================================================================================

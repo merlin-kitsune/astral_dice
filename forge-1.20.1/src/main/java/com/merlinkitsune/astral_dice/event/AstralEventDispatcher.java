@@ -2,8 +2,8 @@ package com.merlinkitsune.astral_dice.event;
 
 import com.merlinkitsune.astral_dice.component.ModAttachments;
 import com.merlinkitsune.starengine.combat.PartyRelations;
-import com.merlinkitsune.astral_dice.event.api.AstralEvent;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.starengine.api.astral.event.AstralEvent;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventTrigger;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;

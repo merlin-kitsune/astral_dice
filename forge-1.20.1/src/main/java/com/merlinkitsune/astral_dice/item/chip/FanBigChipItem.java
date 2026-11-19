@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.item.chip;
 import com.merlinkitsune.starengine.item.CuriosCompat;
-import com.merlinkitsune.starengine.combat.HostileTargets;
+import com.merlinkitsune.starengine.api.combat.HostileTargets;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;

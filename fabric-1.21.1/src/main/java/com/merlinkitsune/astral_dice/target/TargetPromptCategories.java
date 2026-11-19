@@ -1,6 +1,6 @@
 package com.merlinkitsune.astral_dice.target;
 
-import com.merlinkitsune.starengine.target.TargetType;
+import com.merlinkitsune.starengine.api.target.TargetType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

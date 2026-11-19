@@ -1,9 +1,9 @@
 package com.merlinkitsune.astral_dice.event;
 
-import com.merlinkitsune.astral_dice.event.api.AstralEvent;
-import com.merlinkitsune.astral_dice.event.api.AstralEventEffect;
-import com.merlinkitsune.astral_dice.event.api.AstralEventPolarity;
-import com.merlinkitsune.astral_dice.event.api.AstralEventTrigger;
+import com.merlinkitsune.starengine.api.astral.event.AstralEvent;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventEffect;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventPolarity;
+import com.merlinkitsune.starengine.api.astral.event.AstralEventTrigger;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.util.RandomSource;

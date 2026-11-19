@@ -47,7 +47,41 @@ public final class PlayerLikeWallets {
         for (Binding binding : BINDINGS) {
             if (binding.matches().test(holder)) return binding.wallet();
         }
-        return null;
+        // 2026-11-18：内部绑定未命中时回落到门面钱包表（AstralDiceApi.registerPlayerLikeWallet）。
+        com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeWallet fallback =
+                com.merlinkitsune.starengine.api.astral.AstralDiceApi.playerLikeWallet(holder);
+        return fallback == null ? null : new ApiWalletAdapter(holder, fallback);
+    }
+
+    /** 门面钱包 ↔ 内部接口的适配器：内部消费面只认本包接口。 */
+    private record ApiWalletAdapter(LivingEntity holder,
+                                    com.merlinkitsune.starengine.api.astral.playerlike.PlayerLikeWallet delegate)
+            implements PlayerLikeWallet {
+
+        @Override
+        public boolean isAvailable() {
+            return delegate.isAvailable(holder);
+        }
+
+        @Override
+        public boolean isAvailable(LivingEntity ignored) {
+            return delegate.isAvailable(holder);
+        }
+
+        @Override
+        public long balance(LivingEntity ignored) {
+            return delegate.balance(holder);
+        }
+
+        @Override
+        public boolean withdraw(LivingEntity ignored, int amount) {
+            return delegate.withdraw(holder, amount);
+        }
+
+        @Override
+        public boolean deposit(LivingEntity ignored, int amount) {
+            return delegate.deposit(holder, amount);
+        }
     }
 
     /** 默认玩家钱包适配器。 */
