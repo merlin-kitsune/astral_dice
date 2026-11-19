@@ -73,7 +73,7 @@
 ## 6 构建与测试入口
 
 ```bash
-export JAVA_HOME="C:/Program Files/Zulu/zulu-21"   # daemon JVM 需 ≥21；toolchain 17/21/25 自动发现
+export JAVA_HOME="C:/Program Files/Microsoft/jdk-21.0.13.102-hotspot"   # daemon JVM 需 ≥21；toolchain 17/21/25 自动发现
 ./gradlew :neoforge-1.21.1:classes --console=plain
 ./gradlew :forge-1.20.1:classes   --console=plain
 ./gradlew :neoforge-26.1.2:classes --console=plain --no-configuration-cache

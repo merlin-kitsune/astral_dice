@@ -45,8 +45,8 @@
 git -C F:\MCProject\astral_dice_multiloader status --short -uall
 git -C F:\MCProject\astral_dice_multiloader log --oneline -5
 
-# 编译 / 产物（JAVA_HOME = C:\Program Files\Zulu\zulu-21）
-$env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'
+# 编译 / 产物（JAVA_HOME = C:\Program Files\Microsoft\jdk-21.0.13.102-hotspot）
+$env:JAVA_HOME='C:\Program Files\Microsoft\jdk-21.0.13.102-hotspot'
 .\gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes --console=plain
 .\gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar --console=plain
 .\gradlew.bat :neoforge-1.21.1:runData          # datagen（改配方/物品后必须）
