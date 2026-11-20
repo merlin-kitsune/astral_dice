@@ -187,14 +187,24 @@ jobs:
         # 根项目的 `build` 会级联构建 `settings.gradle` 中 include 的**全部**子项目 —— 现为四条线:
         # neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / **fabric-1.20.1**（fabric 子项目已在
         # 根 settings.gradle 中 include,故无需在此显式列出子项目）。
-        # CI 注意：根 gradle.properties 的 org.gradle.java.installations.paths 指向本机 Windows 路径；
-        # 此处用 setup-java 提供的 Linux JDK 覆盖，避免 fabric-1.20.1 / forge-1.20.1 找不到 Java 17。
+        # CI 注意：根 gradle.properties 的 org.gradle.java.installations.paths 指向本机 Windows 路径，
+        # 且环境变量覆盖在 runner 上未生效；此处只在 build 期间把该文件改成 setup-java 的 Linux JDK，
+        # 构建结束（含失败）立即还原，避免影响后续 tag/release 步骤。
         run: |
-          env \
-            "ORG_GRADLE_PROJECT_org.gradle.java.installations.paths=$JAVA_HOME_17_X64,$JAVA_HOME_21_X64,$JAVA_HOME_25_X64" \
-            "ORG_GRADLE_PROJECT_org.gradle.java.installations.auto-detect=false" \
-            "ORG_GRADLE_PROJECT_org.gradle.java.installations.auto-download=false" \
-            ./gradlew build
+          set -euo pipefail
+          backup="$(mktemp)"
+          cp -p gradle.properties "$backup"
+          sed -i '/^org\.gradle\.java\.installations\./d' gradle.properties
+          printf '%s\n' \
+            "org.gradle.java.installations.paths=$JAVA_HOME_17_X64,$JAVA_HOME_21_X64,$JAVA_HOME_25_X64" \
+            "org.gradle.java.installations.auto-detect=false" \
+            "org.gradle.java.installations.auto-download=false" >> gradle.properties
+          set +e
+          ./gradlew build
+          ec=$?
+          set -e
+          mv "$backup" gradle.properties
+          exit "$ec"
 
       - name: Upload Astral Dice JARs (neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2)
         # 2026-11-02 用户裁决（取代 2026-10-25「artifact 只产出 P0 两线」）：四线同批发布 ⇒ artifact 亦覆盖四线。
