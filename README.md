@@ -137,7 +137,7 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 
 ## Build provenance (1.6.0-pre.3)
 
-> All five lines were built from **`7d7eb015`** on 2026-11-22. This is a local pre-release candidate; not pushed or published.
+> All five lines were built from **`3cbdf846`** on 2026-11-22. This is a local pre-release candidate; not pushed or published.
 
 The Forge and NeoForge 1.21.1 jars carry `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt,
 classCount}`; all five 1.6.0-pre.3 jars ship a sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the
@@ -145,15 +145,15 @@ jar was built from; the README update that records the hash does not change the 
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 1.6.0-pre.3+neoforge_1.21.1 | `7d7eb015`, classCount 657 | 2026-11-22 | 3,071,845 | `3d23d442e3213ca555664238fdaecef183c50e01cf66571426f5475a28b27ef6` |
-| forge-1.20.1 | 1.6.0-pre.3+forge_1.20.1 | `7d7eb015`, classCount 681 | 2026-11-22 | 3,122,146 | `9eb5c212e80f15906799a7048e244ae171478d55daf26a768a319675975f9c89` |
-| neoforge-26.1.2 | 1.6.0-pre.3+neoforge_26.1.2 | no build-info, same `7d7eb015` batch | 2026-11-22 | 3,290,774 | `d5cf40de89eef72bfc84e798592e6be0a1dada99ead02db4e6587e2e9d66aa8a` |
-| fabric-1.20.1 | 1.6.0-pre.3+fabric_1.20.1 | no build-info, same `7d7eb015` batch | 2026-11-22 | 3,363,579 | `7c16f23951b9ed75573a5dea7f2d592ffd9b6088976706fdb57acd6b749103a9` |
-| fabric-1.21.1 | 1.6.0-pre.3+fabric_1.21.1 | no build-info, same `7d7eb015` batch | 2026-11-22 | 3,400,138 | `f6fc1505493af8fdc6313d01a2ef12a2fc8d1d929931ce78e1c1db6180f28e31` |
+| neoforge-1.21.1 | 1.6.0-pre.3+neoforge_1.21.1 | `3cbdf846`, classCount 657 | 2026-11-22 | 3,071,799 | `3eb3c52482806c48780b73fc1fa4173abdbd1571682b020114941551179b870f` |
+| forge-1.20.1 | 1.6.0-pre.3+forge_1.20.1 | `3cbdf846`, classCount 681 | 2026-11-22 | 3,122,106 | `67dfc1f5d93d3ec5b8982f55e96de2862bbe8946c5cef675a9955dff6060a59f` |
+| neoforge-26.1.2 | 1.6.0-pre.3+neoforge_26.1.2 | no build-info, same `3cbdf846` batch | 2026-11-22 | 3,290,731 | `30bb5fbaa8607a0d040f61865e83adea4edc64bf976d62e22ca1b53686d944c9` |
+| fabric-1.20.1 | 1.6.0-pre.3+fabric_1.20.1 | no build-info, same `3cbdf846` batch | 2026-11-22 | 3,363,531 | `e50d132f250b57c9891ac979afff1e853f4c7b2d75fdaa4b5e531a3ccb1dd85d` |
+| fabric-1.21.1 | 1.6.0-pre.3+fabric_1.21.1 | no build-info, same `3cbdf846` batch | 2026-11-22 | 3,400,084 | `4e448203bc7c0f04e9d8905e22627be724d83f1948cb5e91a2dd4e77fd94f9c7` |
 
-The final `assemble` run was `BUILD SUCCESSFUL in 6s` (15 tasks: 1 executed, 2 from cache, 12 up-to-date). Only
-`neoforge-1.21.1` and `forge-1.20.1` embed `build-info.json`; the other three lines are identified by size +
-hash only and are from the same `7d7eb015` commit. Local candidate; not pushed or published.
+The final `assemble` run was `BUILD SUCCESSFUL` (`assemble --offline --no-daemon --no-configuration-cache`, exit 0).
+Only `neoforge-1.21.1` and `forge-1.20.1` embed `build-info.json`; the other three lines are identified by size +
+hash only and are from the same `3cbdf846` commit. Local candidate; not pushed or published.
 
 Earlier `26.4-SNAPSHOT` generations are superseded by this release; their history remains in git and in
 `CHANGELOG.md`. The `build/libs` bytes above are the release artefacts; `pushToDevRun` copies under `run/*/mods/`
