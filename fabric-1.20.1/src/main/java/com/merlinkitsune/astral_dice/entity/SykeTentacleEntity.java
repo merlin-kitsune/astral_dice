@@ -114,6 +114,9 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
     private long hideStartTick = -1L;
     private UUID ownerId;
 
+    /** 已因「进入区域」加过层、当前仍在区域内的目标（离开后移除，便于再次进入再加）。 */
+    private final java.util.Set<java.util.UUID> zoneOccupants = new java.util.HashSet<>();
+
     public SykeTentacleEntity(EntityType<? extends SykeTentacleEntity> type, Level level) {
         super(type, level);
         setNoGravity(true);
@@ -176,6 +179,7 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
 
         if (now % 20L == 0L) aggroNearbyEnemies();
         if (now % 10L == 0L) emitZoneParticles();
+        if (now % 5L == 0L) applyZoneMarks();
 
         if (strikeTick >= 0L && now >= strikeTick) {
             performStrike();
@@ -246,6 +250,29 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
     }
 
     /** 区域内有敌对目标 ⇒ 抢一个抽打时间片并起手（同步只播动画，12 tick 后才结算）。 */
+    /** 区域入场：新进入的目标立刻 +1 层并绑定施印者；离开后清除记录，下次进入可再加。 */
+    private void applyZoneMarks() {
+        if (ownerId == null) return;
+        java.util.Set<java.util.UUID> present = new java.util.HashSet<>();
+        for (LivingEntity victim : zoneTargets()) {
+            present.add(victim.getUUID());
+            if (zoneOccupants.add(victim.getUUID())) {
+                AbyssMarkManager.apply(victim, ownerId);
+            }
+        }
+        zoneOccupants.retainAll(present);
+    }
+
+    /** 当前在「魔渊区域」内的全部敌对目标。 */
+    private java.util.List<LivingEntity> zoneTargets() {
+        AABB box = new AABB(anchor).inflate(ZONE_HALF, 3.0D, ZONE_HALF);
+        java.util.List<LivingEntity> out = new java.util.ArrayList<>();
+        for (LivingEntity candidate : level().getEntitiesOfClass(LivingEntity.class, box)) {
+            if (isEnemyTarget(candidate)) out.add(candidate);
+        }
+        return out;
+    }
+
     private void tryStartAttack(long now) {
         AABB box = new AABB(anchor).inflate(ZONE_HALF, 3.0D, ZONE_HALF);
         boolean hasTarget = !level().getEntitiesOfClass(LivingEntity.class, box, this::isEnemyTarget).isEmpty();
@@ -271,6 +298,9 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
         for (LivingEntity victim : victims) {
             float damage = STRIKE_DAMAGE + AbyssMarkManager.bonusDamage(victim);
             victim.hurt(ModDamageTypes.skillDamage(level(), this), damage);
+            if (victim.isAlive() && ownerId != null) {
+                AbyssMarkManager.apply(victim, ownerId);
+            }
             victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOW_TICKS, 1, false, true));
             double dx = victim.getX() - getX();
             double dz = victim.getZ() - getZ();

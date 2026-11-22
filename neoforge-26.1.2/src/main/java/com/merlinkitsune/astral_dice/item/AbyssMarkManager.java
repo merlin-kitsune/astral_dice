@@ -34,11 +34,11 @@ public final class AbyssMarkManager {
     /** 每层持续时间：2:00。 */
     public static final int DURATION_TICKS = AbyssMarkEffect.DURATION_TICKS;
 
-    /** 被动触发间隔：10 秒（同一佩戴者两次施印之间至少 10 秒）。 */
-    public static final int APPLY_COOLDOWN_TICKS = 200;
+/** 目标实体 tag：记录施印者 UUID（scoreboard tag 跨五线持久化）。 */
+    private static final String OWNER_TAG_PREFIX = "astral_dice_abyss_owner:";
 
-    /** 佩戴者上次施印的 gameTime（玩家持久数据键）。 */
-    private static final String KEY_LAST_APPLY = "astral_dice_abyss_mark_tick";
+    /** 佩戴者攻击力修饰符的固定 key。 */
+    private static final String ATTACK_BONUS_KEY = "sykes_abyss_attack";
 
     private record PendingDecay(LivingEntity entity, int amplifier) {
     }
@@ -50,7 +50,22 @@ public final class AbyssMarkManager {
 
     /** 施加 1 层（已满层则只重置时长）。返回施加后的层数。 */
     public static int apply(LivingEntity target) {
+        return apply(target, null);
+    }
+
+    /**
+     * 施加 1 层并绑定施印者。
+     *
+     * <p>绑定规则：目标还没有印记（或旧印记没有 owner）时，第一个施印者绑定成功；
+     * 已有其他玩家的印记时**不改绑定**，但这次施加仍然照常 +1 层（区域/触须加层不会被吞）。
+     */
+    public static int apply(LivingEntity target, java.util.UUID owner) {
         MobEffectInstance existing = target.getEffect(ModEffects.ABYSS_MARK);
+        int current = existing != null ? Math.min(existing.getAmplifier() + 1, MAX_STACKS) : 0;
+        java.util.UUID bound = getOwner(target);
+        if (owner != null && (current <= 0 || bound == null)) {
+            setOwner(target, owner);
+        }
         int amplifier = existing != null ? Math.min(existing.getAmplifier() + 1, MAX_STACKS - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.ABYSS_MARK, DURATION_TICKS, amplifier, false, true));
         return amplifier + 1;
@@ -67,18 +82,7 @@ public final class AbyssMarkManager {
         return Math.min(getStacks(target), MAX_STACKS);
     }
 
-    /** 佩戴者的 10 秒施印冷却是否就绪。 */
-    public static boolean readyToApply(Player wearer) {
-        long last = wearer.getPersistentData().getLongOr(KEY_LAST_APPLY, 0L);
-        return last <= 0L || wearer.level().getGameTime() - last >= APPLY_COOLDOWN_TICKS;
-    }
-
-    /** 记一次施印（写佩戴者持久数据，跨死亡 / 重登保留）。 */
-    public static void markApplied(Player wearer) {
-        wearer.getPersistentData().putLong(KEY_LAST_APPLY, wearer.level().getGameTime());
-    }
-
-    @SubscribeEvent
+@SubscribeEvent
     public static void onMarkExpired(MobEffectEvent.Expired event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
@@ -89,6 +93,13 @@ public final class AbyssMarkManager {
         }
         if (effect.getAmplifier() > 0) {
             PENDING_DECAY.add(new PendingDecay(entity, effect.getAmplifier() - 1));
+            return;
+        }
+        if (getStacks(entity) > 0) return;
+        java.util.UUID owner = getOwner(entity);
+        if (owner != null) {
+            // 绑定持续到目标被击杀：印记自然到期只影响层数与攻击力加成，不解除绑定
+            refreshOwner(entity, owner);
         }
     }
 
@@ -103,6 +114,78 @@ public final class AbyssMarkManager {
             if (entity.level().isClientSide()) continue;
             entity.addEffect(new MobEffectInstance(ModEffects.ABYSS_MARK, DURATION_TICKS, p.amplifier(), false, true));
         }
+    }
+
+    /** 目标身上绑定的施印者（无绑定返回 null）。 */
+    public static java.util.UUID getOwner(LivingEntity target) {
+        for (String tag : target.entityTags()) {
+            if (tag.startsWith(OWNER_TAG_PREFIX)) {
+                try {
+                    return java.util.UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length()));
+                } catch (IllegalArgumentException ignored) {
+                    // 脏 tag 当作没有绑定
+                }
+            }
+        }
+        return null;
+    }
+
+    /** 清掉目标身上所有施印者 tag（只动本机制自己的前缀）。 */
+    public static void clearOwner(LivingEntity target) {
+        for (String tag : new ArrayList<>(target.entityTags())) {
+            if (tag.startsWith(OWNER_TAG_PREFIX)) {
+                target.removeTag(tag);
+            }
+        }
+    }
+
+    private static void setOwner(LivingEntity target, java.util.UUID owner) {
+        clearOwner(target);
+        target.addTag(OWNER_TAG_PREFIX + owner);
+    }
+
+    /** 当前玩家名下仍存活、仍带印记的敌对目标数（攻击力加成 = 这个数）。 */
+    public static int countMarkedFor(net.minecraft.world.entity.player.Player player) {
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) return 0;
+        int count = 0;
+        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+            if (!(entity instanceof LivingEntity living) || !(living instanceof net.minecraft.world.entity.monster.Enemy)) continue;
+            if (!living.isAlive() || living.isRemoved()) continue;
+            if (getStacks(living) <= 0) continue;
+            if (player.getUUID().equals(getOwner(living))) count++;
+        }
+        return count;
+    }
+
+    /** 按「名下带印记的存活目标数」刷新佩戴者攻击力（0 时自动移除修饰符）。 */
+    public static void refreshAttackBonus(net.minecraft.world.entity.player.Player player) {
+        int count = countMarkedFor(player);
+        com.merlinkitsune.astral_dice.item.sign.SignAttributeUtil.apply(player,
+                net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE,
+                ATTACK_BONUS_KEY, count, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE);
+    }
+
+    /** 卸下立牌 / 骰子失效时清掉攻击力加成。 */
+    public static void clearAttackBonus(net.minecraft.world.entity.player.Player player) {
+        com.merlinkitsune.astral_dice.item.sign.SignAttributeUtil.remove(player,
+                net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE, ATTACK_BONUS_KEY);
+    }
+
+    private static void refreshOwner(LivingEntity entity, java.util.UUID ownerId) {
+        if (!(entity.level() instanceof net.minecraft.server.level.ServerLevel level)) return;
+        net.minecraft.server.level.ServerPlayer player = level.getServer().getPlayerList().getPlayer(ownerId);
+        if (player != null) refreshAttackBonus(player);
+    }
+
+    /** 目标死亡：解除绑定并立刻刷新施印者的攻击力（不必等下一次 curioTick）。 */
+    @SubscribeEvent
+    public static void onMarkedDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+        java.util.UUID owner = getOwner(entity);
+        if (owner == null) return;
+        clearOwner(entity);
+        refreshOwner(entity, owner);
     }
 
     /** 调试/取证辅助：给目标施满 20 层（供探针使用，不在玩法路径上）。 */

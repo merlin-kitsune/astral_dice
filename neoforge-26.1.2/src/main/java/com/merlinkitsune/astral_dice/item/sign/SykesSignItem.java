@@ -5,6 +5,7 @@ import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.entity.ModEntityTypes;
 import com.merlinkitsune.astral_dice.entity.SykeTentacleEntity;
 import com.merlinkitsune.astral_dice.item.AbyssMarkManager;
+import com.merlinkitsune.astral_dice.item.CurioSlotUtil;
 import com.merlinkitsune.astral_dice.item.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -35,8 +36,9 @@ import top.theillusivec4.curios.api.SlotContext;
  * （同时占格：放下 {@code abyss_tentacle_collision} 隐形方块），触须居中的 5×5 格地表即「魔渊区域」，
  * 任何进入的敌对目标都会被触须主动攻击。
  *
- * <p><b>被动「触须深渊」</b>：佩戴者攻击目标时使其获得 1 层「渊蚀印记」（2:00，每层使目标受到
- * 魔渊幼体与魔渊触须的伤害 +1，上限 20 层）；该被动每 10 秒最多触发一次（计时写在佩戴者持久数据上）。
+ * <p><b>被动「触须深渊」</b>：进入「魔渊区域」的敌对目标立即获得 1 层「渊蚀印记」，此后每次被
+ * 「魔渊触须」命中再 +1 层（2:00，上限 20 层）；每层使目标受到魔渊幼体与魔渊触须的伤害 +1。
+ * 场上每有 1 个由佩戴者施加且仍存活的目标，佩戴者攻击力 +1；印记绑定施印者直到目标被击杀。
  *
  * <p><b>附带的自身抗性</b>（用户裁决 m12998）：无法触发幽匿感测体 / 尖啸体（振动源被静音，
  * 见 {@code mixin/sculk/*}）、不会被尖啸体施加黑暗、受到来自监守者的伤害 -50%。
@@ -115,9 +117,9 @@ public class SykesSignItem extends BaseSignItem {
     }
 
     /**
-     * 被动「触须深渊」：佩戴者造成伤害时给目标上 1 层印记（10 秒冷却），并按已有层数追加伤害。
+     * 被动「触须深渊」：佩戴者攻击敌对目标时，按目标已有的「渊蚀印记」层数额外加伤。
      *
-     * <p>顺序很重要：**先按现有层数加伤、再施印**，否则本次命中就会把刚加上的那一层也算进去。
+     * <p>施印只由「魔渊区域」入场与「魔渊触须」命中承担；玩家攻击不再施印。
      */
     @SubscribeEvent
     public static void onAttackHostile(LivingDamageEvent.Pre event) {
@@ -132,10 +134,7 @@ public class SykesSignItem extends BaseSignItem {
         if (stacks > 0) {
             event.setNewDamage(event.getNewDamage() + stacks);
         }
-        if (AbyssMarkManager.readyToApply(attacker)) {
-            AbyssMarkManager.apply(victim);
-            AbyssMarkManager.markApplied(attacker);
-        }
+        // 被动第一条改为「进入魔渊区域 / 被触须命中」加层；玩家攻击只按既有层数加伤。
     }
 
     /** 受到来自监守者的伤害 -50%。 */
@@ -167,10 +166,24 @@ public class SykesSignItem extends BaseSignItem {
     }
 
     @Override
-    public void onUnequip(SlotContext slotContext, ItemStack newStack, ItemStack stack) {
-        // 立牌本身不持有状态：印记挂在目标身上、施印冷却挂在佩戴者持久数据上，跨卸下保留
-        super.onUnequip(slotContext, newStack, stack);
+    public void curioTick(SlotContext slotContext, ItemStack stack) {
+        super.curioTick(slotContext, stack);
+        if (!(slotContext.entity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (!wearsSign(player) || !CurioSlotUtil.hasDiceEquipped(player)) {
+            AbyssMarkManager.clearAttackBonus(player);
+            return;
+        }
+        if (player.tickCount % 20 == 0) {
+            AbyssMarkManager.refreshAttackBonus(player);
+        }
     }
+
+    @Override
+    protected void clearSignData(Player player, ItemStack stack) {
+        AbyssMarkManager.clearAttackBonus(player);
+    }
+
 
     // 2026-11-11 P1 补齐：与 P0 同口径的机器可读拒绝。
     @Override
