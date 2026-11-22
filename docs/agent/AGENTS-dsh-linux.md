@@ -244,7 +244,7 @@
 | 「分支归属纪律（禁止镜像/回填）」 | **不变**（宿主无关）；`~/Project` 副本层已不存在，不要按旧文档重建 |
 | 发布投放（整合包 `versions/<实例>/mods`） | Linux 宿主**可**投放：根 = `/mnt/d/.minecraft`（`MC_HOME` 可覆盖，根 `build.gradle` 的 `mcHomePath` 统一解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`）；Windows 宿主同一批文件在 `D:\.minecraft`。**「默认不部署」红线不变**（仅用户明确下达时跑 `pushToGame`/`build`） |
 | 出网 / git 代理 | **2026-11-10 用户裁决**：Linux 原生宿主用 clash-verge-rev **TUN 模式**全局接管（`tun.enable=true` / `198.18.0.1/30`）⇒ **Gradle / git / 游戏 JVM 全部直连，Windows 的 `127.0.0.1:7897` 代理口径在本机不适用**（`~/.gradle/gradle.properties` 代理块已删）；仓库 `.git/config` 的 `http(s).proxy=127.0.0.1:7897` 是 Windows 共用遗留、**不改**，Linux 上用命令级 `-c http.proxy= -c https.proxy=` 走直连；clash 未运行 ⇒ gradle 加 `--offline`；状态查 `127.0.0.1:9097`（Bearer secret） |
-| 默认不 commit / push / 打 tag | **不变**（最严格红线） |
+| 本地 commit / push / tag | **2026-11-22 用户裁决**：本地 commit **默认允许**（按提交纪律「早提交、勤提交」）；**push / tag 仍须用户明确放行** |
 | `models/` `images/` `sound/` 与 `run/` 内他人产物 | **不变**：出现不属于自己的改动 ⇒ 停手报告，不 add/commit/stash/checkout/删除 |
 | 「Windows 开发配置不可动」 | **新增（2026-10-31 用户硬约束）**：本机与 Windows 共用同一块盘；只改 Linux 侧需要的文件，不删 / 不改 Windows 专属配置（`mt.conf` 的 Windows 路径、旧脚本（已删除）、`gradlew.bat`、`run/start-*.bat`、`.vscode` 的 `F:\` 配置一律保留原样） |
 
@@ -285,7 +285,7 @@
 - **出网走 TUN 直连（2026-10-31 用户裁决）**：clash-verge-rev 以 TUN 接管全部路由（实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ **远程 git 直接跑，不加 `-c http.proxy=…`**，也不要 export `*_proxy`。
   - 仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`（**Windows 共用配置，保留不动**）。**Linux 口径：远程 git 一律用 `git -c http.proxy= -c https.proxy= <子命令>` 走 TUN 直连**（2026-11-10 用户裁决：Linux 用 TUN，不套 Windows 代理）。
   - 排障：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs` 确认 `tun.enable=true`（secret 见 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml`）；`/version` 看内核；`401` 是 secret 问题不是断网。Maven 侧 Central / aliyun / neoforged 直连 200，不需要镜像也不需要代理。
-- 一律 `git -C /mnt/f/MCProject/astral_dice_multiloader <子命令>`；**默认不 commit / push / tag**，远程操作须用户明确要求。
+- 一律 `git -C /mnt/f/MCProject/astral_dice_multiloader <子命令>`；**本地 commit 默认允许**（单主题、如实写改动面）；**push / tag 须用户明确要求**。
 - 提交前 `git status --short -uall` 必须只剩用户未跟踪素材（4 个文件，见〈git〉）；有他人改动 ⇒ 停手报告。
 - `git add` 只加本轮明确产物；**禁止** `git add -A`、`git stash`、`git checkout --` 清别人的改动。
 
