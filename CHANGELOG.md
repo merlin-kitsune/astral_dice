@@ -4,6 +4,15 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.6.0-pre.4 (2026-11-22)
+
+### This release
+
+- Abyss Larva passive performance: the five `AbyssMarkManager` copies now maintain a `MARKED_BY_OWNER` owner→target-UUID index. `apply` / `setOwner` / `clearOwner` keep it in sync; `countMarkedFor` walks only that owner's targets instead of scanning `ServerLevel.getAllEntities()` on every refresh. The index is rebuilt lazily on the first refresh or a dimension change, skips unloaded entities by UUID lookup, and prunes dead / expired / removed targets.
+- Version: all five `mod_version` values bump from `1.6.0-pre.3+<loader>` to `1.6.0-pre.4+<loader>`; `starengine_version` stays `1.2.0-pre.2`.
+- Verification for this batch: five-line `compileJava` passed; the 2-minute single-layer decay and two-owner isolation live readings are still to be appended.
+- This batch is not pushed, tagged or published.
+
 ## 1.6.0-pre.3 (2026-11-22)
 
 ### This release
