@@ -30,7 +30,7 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 
 ## What's new in 1.6.0-pre.4
 
-The Abyss Larva attack-bonus counter now uses an owner→target UUID index: `countMarkedFor` walks only the wearer's marked targets instead of scanning every entity in the level, rebuilding once on the first refresh or a dimension change. P0 `neoforge-1.21.1` live tests passed for cache counting, two-owner isolation and a 125-second single-layer mark expiry; the other four lines are pending. StarEngine stays at 1.2.0-pre.2.
+The Abyss Larva attack-bonus counter now uses an owner→target UUID index: `countMarkedFor` walks only the wearer's marked targets instead of scanning every entity in the level, rebuilding once on the first refresh or a dimension change. P0 `neoforge-1.21.1` live tests passed for cache counting, two-owner isolation and a 125-second single-layer mark expiry; the other four lines (`forge-1.20.1`, `neoforge-26.1.2`, `fabric-1.20.1`, `fabric-1.21.1`) also passed two-owner isolation, cache counting and death-cleanup smoke tests. StarEngine stays at 1.2.0-pre.2.
 
 ## What's new in 1.6.0-pre.3
 
