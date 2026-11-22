@@ -1353,8 +1353,8 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.AMETHYST_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子 → BXB/KCK/XDX
-        // (B=黑色染料、X=星币尘、K=金块、C=空白筹码、D=钻石骰子;2026-11-08 用户给定行序)
+        // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白立牌 + 钻石骰子 → BXB/KCK/XDX
+        // (B=黑色染料、X=星币尘、K=金块、C=空白立牌、D=钻石骰子;2026-11-08 用户给定行序)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AL_SIGN.get())
                 .pattern("BXB")
                 .pattern("KCK")
@@ -1362,12 +1362,12 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', net.minecraft.world.item.Items.BLACK_DYE)
                 .define('X', ModItems.STAR_COIN_DUST.get())
                 .define('K', net.minecraft.world.item.Items.GOLD_BLOCK)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X
-        // (B=末影珍珠、X=星币、K=黄色染料、C=空白筹码、D=骰子/普通骰子)
+        // (B=末影珍珠、X=星币、K=黄色染料、C=空白立牌、D=骰子/普通骰子)
         // 2026-11-10 用户裁决:品质史诗→稀有,配方简化(星币尘→星币、钻石骰子→骰子)
         // 2026-11-11 用户裁决:墨囊→末影珍珠、金块→金色染料(原版无金色染料,取黄色染料)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
@@ -1377,9 +1377,9 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', net.minecraft.world.item.Items.ENDER_PEARL)
                 .define('X', ModItems.STAR_COIN.get())
                 .define('K', net.minecraft.world.item.Items.YELLOW_DYE)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('D', ModItems.DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 魔渊幼体立牌(sykes,史诗):MYM/YCY/GDG（M=末影之眼、Y=幽匿催发体、C=空白立牌、G=黄金星盘、D=钻石骰子）
         // 2026-11-10 补:此前该配方以手写文件形式只存在于 src/generated/resources（datagen 不产出 ⇒
@@ -1395,7 +1395,7 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 金鲤立牌(souri,传奇)
+        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白立牌、P=黄金星盘、D=钻石骰子）
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
                 .pattern("BYB")
                 .pattern("ZCZ")
@@ -1403,10 +1403,10 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .define('B', ModItems.STAR_COIN_DUST.get())
                 .define('Y', net.minecraft.world.item.Items.TROPICAL_FISH)
                 .define('Z', net.minecraft.world.item.Items.CLOCK)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 垃圾桶立牌(z3000,稀有):HRH/ISI/TDT（H=漏斗、R=红石、I=铁锭、S=空白立牌、T=铁粒、D=骰子）
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.Z3000_SIGN.get())
