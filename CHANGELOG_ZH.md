@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.100
+
+### 本线
+
+- 修复 lingling_sign（怪力乱神）立牌配方：中心 R 原为 `minecraft:redstone_block`，现改为 `astral_dice:blank_sign`；形状 `PDP/DRD/PTP` 与其它材料不变。2026-11-22 用户裁决覆盖 `.99` 中的红石中心冻结例外，本配方此后按通用立牌规则执行。
+- 五线 datagen 源（`ModRecipeProvider.java`）与生成的配方/进度 JSON 同步重生成：5 条配方 + 5 条进度共 10 个文件；所有 `lingling_sign.json` 的 `key.R` 为 `astral_dice:blank_sign`，进度条件为 `has_blank_sign`。
+- datagen 结果：`:fabric-1.20.1:runDatagen` BUILD SUCCESSFUL（18.8 s）、`:fabric-1.21.1:runDatagen` BUILD SUCCESSFUL（17.2 s）、`:neoforge-1.21.1:runData` BUILD SUCCESSFUL（16.8 s）、`:neoforge-26.1.2:runServerData` BUILD SUCCESSFUL（13.9 s）。`:forge-1.20.1:runData` 已写出 2 个变更文件（配方 + 进度），但 Gradle 进程在 HashCache 后未退出，420 s 时终止；生成 JSON 已逐条核对。
+- 门禁/构建：`python scripts/verify/verify_crafting_recipe_uniqueness.py` -> `RECIPE_UNIQ: OK`，P0 shaped=115 / shapeless=6 / collisions=0；`./gradlew build --offline` BUILD SUCCESSFUL（11 s，44 actionable tasks，29 executed），产出五份 `astral_dice-26.4-SNAPSHOT.100+<loader>.jar`。
+- 五线 `mod_version` 统一到 `26.4-SNAPSHOT.100+<loader>`；`starengine_version` 仍为 `26.4-SNAPSHOT.18`。诚实边界：未跑实机；未 push、未打 tag、未发布。
+
 ## 26.4-SNAPSHOT.99
 
 ### 本线

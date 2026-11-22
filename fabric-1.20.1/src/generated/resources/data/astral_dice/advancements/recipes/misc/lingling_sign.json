@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_conductive_wire": {
+    "has_blank_sign": {
       "conditions": {
         "items": [
           {
             "items": [
-              "astral_dice:conductive_wire"
+              "astral_dice:blank_sign"
             ]
           }
         ]
@@ -22,7 +22,7 @@
   },
   "requirements": [
     [
-      "has_conductive_wire",
+      "has_blank_sign",
       "has_the_recipe"
     ]
   ],

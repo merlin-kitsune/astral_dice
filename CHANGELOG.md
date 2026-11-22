@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.100
+
+### This line
+
+- Fixed the lingling_sign (Lingling) sign recipe: center R changed from `minecraft:redstone_block` to `astral_dice:blank_sign`; the `PDP/DRD/PTP` pattern and the other ingredients are unchanged. The 2026-11-22 user ruling supersedes the frozen redstone-center exception recorded in `.99`; this recipe now follows the general sign rule.
+- Regenerated the five lines' datagen source (`ModRecipeProvider.java`) and their generated recipe/advancement JSON: 5 recipes + 5 advancements, 10 files total. Every `lingling_sign.json` has `key.R = astral_dice:blank_sign`, and the advancement criterion is `has_blank_sign`.
+- Datagen results: `:fabric-1.20.1:runDatagen` BUILD SUCCESSFUL (18.8 s), `:fabric-1.21.1:runDatagen` BUILD SUCCESSFUL (17.2 s), `:neoforge-1.21.1:runData` BUILD SUCCESSFUL (16.8 s), and `:neoforge-26.1.2:runServerData` BUILD SUCCESSFUL (13.9 s). `:forge-1.20.1:runData` wrote its two changed files (recipe + advancement) but the Gradle process did not exit after HashCache and was terminated at 420 s; the generated JSON was checked item by item.
+- Gate/build: `python scripts/verify/verify_crafting_recipe_uniqueness.py` -> `RECIPE_UNIQ: OK`, P0 shaped=115 / shapeless=6 / collisions=0; `./gradlew build --offline` BUILD SUCCESSFUL (11 s, 44 actionable tasks, 29 executed), producing five `astral_dice-26.4-SNAPSHOT.100+<loader>.jar` artifacts.
+- Bumped all five lines to `mod_version=26.4-SNAPSHOT.100+<loader>`; `starengine_version` remains `26.4-SNAPSHOT.18`. Honest boundary: no live-game run; not pushed, tagged, or released.
+
 ## 26.4-SNAPSHOT.99
 
 ### This line

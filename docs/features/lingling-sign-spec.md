@@ -35,9 +35,9 @@ P T P
 ```
 
 - P = `astral_dice:star_plate`（星盘） · D = `astral_dice:conductive_wire`（导电线材）
-- R = `minecraft:redstone_block`（红石块） · T = `astral_dice:diamond_dice`（钻石骰子）
+- R = `astral_dice:blank_sign`（空白立牌；2026-11-22 用户裁决：中心由红石块改为空白立牌） · T = `astral_dice:diamond_dice`（钻石骰子）
 - 模板：`datagen/ModRecipeProvider.java` 中 Kangel/Ame 立牌段落（旧会话取证件 :1286-1297）。
-- **例外登记**：与 AGENTS-full.md:1088「BLANK_SIGN 固定 3×3 正中心 / 立牌骰子固定中下且仅 1 个」冲突 —— 用户显式给出 pattern，按「用户指令优先于工作区规则」处理，本例外**只对 lingling_sign 生效**；需在交付报告中登记，并把例外写进本 spec（已写）。
+- **2026-11-22 用户裁决**：中心 R 由 `minecraft:redstone_block` 改为 `astral_dice:blank_sign`；形状与其它材料不变，本配方不再作为例外，按通用立牌规则（中心空白立牌）执行。
 - runData 后必须跑 `scripts/verify/verify_crafting_recipe_uniqueness.py`。
 
 ## 4. 被动「拦截者」（佩戴立牌时生效）

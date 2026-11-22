@@ -1537,17 +1537,18 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
-        // 怪力乱神立牌(lingling,史诗):PDP/DRD/PTP
-        // (P=星盘×6、D=导电线材×2、R=红石块、T=钻石骰子;空白立牌不用,规格 §3 明写)
+        // 怪力乱神立牌(lingling,史诗):PDP/DRD/PTP(2026-11-22 中心改为空白立牌)
+        // (P=星盘×6、D=导电线材×2、R=空白立牌、T=钻石骰子)
+        // 2026-11-22 用户裁决:中心材料由红石块改为空白立牌;形状与其它材料不变。
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
                 .pattern("PDP")
                 .pattern("DRD")
                 .pattern("PTP")
                 .define('P', ModItems.STAR_PLATE.get())
                 .define('D', ModItems.CONDUCTIVE_WIRE.get())
-                .define('R', Items.REDSTONE_BLOCK)
+                .define('R', ModItems.BLANK_SIGN.get())
                 .define('T', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白立牌、P=黄金星盘、D=钻石骰子）
         // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子 → BXB/KCK/XDX
