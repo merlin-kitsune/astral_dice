@@ -8,6 +8,7 @@
 - 工作树：`F:\MCProject\astral_dice_multiloader`（**单工作树五子项目同树**），分支 `multi-main`（HEAD 以实读为准）。
 - 前置库源码：`F:\MCProject\starengine`（独立仓，分支 `main`，产物发布到 mavenLocal 供本仓消费）。
 - 另一个常驻工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，26.4 开发线；尖端 `26.4-SNAPSHOT.76`）—— **与本树互不镜像**。
+- KubeJS 附属仓：`F:\MCProject\astral_dice_kubejs`（独立 git 仓，分支 `master`，2026-11-22 实读 = `0.0.2`；只含 `neoforge-1.21.1` + `forge-1.20.1` 两线）。**零编译依赖**：运行时反射主模组 `AstralDiceApi`，元数据声明主模组下界；关联方式是文档契约 + 元数据 + 探针，不是 submodule / composite build。1.6.0-pre.2 起该 API 迁到 StarEngine 包，附属仓需重定向反射目标（见 `docs/agent/AGENTS-full.md` §8 末条）。
 - `F:\MCProject\.agent-locks\`：宿主互斥锁目录（`kimi.lock` / `dsh.lock`，内容为 `PID=` / `TIME=` / `TASK=` 三行）。
 
 ## 2. 各线基线

@@ -215,6 +215,7 @@ When extending this workspace:
 - **KubeJS 附属**：独立仓 `F:\MCProject\astral_dice_kubejs`，发布版 **0.0.1，不带任何后缀**；只支持 NeoForge 1.21.1 + Forge 1.20.1，产物 `astral_dice_kubejs-0.0.1.jar`；元数据要求主模组 `[26.4-SNAPSHOT.76,)`。共享 binding 在附属仓 `common/src/main/java/com/merlinkitsune/astraldice/kubejs`，通过反射调用 `AstralDiceApi`，**不编译依赖**主模组或 StarEngine。
 - **KubeJS 脚本面**：只在 server scripts 暴露；注册入口有 `registerSign` / `registerChip` / `registerDiceTier` / `registerDamageHook(category, phase, [priority], fn)` / `registerCombatStatHook(stat, stage, [priority], fn)`；查询与钱包入口以附属仓 README 为准。物品 id 必须在注册表存在，未知 id 由脚本侧拒绝；枚举大小写不敏感。脚本重载时由 `beforeScriptsLoaded`（KubeJS 7）/ `onServerReload`（KubeJS 6）清空旧钩子，脚本重新注册。
 - **版本联动**：主模组新增 / 修改 `AstralDiceApi` 公开方法时，按仓库版本纪律 bump 主模组版本，并同步附属仓 metadata 的主模组下界与 README / CHANGELOG；不得只改主模组而让附属仓声明过宽的旧区间。
+- **KubeJS 附属现况（2026-11-22 实读更正，覆盖上一段旧数）**：附属仓当前 `mod_version=0.0.2`、产物 `astral_dice_kubejs-0.0.2.jar`（两线 2026-11-16 20:07 建成），元数据下界已改为主模组 `[1.6.0-pre.1,)`；1.6.0-pre.2 起 `AstralDiceApi` 已迁到 `com.merlinkitsune.starengine.api.astral`，附属仓 `AstralDiceBinding.java:44-48` 仍反射旧 `com.merlinkitsune.astral_dice.api`，未重定向前在 pre.2 运行时不可用。两仓解耦关系 = 反射 + 元数据 + 探针，无 submodule / composite build。
 
 ### 9. 验证门
 - **代码审查**：在 `common/src/main/java` 与五线 `src/main/java` 检索 `Signs.register|Chips.register|DiceTiers.register|WalletRegistry.register|DamageHooks.register|CombatStatHooks.register|new SignDescriptor|new ChipDescriptor`；命中只允许在 `AstralDiceApi.java` / `DiceTierRegistry.java` / `CombatStatHooks.java` 等主模组实现层，附属 / KubeJS / 新功能命中即拒。
