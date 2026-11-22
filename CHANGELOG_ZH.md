@@ -10,7 +10,7 @@
 
 - 魔渊幼体被动性能优化：五线 `AbyssMarkManager` 新增 owner→目标 UUID 的 `MARKED_BY_OWNER` 索引；`apply` / `setOwner` / `clearOwner` 维护索引，`countMarkedFor` 只遍历该 owner 的目标，不再每次刷新扫描 `ServerLevel.getAllEntities()`；首次刷新或切换维度时惰性重建一次，实体卸载按 UUID 查询跳过，死亡 / 过期 / 移除时清理。
 - 版本号：五线 `mod_version` 统一 `1.6.0-pre.3+<loader>` → `1.6.0-pre.4+<loader>`；`starengine_version` 保持 `1.2.0-pre.2`。
-- 本批验收：五线 `compileJava` 通过；2 分钟单层衰减与双 owner 隔离的实机读数待补。
+- 本批验收：五线 `compileJava` 通过；P0 `neoforge-1.21.1` 实机：10 只未施印僵尸不计入 `countMarkedFor`；玩家与第二 owner（FakePlayer）各 `count=1`、`ATTACK_DAMAGE=2`；击杀后分别回到 `0/1`；Husk 单层印记 125 秒后 `stacks=0`、owner 保留、`count=0`、`attack=1`，Husk 存活。其余四线未跑实机。
 - 本批未 push、未打 tag、未发布。
 
 ## 1.6.0-pre.3（2026-11-22）

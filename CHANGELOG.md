@@ -10,7 +10,7 @@
 
 - Abyss Larva passive performance: the five `AbyssMarkManager` copies now maintain a `MARKED_BY_OWNER` owner→target-UUID index. `apply` / `setOwner` / `clearOwner` keep it in sync; `countMarkedFor` walks only that owner's targets instead of scanning `ServerLevel.getAllEntities()` on every refresh. The index is rebuilt lazily on the first refresh or a dimension change, skips unloaded entities by UUID lookup, and prunes dead / expired / removed targets.
 - Version: all five `mod_version` values bump from `1.6.0-pre.3+<loader>` to `1.6.0-pre.4+<loader>`; `starengine_version` stays `1.2.0-pre.2`.
-- Verification for this batch: five-line `compileJava` passed; the 2-minute single-layer decay and two-owner isolation live readings are still to be appended.
+- Verification for this batch: five-line `compileJava` passed. P0 `neoforge-1.21.1` live: 10 unmarked zombies were not counted by `countMarkedFor`; the player and a second owner (FakePlayer) each reported `count=1` and `ATTACK_DAMAGE=2`; after killing them the values returned to `0/1`; one Husk layer expired after 125s with `stacks=0`, owner retained, `count=0`, `attack=1`, and the Husk alive. The other four lines were not live-tested.
 - This batch is not pushed, tagged or published.
 
 ## 1.6.0-pre.3 (2026-11-22)
