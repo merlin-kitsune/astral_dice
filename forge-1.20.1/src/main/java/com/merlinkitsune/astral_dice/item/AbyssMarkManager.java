@@ -40,6 +40,12 @@ public final class AbyssMarkManager {
     /** 佩戴者攻击力修饰符的固定 key。 */
     private static final String ATTACK_BONUS_KEY = "sykes_abyss_attack";
 
+    /** owner → 目标 UUID 索引，避免每次刷新扫全场实体。 */
+    private static final java.util.Map<java.util.UUID, java.util.Set<java.util.UUID>> MARKED_BY_OWNER = new java.util.HashMap<>();
+
+    /** owner 最近一次建索引的维度；换维度时补扫一次。 */
+    private static final java.util.Map<java.util.UUID, String> INDEX_DIMENSION = new java.util.HashMap<>();
+
     private record PendingDecay(LivingEntity entity, int amplifier) {
     }
 
@@ -64,6 +70,10 @@ public final class AbyssMarkManager {
         java.util.UUID bound = getOwner(target);
         if (owner != null && bound == null) {
             setOwner(target, owner);
+        }
+        java.util.UUID actualOwner = getOwner(target);
+        if (actualOwner != null) {
+            indexMarked(actualOwner, target.getUUID());
         }
         int amplifier = existing != null ? Math.min(existing.getAmplifier() + 1, MAX_STACKS - 1) : 0;
         target.addEffect(new MobEffectInstance(ModEffects.ABYSS_MARK.get(), DURATION_TICKS, amplifier, false, true));
@@ -131,6 +141,7 @@ public final class AbyssMarkManager {
 
     /** 清掉目标身上所有施印者 tag（只动本机制自己的前缀）。 */
     public static void clearOwner(LivingEntity target) {
+        unindexMarkedEverywhere(target.getUUID());
         for (String tag : new ArrayList<>(target.getTags())) {
             if (tag.startsWith(OWNER_TAG_PREFIX)) {
                 target.removeTag(tag);
@@ -146,14 +157,42 @@ public final class AbyssMarkManager {
     /** 当前玩家名下仍存活、仍带印记的敌对目标数（攻击力加成 = 这个数）。 */
     public static int countMarkedFor(net.minecraft.world.entity.player.Player player) {
         if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) return 0;
+        java.util.UUID owner = player.getUUID();
+        java.util.Set<java.util.UUID> marked = MARKED_BY_OWNER.computeIfAbsent(owner, k -> new java.util.HashSet<>());
+        String dimension = String.valueOf(level.dimension());
+        if (!dimension.equals(INDEX_DIMENSION.put(owner, dimension))) {
+            for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof LivingEntity living) || !(living instanceof net.minecraft.world.entity.monster.Enemy)) continue;
+                if (!living.isAlive() || living.isRemoved() || getStacks(living) <= 0) continue;
+                if (owner.equals(getOwner(living))) marked.add(living.getUUID());
+            }
+        }
         int count = 0;
-        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
-            if (!(entity instanceof LivingEntity living) || !(living instanceof net.minecraft.world.entity.monster.Enemy)) continue;
-            if (!living.isAlive() || living.isRemoved()) continue;
-            if (getStacks(living) <= 0) continue;
-            if (player.getUUID().equals(getOwner(living))) count++;
+        java.util.Iterator<java.util.UUID> it = marked.iterator();
+        while (it.hasNext()) {
+            net.minecraft.world.entity.Entity entity = level.getEntity(it.next());
+            if (entity == null) continue;
+            if (!(entity instanceof LivingEntity living)
+                    || !(living instanceof net.minecraft.world.entity.monster.Enemy)
+                    || !living.isAlive() || living.isRemoved()
+                    || getStacks(living) <= 0
+                    || !owner.equals(getOwner(living))) {
+                it.remove();
+                continue;
+            }
+            count++;
         }
         return count;
+    }
+
+    private static void indexMarked(java.util.UUID owner, java.util.UUID target) {
+        MARKED_BY_OWNER.computeIfAbsent(owner, k -> new java.util.HashSet<>()).add(target);
+    }
+
+    private static void unindexMarkedEverywhere(java.util.UUID target) {
+        for (java.util.Set<java.util.UUID> marked : MARKED_BY_OWNER.values()) {
+            marked.remove(target);
+        }
     }
 
     /** 按「名下带印记的存活目标数」刷新佩戴者攻击力（0 时自动移除修饰符）。 */
