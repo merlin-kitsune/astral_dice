@@ -28,6 +28,10 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 - Bountiful 赏金板联动。
 - 各线的 Jade 都把护甲位换成本模组的防御力。
 
+## 1.6.0-pre.4 更新内容
+
+本版给魔渊幼体被动的攻击力计数加了 owner→目标 UUID 索引：`countMarkedFor` 只遍历该玩家的已施印目标，不再每 20 tick 扫描全场实体；首次刷新或切换维度时惰性重建一次。P0 `neoforge-1.21.1` 已实机通过缓存计数、双 owner 隔离与 125 秒单层印记衰减；其余四线待跑。StarEngine 仍为 1.2.0-pre.2。
+
 ## 1.6.0-pre.3 更新内容
 
 本次在 1.6.0-pre.2 基础上修正立牌配方：`al_sign`、`inkshadow_sign`、`souri_sign` 的中心槽由空白筹码改为空白立牌，`lingling_sign` 的中心槽由红石块改为空白立牌；36 种立牌配方全量复核后，35 种中心均为空白立牌，未发现其它错配。StarEngine 仍为 1.2.0-pre.2。
@@ -89,12 +93,12 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 | 支持 | 子项目 | Minecraft | 加载器 | Java | 版本 | 帕秋莉手册 |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.6.0-pre.3 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47 | 17 | 1.6.0-pre.3 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.6.0-pre.3 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.6.0-pre.3 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.6.0-pre.4 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47 | 17 | 1.6.0-pre.4 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.6.0-pre.4 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.6.0-pre.4 | ✅ |
 
-- **各线都是正式发布线**：`neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2` 与 `fabric-1.20.1` 保持功能对等；每个 GitHub Release 同时带上这四个 jar，tag 用不带后缀的基础版本号（本版为 `1.6.0-pre.3`），本次按预发布类型发布。CI 一次构建全部线（`.github/workflows/build.yml`）。
+- **各线都是正式发布线**：`neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2` 与 `fabric-1.20.1` 保持功能对等；每个 GitHub Release 同时带上这四个 jar，tag 用不带后缀的基础版本号（本版为 `1.6.0-pre.4`），本次按预发布类型发布。CI 一次构建全部线（`.github/workflows/build.yml`）。
 - `neoforge-26.1.2` 是 26.1.x 迁移线：与另外各线同批发布、作为同一个 Release 的附件，不单独打 tag。上游没有 26.1.x 构建，因此这条线没有 Iron's Spells 'n Spellbooks 联动。
 - `fabric-1.20.1` 是 Fabric 移植线（2026-09-29 加入，2026-10-01 并入 `multi-main`），自 1.5.0 起纳入正式发布：与其余各线同一个 Release、同一个 tag。它有一套自己的前置（见下文「Fabric（1.20.1）前置一览」），没有 Curios、Bountiful 与 Iron's Spells 联动；配方机制上的四处平台差异见 [CHANGELOG.md](CHANGELOG.md) 的「平台与兼容性」。
 
@@ -132,26 +136,26 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 ## 下载
 
 - **GitHub Releases**：[merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases)。每个 Release 同时带四个 jar：`neoforge_1.21.1`、`forge_1.20.1`、`neoforge_26.1.2` 与 `fabric_1.20.1` 各一个。
-- **标签规则**：tag 一律使用不带后缀的基础版本号（本版 `1.6.0-pre.3`）——不加 `v` 前缀、不加平台前缀、不加加载器后缀。四个 jar 同属这一个 Release；本次 1.6.0-pre.3 按预发布类型发布，后续 1.6.0 稳定版才用不带后缀的基础版本号。Fabric 线不单独发预发布，也不占用独立 tag。
-- **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**各线全部不再内置**该库，玩家需自行安装对应平台的那份独立 jar：`starengine-neoforge-1.21.1-1.2.0-pre.2.jar` / `starengine-forge-1.20.1-1.2.0-pre.2.jar` / `starengine-neoforge-26.1.2-1.2.0-pre.2.jar` / `starengine-fabric-1.20.1-1.2.0-pre.2.jar`。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.6.0-pre.3+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
-- **构建产物**：`astral_dice-1.6.0-pre.3+neoforge_1.21.1.jar`、`astral_dice-1.6.0-pre.3+forge_1.20.1.jar`、`astral_dice-1.6.0-pre.3+neoforge_26.1.2.jar`、`astral_dice-1.6.0-pre.3+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下；jar 内元数据版本与文件名同号（1.6.0-pre.3）。
+- **标签规则**：tag 一律使用不带后缀的基础版本号（本版 `1.6.0-pre.4`）——不加 `v` 前缀、不加平台前缀、不加加载器后缀。四个 jar 同属这一个 Release；本次 1.6.0-pre.4 按预发布类型发布，后续 1.6.0 稳定版才用不带后缀的基础版本号。Fabric 线不单独发预发布，也不占用独立 tag。
+- **CurseForge**：构建发布到主项目（`astral-dice`，project id `1662159`）。StarEngine 有独立项目（`starengine`，id `1755415`）；**各线全部不再内置**该库，玩家需自行安装对应平台的那份独立 jar：`starengine-neoforge-1.21.1-1.2.0-pre.2.jar` / `starengine-forge-1.20.1-1.2.0-pre.2.jar` / `starengine-neoforge-26.1.2-1.2.0-pre.2.jar` / `starengine-fabric-1.20.1-1.2.0-pre.2.jar`。版本号保留 `+<加载器>_<MC版本>` 后缀（例如 `1.6.0-pre.4+neoforge_1.21.1`），发布渠道由版本后缀决定。Modrinth 发布链路已于 2026-10-23 永久移除，唯一商店通道是 CurseForge。
+- **构建产物**：`astral_dice-1.6.0-pre.4+neoforge_1.21.1.jar`、`astral_dice-1.6.0-pre.4+forge_1.20.1.jar`、`astral_dice-1.6.0-pre.4+neoforge_26.1.2.jar`、`astral_dice-1.6.0-pre.4+fabric_1.20.1.jar`，各自位于对应子项目的 `build/libs/` 下；jar 内元数据版本与文件名同号（1.6.0-pre.4）。
 
-## 构建溯源（1.6.0-pre.3）
+## 构建溯源（1.6.0-pre.4）
 
-五条线均由 `4c693206` 构建（2026-11-22）。这是本地预发布候选，未 push、未发布。
+五条线均由 `4293b053` 构建（2026-11-22）。这是本地预发布候选，未 push、未发布。
 每个 jar 在同目录附 `<jar>.sha256`；仅 neoforge-1.21.1 与 forge-1.20.1 内含 `META-INF/astral_dice/build-info.json`
 （`{version, commit, builtAt, classCount}`），其余平台不含。`build-info.commit` 表示该 jar 由哪个**代码提交**构建；
 记录哈希的 README 更新本身不改动产物。
 
 | 线 | 版本 | 构建自 | 构建时间 | 大小 (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 1.6.0-pre.3+neoforge_1.21.1 | `4c693206`，classCount 657 | 2026-11-22 | 3,074,547 | `1538d0d9859268ed052d404faf91c558806cd8232a5b3aba5b58c6ba7ba6e4f6` |
-| forge-1.20.1 | 1.6.0-pre.3+forge_1.20.1 | `4c693206`，classCount 681 | 2026-11-22 | 3,124,891 | `0b53d9080eab00b236049b4352876dc732118047ea9d516f36472abf5eb31bc3` |
-| neoforge-26.1.2 | 1.6.0-pre.3+neoforge_26.1.2 | 无 build-info，同一 `4c693206` 批次 | 2026-11-22 | 3,293,378 | `5e5594e94729d72e1ef51d9d83ba477438686011216780feec84588084c0082b` |
-| fabric-1.20.1 | 1.6.0-pre.3+fabric_1.20.1 | 无 build-info，同一 `4c693206` 批次 | 2026-11-22 | 3,366,330 | `7799de8dea6c66eaa26037c4090e612caa5423e78f8d42bbbfffb46fadbd41ba` |
-| fabric-1.21.1 | 1.6.0-pre.3+fabric_1.21.1 | 无 build-info，同一 `4c693206` 批次 | 2026-11-22 | 3,402,908 | `b0646ae647ed22d1e7c39552a574892ba97b5b09de26e11b9e89137aaf884dbb` |
+| neoforge-1.21.1 | 1.6.0-pre.4+neoforge_1.21.1 | `4293b053`，classCount 657 | 2026-11-22 | 3,075,524 | `2b886dfa4e2c1a1ee1b00e40e7cfda3cbd746c1ae2ec20be9e50c10c5e343ebf` |
+| forge-1.20.1 | 1.6.0-pre.4+forge_1.20.1 | `4293b053`，classCount 681 | 2026-11-22 | 3,125,891 | `a96d882512136541281521193881625f17aca3a615f09b01547b8f9b34a231ba` |
+| neoforge-26.1.2 | 1.6.0-pre.4+neoforge_26.1.2 | 无 build-info，同一 `4293b053` 批次 | 2026-11-22 | 3,294,353 | `b4df7c1839f873178d10b572501f0db89a9651466d5684a3bb340374986b3bc7` |
+| fabric-1.20.1 | 1.6.0-pre.4+fabric_1.20.1 | 无 build-info，同一 `4293b053` 批次 | 2026-11-22 | 3,367,317 | `f18a4fbaca9a1d3b7c18b6e4151fa4f87543d9ee56eefa7a423a8e9ed14ebd40` |
+| fabric-1.21.1 | 1.6.0-pre.4+fabric_1.21.1 | 无 build-info，同一 `4293b053` 批次 | 2026-11-22 | 3,403,901 | `c75c818977cf511c3340234e1a9427782e8693107db04ab9fb65db12214746e0` |
 
-本次最终 `assemble` 为 `BUILD SUCCESSFUL`（`assemble --offline --no-daemon --no-configuration-cache`，exit 0）。只有 neoforge-1.21.1 与 forge-1.20.1 带 build-info；其余三条按大小 + SHA-256 识别，均来自同一 `4c693206`。本地候选，未 push、未发布。
+本次最终 `assemble` 为 `BUILD SUCCESSFUL`（`assemble --offline --no-daemon --no-configuration-cache`，exit 0）。只有 neoforge-1.21.1 与 forge-1.20.1 带 build-info；其余三条按大小 + SHA-256 识别，均来自同一 `4293b053`。本地候选，未 push、未发布。
 旧的 26.4-SNAPSHOT 产物历史保留在 git / CHANGELOG；`build/libs` 中的字节即发布产物，`run/*/mods/` 下的副本是开发运行时重打包，不是发布附件。
 
 ## 构建
