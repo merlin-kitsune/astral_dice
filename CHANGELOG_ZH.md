@@ -9,9 +9,10 @@
 ### 本次发布
 
 - 立牌配方修正：`al_sign`（少主）/ `inkshadow_sign`（小猎手）/ `souri_sign`（金鲤）五线的 3×3 中心材料由**空白筹码**改为**空白立牌**，同步改五线 `datagen/ModRecipeProvider` 的 `.define('C', …)`、`.unlockedBy("has_blank_sign", …)` 与 15 份生成配方 / 15 份进度 JSON；此前这三条配方与其它立牌（中心均为空白立牌）不一致，属首版占位遗留。
-- 全量核对 36 种立牌配方（五线共 180 条）：改动后 34 种中心为空白立牌，`lingling_sign`（怪力乱神）中心红石块为唯一设计例外，`blank_sign` 自身为基材配方；无其它错用空白筹码的立牌。
+- 立牌配方更正（2026-11-22 用户追加）：`lingling_sign`（怪力乱神）中心由**红石块**改为**空白立牌**（pattern `PDP/DCD/PTP`），同步改五线 provider 与 5 份配方 / 5 份进度 JSON；此前登记为「用户指定 pattern 例外」，本次更正后撤销该例外，36 种立牌全部回到统一规则。
+- 全量核对 36 种立牌配方（五线共 180 条）：改动后 35 种中心为空白立牌，`blank_sign` 自身为基材配方；无其它中心错用空白筹码或红石块的立牌。
 - 版本号：五线 `mod_version` 统一 `1.6.0-pre.2+<loader>` → `1.6.0-pre.3+<loader>`；`starengine_version` 保持 `1.2.0-pre.2`。pre.2 条目里「pre.3 只是内部迭代号」的说法随本次实发布作废（版本号复用）。
-- 验收：`temp/verify_sign_recipes.py` 退出 0（175 条立牌块、170 条中心空白立牌、仅 lingling 例外、三条目标配方 `key.C = astral_dice:blank_sign`）；`scripts/verify/verify_crafting_recipe_uniqueness.py` 三线各 shaped=115 / collisions=0；`tools/verify_sign_display_names.py` PASS。
+- 验收：`temp/verify_sign_recipes.py` 退出 0（175 条立牌块 / 175 条中心空白立牌、无例外；四张目标配方 `key.C = astral_dice:blank_sign`）；`scripts/verify/verify_crafting_recipe_uniqueness.py` 三线各 shaped=115 / collisions=0；`tools/verify_sign_display_names.py` PASS。
 - 本批未跑实机冒烟；未 push、未打 tag、未发布。
 
 ## 1.6.0-pre.2（2026-11-19）

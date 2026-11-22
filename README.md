@@ -30,7 +30,7 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 
 ## What's new in 1.6.0-pre.3
 
-Recipe fix on top of 1.6.0-pre.2. Three sign recipes (`al_sign`, `inkshadow_sign`, `souri_sign`) now use a blank sign in the centre slot instead of a blank chip; an audit of all 36 sign recipes found no other mismatch. StarEngine stays at 1.2.0-pre.2.
+Recipe fixes on top of 1.6.0-pre.2. Three sign recipes (`al_sign`, `inkshadow_sign`, `souri_sign`) now use a blank sign in the centre slot instead of a blank chip, and `lingling_sign` now uses a blank sign instead of a redstone block; after auditing all 36 sign recipes, 35 have a blank sign in the centre and no other mismatch remains. StarEngine stays at 1.2.0-pre.2.
 
 ## What's new in 1.6.0-pre.2
 

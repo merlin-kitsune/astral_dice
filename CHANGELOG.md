@@ -9,9 +9,10 @@
 ### This release
 
 - Sign recipe fix: on all five lines the 3×3 center ingredient of `al_sign` (Young Master), `inkshadow_sign` (InkShadow) and `souri_sign` (Souri) changes from **blank chip** to **blank sign**. Updated the five `datagen/ModRecipeProvider` files (`.define('C', …)`, `.unlockedBy("has_blank_sign", …)`) plus 15 generated recipe JSONs and 15 advancement JSONs. These three recipes were the only ones inconsistent with every other sign (all of which use a blank sign in the center) and dated back to the first-pass placeholder.
-- Full audit of all 36 sign recipes (180 recipes across five lines): 34 now have a blank sign in the center; `lingling_sign` uses a redstone block as the sole intentional exception, and `blank_sign` itself is the base-material recipe. No other sign misuses blank chip.
+- Sign recipe correction (user follow-up, 2026-11-22): `lingling_sign` (LingLing) changes its center from **redstone block** to **blank sign** (pattern `PDP/DCD/PTP`), updating the five providers plus 5 recipe JSONs and 5 advancement JSONs. Its earlier “user-specified pattern exception” registration is revoked, so all 36 signs follow the unified rule again.
+- Full audit of all 36 sign recipes (180 recipes across five lines): 35 now have a blank sign in the center, and `blank_sign` itself is the base-material recipe. No other sign misuses blank chip or a redstone block.
 - Versions: all five `mod_version` values move from `1.6.0-pre.2+<loader>` to `1.6.0-pre.3+<loader>`; `starengine_version` stays `1.2.0-pre.2`. The pre.2 note that pre.3 was only an internal label is superseded by this real release (version label reused).
-- Verification: `temp/verify_sign_recipes.py` exits 0 (175 sign blocks, 170 blank-sign centers, only the lingling exception, all three target recipes `key.C = astral_dice:blank_sign`); `scripts/verify/verify_crafting_recipe_uniqueness.py` reports shaped=115 / collisions=0 on each of the three gated lines; `tools/verify_sign_display_names.py` passes.
+- Verification: `temp/verify_sign_recipes.py` exits 0 (175 sign blocks / 175 blank-sign centers with no exception; all four target recipes `key.C = astral_dice:blank_sign`); `scripts/verify/verify_crafting_recipe_uniqueness.py` reports shaped=115 / collisions=0 on each of the three gated lines; `tools/verify_sign_display_names.py` passes.
 - No live client/server smoke was run in this batch; not pushed, not tagged, not published.
 
 ## 1.6.0-pre.2 (2026-11-19)

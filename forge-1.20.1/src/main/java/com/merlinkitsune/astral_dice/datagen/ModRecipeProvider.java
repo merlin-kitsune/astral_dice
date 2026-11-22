@@ -1514,21 +1514,17 @@ public class ModRecipeProvider extends RecipeProvider implements IConditionBuild
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
-        // 怪力乱神立牌(lingling,史诗):PDP/DRD/PTP
-        // (P=星盘×6、D=导电线材×2、R=红石块、T=钻石骰子;空白立牌不用,规格 §3 明写)
-        // 2026-10-18 冻结规格(spec §3,与 1.21.1 侧 data/astral_dice/recipe/lingling_sign.json 逐字对齐):
-        // 「PDP/DRD/PTP」。注意这是**刻意例外**于 AGENTS-full.md:1088「立牌配方统一 空白立牌 + 紫晶骰子」
-        // 的条目(规格 §3 已声明);材料多重集与其它立牌互不相同 ⇒ 守门
-        // scripts/verify/verify_crafting_recipe_uniqueness.py 通过。
+        // 怪力乱神立牌(lingling,史诗):PDP/DCD/PTP(2026-11-22 用户更正:中心为空白立牌,撤销原红石块例外)
+        // (P=星盘×6、D=导电线材×2、C=空白立牌、T=钻石骰子;材料多重集仍与其它立牌互不相同 ⇒ 守门脚本通过)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
                 .pattern("PDP")
-                .pattern("DRD")
+                .pattern("DCD")
                 .pattern("PTP")
                 .define('P', ModItems.STAR_PLATE.get())
                 .define('D', ModItems.CONDUCTIVE_WIRE.get())
-                .define('R', Items.REDSTONE_BLOCK)
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('T', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
         // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白立牌 + 钻石骰子 → BXB/KCK/XDX
         // (B=黑色染料、X=星币尘、K=金块、C=空白立牌、D=钻石骰子;2026-11-08 用户给定行序)

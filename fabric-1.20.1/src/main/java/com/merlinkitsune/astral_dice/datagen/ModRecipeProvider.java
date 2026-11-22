@@ -1557,17 +1557,17 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
 
-        // 怪力乱神立牌(lingling,史诗):PDP/DRD/PTP
-        // (P=星盘×6、D=导电线材×2、R=红石块、T=钻石骰子;空白立牌不用,规格 §3 明写)
+        // 怪力乱神立牌(lingling,史诗):PDP/DCD/PTP(2026-11-22 用户更正:中心为空白立牌,撤销原红石块例外)
+        // (P=星盘×6、D=导电线材×2、C=空白立牌、T=钻石骰子;材料多重集仍与其它立牌互不相同 ⇒ 守门脚本通过)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.LINGLING_SIGN.get())
                 .pattern("PDP")
-                .pattern("DRD")
+                .pattern("DCD")
                 .pattern("PTP")
                 .define('P', ModItems.STAR_PLATE.get())
                 .define('D', ModItems.CONDUCTIVE_WIRE.get())
-                .define('R', Items.REDSTONE_BLOCK)
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('T', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output::accept);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。

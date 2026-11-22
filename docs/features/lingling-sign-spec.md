@@ -7,6 +7,7 @@
 
 创建角色立牌：怪力乱神立牌（品质：史诗）
 - 合成配方：P/D/P,D/R/D,P/T/P(P=星盘，D=导电线材，R=红石块，T=钻石骰子)
+- ⛔ **2026-11-22 用户更正**：原中心 R=红石块 错误，应为 C=空白立牌；§3 已按更正落地。
 - 被动技能（拦截者）：第一次装备怪力乱神立牌时获得2张"强化拒止"，拾取或购买的"路障"卡牌会自动转换为"强化拒止"；"强化拒止"吸附的目标数量将会作为额外的充能层数；怪力乱神攻击被"强化拒止"吸附的目标时，造成的伤害+5
 - 主动技能（能量突击）：立即获得一张"强化拒止"；使自身当前充能层数转换为攻击力+移动速度加成，持续 1:00；
 - 补充说明：被动技能提供的额外充能层数不超过20上限，且按照自身放置的强化拒止正在吸附的目标数量提供，如果被吸附的目标脱离或死亡则减去相应的层数。主动技能提供的攻击力和移动速度加成是根据当前充能层数实时变化的。移动速度加成按百分比计算（比如5点充能就是5%）。怪力乱神攻击任意被吸附的目标都会获得攻击伤害加成（不论这个强化拒止是谁放的），但提供充能数值加成只能是自己放的强化拒止。玩家放入手中的路障牌会自动变成强化拒止牌，玩家如果试图丢出强化拒止牌，则丢出的掉落物会自动变成路障牌
@@ -30,14 +31,14 @@
 
 ```
 P D P
-D R D
+D C D
 P T P
 ```
 
 - P = `astral_dice:star_plate`（星盘） · D = `astral_dice:conductive_wire`（导电线材）
-- R = `minecraft:redstone_block`（红石块） · T = `astral_dice:diamond_dice`（钻石骰子）
+- C = `astral_dice:blank_sign`（空白立牌） · T = `astral_dice:diamond_dice`（钻石骰子）
 - 模板：`datagen/ModRecipeProvider.java` 中 Kangel/Ame 立牌段落（旧会话取证件 :1286-1297）。
-- **例外登记**：与 AGENTS-full.md:1088「BLANK_SIGN 固定 3×3 正中心 / 立牌骰子固定中下且仅 1 个」冲突 —— 用户显式给出 pattern，按「用户指令优先于工作区规则」处理，本例外**只对 lingling_sign 生效**；需在交付报告中登记，并把例外写进本 spec（已写）。
+- **2026-11-22 更正**：用户明确中心「红石块是错误的」，改为 C = `astral_dice:blank_sign`；原先与 AGENTS-full.md:1088 的例外登记随之撤销——现配方中心=空白立牌、骰子固定中下且仅 1 个，符合统一规则。
 - runData 后必须跑 `scripts/verify/verify_crafting_recipe_uniqueness.py`。
 
 ## 4. 被动「拦截者」（佩戴立牌时生效）
@@ -144,3 +145,5 @@ bash scripts/verify/verify_event_registry.py
 ## 10. 变更记录
 
 - **2026-10-18 晚（tooltip 文案）**：用户原话「将怪力乱神立牌和强化拒止tooltip中分号改为换行；怪力乱神tooltip注释部分移除充能上限描述（这是充能体系的全局规则，没必要重复描述）」+「路障和强化拒止耐久度描述向下移（放在描述最后，在出牌数上面）」。落地（三语 × P0 两线共 6 个 lang 文件、键集不变 1001 键）：`tooltip.astral_dice.sign.lingling_active` 拆 2 行、`_passive` 拆 3 行、`_note` 拆 2 行且删除「充能上限为 §e20§7 层；」（合计上限 20 是本立牌**独立加成层**的规则，记在本文件 §4.6 与 `GameplayConstants.CHARGE_MAX_STACKS`，tooltip 不再重复）。判据：`tools/check_lang_sync.py` OK、`scripts/audit/tooltip_color_audit.py` 64 处（与基线同数、无一条命中 lingling 键）。
+
+- **2026-11-22（配方更正）**：用户指出中心红石块错误 ⇒ 五线 ModRecipeProvider 与生成 JSON 全部改为 C=astral_dice:blank_sign（pattern PDP/DCD/PTP，解锁判据 has_blank_sign）；撤销 2026-10-18 的红石块例外登记。守门：verify_crafting_recipe_uniqueness.py collisions=0、verify_sign_recipes.py 中心空白立牌 175/175。未实机。

@@ -2,14 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
+    "C": {
+      "item": "astral_dice:blank_sign"
+    },
     "D": {
       "item": "astral_dice:conductive_wire"
     },
     "P": {
       "item": "astral_dice:star_plate"
-    },
-    "R": {
-      "item": "minecraft:redstone_block"
     },
     "T": {
       "item": "astral_dice:diamond_dice"
@@ -17,7 +17,7 @@
   },
   "pattern": [
     "PDP",
-    "DRD",
+    "DCD",
     "PTP"
   ],
   "result": {

@@ -30,7 +30,7 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 ## 1.6.0-pre.3 更新内容
 
-本次在 1.6.0-pre.2 基础上只修配方：`al_sign`、`inkshadow_sign`、`souri_sign` 的中心槽由空白筹码改为空白立牌；36 种立牌配方全量复核，未发现其它错配。StarEngine 仍为 1.2.0-pre.2。
+本次在 1.6.0-pre.2 基础上只修配方：`al_sign`、`inkshadow_sign`、`souri_sign` 的中心槽由空白筹码改为空白立牌，`lingling_sign` 的中心槽由红石块改为空白立牌；36 种立牌配方全量复核后，35 种中心均为空白立牌，未发现其它错配。StarEngine 仍为 1.2.0-pre.2。
 
 ## 1.6.0-pre.2 更新内容
 
