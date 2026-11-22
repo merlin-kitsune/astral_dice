@@ -138,20 +138,20 @@ Astral Dice 是一个以骰子为核心的生存扩展。戴上骰子后，每�
 
 ## 构建溯源（1.6.0-pre.3）
 
-五条线均由 `3cbdf846` 构建（2026-11-22）。这是本地预发布候选，未 push、未发布。
+五条线均由 `4c693206` 构建（2026-11-22）。这是本地预发布候选，未 push、未发布。
 每个 jar 在同目录附 `<jar>.sha256`；仅 neoforge-1.21.1 与 forge-1.20.1 内含 `META-INF/astral_dice/build-info.json`
 （`{version, commit, builtAt, classCount}`），其余平台不含。`build-info.commit` 表示该 jar 由哪个**代码提交**构建；
 记录哈希的 README 更新本身不改动产物。
 
 | 线 | 版本 | 构建自 | 构建时间 | 大小 (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 1.6.0-pre.3+neoforge_1.21.1 | `3cbdf846`，classCount 657 | 2026-11-22 | 3,071,799 | `3eb3c52482806c48780b73fc1fa4173abdbd1571682b020114941551179b870f` |
-| forge-1.20.1 | 1.6.0-pre.3+forge_1.20.1 | `3cbdf846`，classCount 681 | 2026-11-22 | 3,122,106 | `67dfc1f5d93d3ec5b8982f55e96de2862bbe8946c5cef675a9955dff6060a59f` |
-| neoforge-26.1.2 | 1.6.0-pre.3+neoforge_26.1.2 | 无 build-info，同一 `3cbdf846` 批次 | 2026-11-22 | 3,290,731 | `30bb5fbaa8607a0d040f61865e83adea4edc64bf976d62e22ca1b53686d944c9` |
-| fabric-1.20.1 | 1.6.0-pre.3+fabric_1.20.1 | 无 build-info，同一 `3cbdf846` 批次 | 2026-11-22 | 3,363,531 | `e50d132f250b57c9891ac979afff1e853f4c7b2d75fdaa4b5e531a3ccb1dd85d` |
-| fabric-1.21.1 | 1.6.0-pre.3+fabric_1.21.1 | 无 build-info，同一 `3cbdf846` 批次 | 2026-11-22 | 3,400,084 | `4e448203bc7c0f04e9d8905e22627be724d83f1948cb5e91a2dd4e77fd94f9c7` |
+| neoforge-1.21.1 | 1.6.0-pre.3+neoforge_1.21.1 | `4c693206`，classCount 657 | 2026-11-22 | 3,074,547 | `1538d0d9859268ed052d404faf91c558806cd8232a5b3aba5b58c6ba7ba6e4f6` |
+| forge-1.20.1 | 1.6.0-pre.3+forge_1.20.1 | `4c693206`，classCount 681 | 2026-11-22 | 3,124,891 | `0b53d9080eab00b236049b4352876dc732118047ea9d516f36472abf5eb31bc3` |
+| neoforge-26.1.2 | 1.6.0-pre.3+neoforge_26.1.2 | 无 build-info，同一 `4c693206` 批次 | 2026-11-22 | 3,293,378 | `5e5594e94729d72e1ef51d9d83ba477438686011216780feec84588084c0082b` |
+| fabric-1.20.1 | 1.6.0-pre.3+fabric_1.20.1 | 无 build-info，同一 `4c693206` 批次 | 2026-11-22 | 3,366,330 | `7799de8dea6c66eaa26037c4090e612caa5423e78f8d42bbbfffb46fadbd41ba` |
+| fabric-1.21.1 | 1.6.0-pre.3+fabric_1.21.1 | 无 build-info，同一 `4c693206` 批次 | 2026-11-22 | 3,402,908 | `b0646ae647ed22d1e7c39552a574892ba97b5b09de26e11b9e89137aaf884dbb` |
 
-本次最终 `assemble` 为 `BUILD SUCCESSFUL`（`assemble --offline --no-daemon --no-configuration-cache`，exit 0）。只有 neoforge-1.21.1 与 forge-1.20.1 带 build-info；其余三条按大小 + SHA-256 识别，均来自同一 `3cbdf846`。本地候选，未 push、未发布。
+本次最终 `assemble` 为 `BUILD SUCCESSFUL`（`assemble --offline --no-daemon --no-configuration-cache`，exit 0）。只有 neoforge-1.21.1 与 forge-1.20.1 带 build-info；其余三条按大小 + SHA-256 识别，均来自同一 `4c693206`。本地候选，未 push、未发布。
 旧的 26.4-SNAPSHOT 产物历史保留在 git / CHANGELOG；`build/libs` 中的字节即发布产物，`run/*/mods/` 下的副本是开发运行时重打包，不是发布附件。
 
 ## 构建
