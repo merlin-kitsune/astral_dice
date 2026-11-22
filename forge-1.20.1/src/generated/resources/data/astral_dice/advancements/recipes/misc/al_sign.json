@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_blank_chip": {
+    "has_blank_sign": {
       "conditions": {
         "items": [
           {
             "items": [
-              "astral_dice:blank_chip"
+              "astral_dice:blank_sign"
             ]
           }
         ]
@@ -22,7 +22,7 @@
   },
   "requirements": [
     [
-      "has_blank_chip",
+      "has_blank_sign",
       "has_the_recipe"
     ]
   ],

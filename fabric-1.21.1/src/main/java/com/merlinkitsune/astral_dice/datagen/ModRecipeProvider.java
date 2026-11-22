@@ -1549,9 +1549,9 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('T', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_conductive_wire", has(ModItems.CONDUCTIVE_WIRE.get()))
                 .save(output);
-        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
+        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白立牌、P=黄金星盘、D=钻石骰子）
         // 少主立牌(al,史诗):黑色染料 + 金块×2 + 星币尘×2 + 空白筹码 + 钻石骰子 → BXB/KCK/XDX
-        // (B=黑色染料、X=星币尘、K=金块、C=空白筹码、D=钻石骰子;2026-11-08 用户给定行序)
+        // (B=黑色染料、X=星币尘、K=金块、C=空白立牌、D=钻石骰子;2026-11-08 用户给定行序)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.AL_SIGN.get())
                 .pattern("BXB")
                 .pattern("KCK")
@@ -1559,11 +1559,11 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('B', net.minecraft.world.item.Items.BLACK_DYE)
                 .define('X', ModItems.STAR_COIN_DUST.get())
                 .define('K', net.minecraft.world.item.Items.GOLD_BLOCK)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、P=黄金星盘、D=钻石骰子）
+        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白立牌、P=黄金星盘、D=钻石骰子）
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
                 .pattern("BYB")
                 .pattern("ZCZ")
@@ -1571,13 +1571,13 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('B', ModItems.STAR_COIN_DUST.get())
                 .define('Y', Items.TROPICAL_FISH)
                 .define('Z', Items.CLOCK)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X
-        // (B=末影珍珠、X=星币、K=黄色染料、C=空白筹码、D=骰子/普通骰子)
+        // (B=末影珍珠、X=星币、K=黄色染料、C=空白立牌、D=骰子/普通骰子)
         // 2026-11-10 用户裁决:品质史诗→稀有,配方简化(星币尘→星币、钻石骰子→骰子)
         // 2026-11-11 用户裁决:墨囊→末影珍珠、金块→金色染料(原版无金色染料,取黄色染料)
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
@@ -1587,9 +1587,9 @@ public class ModRecipeProvider extends FabricRecipeProvider {
                 .define('B', Items.ENDER_PEARL)
                 .define('X', ModItems.STAR_COIN.get())
                 .define('K', Items.YELLOW_DYE)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('D', ModItems.DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 符卡-福 / 符卡-祸:**无配方**(专属牌,仅由风水师立牌的被动「福祸相倚」与主动「白泽赐福」
         // 及「心意相连」发放,与活体书页/命运的指引等专属牌同一口径:不进随机池、不进合成表)。

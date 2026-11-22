@@ -1340,7 +1340,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('D', ModItems.DIAMOND_DICE.get())
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白筹码、
+        // 金鲤立牌(souri,传奇):B/Y/B + Z/C/Z + P/D/P（B=星币尘、Y=热带鱼、Z=钟、C=空白立牌、
         // P=黄金星盘、D=钻石骰子）—— 与 1.21.1 参考实现同网格同材料。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.SOURI_SIGN.get())
                 .pattern("BYB")
@@ -1349,10 +1349,10 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('B', ModItems.STAR_COIN_DUST.get())
                 .define('Y', Items.TROPICAL_FISH)
                 .define('Z', Items.CLOCK)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('P', ModItems.GOLDEN_STAR_PLATE.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 垃圾桶立牌(z3000,稀有):HRH/ISI/TDT（H=漏斗、R=红石、I=铁锭、S=空白立牌、T=铁粒、D=骰子）
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.Z3000_SIGN.get())
@@ -1368,7 +1368,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
         // 小猎手立牌(inkshadow,稀有):B/X/B + K/C/K + X/D/X（B=末影珍珠、X=星币、K=黄色染料、
-        // C=空白筹码、D=骰子）—— 与 1.21.1 参考实现同网格同材料
+        // C=空白立牌、D=骰子）—— 与 1.21.1 参考实现同网格同材料
         // （2026-11-10 用户裁决品质史诗->稀有、配方简化；2026-11-11 墨囊->末影珍珠、金块->黄色染料）。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.INKSHADOW_SIGN.get())
                 .pattern("BXB")
@@ -1377,11 +1377,11 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('B', Items.ENDER_PEARL)
                 .define('X', ModItems.STAR_COIN.get())
                 .define('K', Items.YELLOW_DYE)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('D', ModItems.DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
-        // 少主立牌(al,史诗):B/X/B + K/C/K + X/D/X（B=黑色染料、X=星币尘、K=金块、C=空白筹码、
+        // 少主立牌(al,史诗):B/X/B + K/C/K + X/D/X（B=黑色染料、X=星币尘、K=金块、C=空白立牌、
         // D=钻石骰子）—— 与 1.21.1 参考实现同网格同材料。
         ShapedRecipeBuilder.shaped(items, RecipeCategory.MISC, ModItems.AL_SIGN.get())
                 .pattern("BXB")
@@ -1390,9 +1390,9 @@ public class ModRecipeProvider extends RecipeProvider {
                 .define('B', Items.BLACK_DYE)
                 .define('X', ModItems.STAR_COIN_DUST.get())
                 .define('K', Items.GOLD_BLOCK)
-                .define('C', ModItems.BLANK_CHIP.get())
+                .define('C', ModItems.BLANK_SIGN.get())
                 .define('D', ModItems.DIAMOND_DICE.get())
-                .unlockedBy("has_blank_chip", has(ModItems.BLANK_CHIP.get()))
+                .unlockedBy("has_blank_sign", has(ModItems.BLANK_SIGN.get()))
                 .save(output);
 
         // 怪力侦探立牌(sherry):紫晶骰子 + 黄金星盘档。PBP/AEA/IDI

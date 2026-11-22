@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 26.4-SNAPSHOT.99
+
+### This line
+
+- Fixed the three sign recipes whose center C slot used astral_dice:blank_chip: souri_sign, al_sign and inkshadow_sign now use astral_dice:blank_sign in all five lines. The datagen sources (ModRecipeProvider.java) and the generated recipe/advancement JSON were regenerated; the unlock criterion is now has_blank_sign. The audit of all 36 sign recipes per line found no other blank_chip; lingling_sign keeps its frozen redstone-centered recipe.
+- Bumped all five lines to mod_version=26.4-SNAPSHOT.99+<loader>; starengine_version remains 26.4-SNAPSHOT.18.
+- Datagen verification: :fabric-1.20.1:runDatagen BUILD SUCCESSFUL in 35s; :fabric-1.21.1:runDatagen BUILD SUCCESSFUL in 18s; :neoforge-1.21.1:runData exit 0; :neoforge-26.1.2:runServerData BUILD SUCCESSFUL in 16s and wrote 6 files. :forge-1.20.1:runData wrote the 6 changed files (HashCache ... written: 6) but the harness cut the Gradle summary at 120s, so its final Gradle line was not captured; the generated JSON was verified.
+- Gate/verification: python scripts/verify/verify_crafting_recipe_uniqueness.py -> RECIPE_UNIQ: OK, P0 shaped=115 / shapeless=6 / collisions=0; all five lines' generated *_sign.json contain no astral_dice:blank_chip; ./gradlew build --offline BUILD SUCCESSFUL in 12s (44 actionable tasks, 30 executed) and produced five astral_dice-26.4-SNAPSHOT.99+<loader>.jar artifacts.
+- Honest boundary: no live-game run; this change is verified at datagen JSON, recipe-uniqueness-gate and build level. Not pushed, tagged, or released.
+
 ## 26.4-SNAPSHOT.98
 
 ### This line

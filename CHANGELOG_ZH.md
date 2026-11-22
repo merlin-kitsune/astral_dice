@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 26.4-SNAPSHOT.99
+
+### 本线
+
+- 修复 souri_sign（金鲤）、al_sign（少主）、inkshadow_sign（小猎手）三条立牌配方：中心槽 C 原为 astral_dice:blank_chip，现改为 astral_dice:blank_sign；五线 datagen 源与生成的配方/进度 JSON 同步重生成，解锁条件改为 has_blank_sign。逐线审计 36 条立牌配方，未再发现其他 blank_chip；lingling_sign 保持既有的冻结红石中心配方。
+- 五线 mod_version 统一到 26.4-SNAPSHOT.99+<loader>；starengine_version 仍为 26.4-SNAPSHOT.18。
+- datagen 验证：:fabric-1.20.1:runDatagen BUILD SUCCESSFUL（35 s）；:fabric-1.21.1:runDatagen BUILD SUCCESSFUL（18 s）；:neoforge-1.21.1:runData 退出码 0；:neoforge-26.1.2:runServerData BUILD SUCCESSFUL（16 s），写出 6 个文件。:forge-1.20.1:runData 已写出 6 个变更文件（HashCache ... written: 6），但 120 s 的 harness 上限截断了 Gradle 汇总，未取得最终 BUILD SUCCESSFUL 行；生成 JSON 已核对。
+- 门禁/构建：python scripts/verify/verify_crafting_recipe_uniqueness.py -> RECIPE_UNIQ: OK，P0 shaped=115 / shapeless=6 / collisions=0；五线生成的所有 *_sign.json 均不含 astral_dice:blank_chip；./gradlew build --offline BUILD SUCCESSFUL（12 s，44 actionable tasks，30 executed），产出五份 astral_dice-26.4-SNAPSHOT.99+<loader>.jar。
+- 诚实边界：未跑实机；本次只在 datagen JSON、配方唯一性门禁与构建层验证。未 push、未打 tag、未发布。
+
 ## 26.4-SNAPSHOT.98
 
 ### 本线
