@@ -78,7 +78,7 @@ P0（各 4 个 Java 变体 + 集成点）：`item/sign/AlSignItem.java`、`item/
 资源（各线）：
 - 贴图 `assets/astral_dice/textures/item/al_sign.png`（五线同 md5 `f073b69e1a64ae4856bdc386f2892738`）
 - 物品模型/物品定义：fabric 两线 `src/generated/resources/assets/astral_dice/models/item/al_sign.json`；neo26 `src/generated/clientResources/assets/astral_dice/items/al_sign.json` + `models/item/al_sign.json`
-- 配方 `data/astral_dice/recipe(s)/al_sign.json`：`BXB/KCK/XDX`（B=black_dye、X=star_coin_dust、K=gold_block、C=blank_chip、D=diamond_dice）
+- 配方 `data/astral_dice/recipe(s)/al_sign.json`：`BXB/KCK/XDX`（B=black_dye、X=star_coin_dust、K=gold_block、C=blank_sign、D=diamond_dice）
 - 进度 `advancement(s)/recipes/misc/al_sign.json`
 - 手册 `patchouli_books/astral_guide/{en_us,zh_cn}/entries/signs/al_sign.json`
 

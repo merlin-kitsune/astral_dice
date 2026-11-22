@@ -95,7 +95,7 @@ Java（P0 基准两线各 7 个，逐文件同构；26.1.2 同源）：
 资源（neoforge-1.21.1）：
 
 - 物品模型 `src/generated/resources/assets/astral_dice/models/item/souri_sign.json`
-- 配方 `.../data/astral_dice/recipe/souri_sign.json`：3×3 `BYB/ZCZ/PDP` = star_coin_dust / tropical_fish / clock / blank_chip / golden_star_plate / diamond_dice
+- 配方 `.../data/astral_dice/recipe/souri_sign.json`：3×3 `BYB/ZCZ/PDP` = star_coin_dust / tropical_fish / clock / blank_sign / golden_star_plate / diamond_dice
 - 进度 `.../advancement/recipes/misc/souri_sign.json`
 - 手册 `assets/astral_dice/patchouli_books/astral_guide/en_us/entries/signs/souri_sign.json`（spotlight + 3 页 text + crafting，sortnum 27）
 - 贴图 `textures/item/souri_sign.png`、`textures/mob_effect/souri_gold_scale.png`、`textures/mob_effect/souri_dragon.png`
@@ -157,7 +157,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 3. **neoforge-26.1.2 真实缺陷**：移走 sodium 后暴露 `Missing blockstate definitions for: [astral_dice:abyss_tentacle_collision]`（`ModelProvider.BlockStateGeneratorCollector.validate`）。根因：`datagen/ModItemModelProvider.java` 的 `registerBlockStates` 只登记 4 个方块，漏了 `ModBlocks.ABYSS_TENTACLE_COLLISION`。修复：新增手写模型 `assets/astral_dice/models/block/abyss_tentacle_collision.json`（`{"textures":{"particle":"minecraft:block/sculk"},"elements":[]}`）+ 在 provider 里补 `createSimpleBlock` 登记。
 4. **fabric-1.21.1 provider 缺 sykes 立牌**：重跑 datagen 会删掉 `sykes_sign` 的 recipe/model（其余四线都有）。修复：`ModItemModelProvider` 补 `items.add(ModItems.SYKES_SIGN.get())`，`ModRecipeProvider` 补 sykes 配方块（MYM/YCY/GDG），重跑后产物齐全。
 
-**手抄 JSON 的真实漂移（以 datagen 为真值）**：souri 的 recipe/model 只差 key 顺序与结尾换行；advancement 判据键由手抄的 `has_star_coin_dust` 变为 provider 产出的 `has_blank_chip`（`astral_dice:blank_chip`），1.20.1 格式另有 `sends_telemetry_event: false` 与 `items` 数组化；26.1.2 另补出原本缺失的 `advancement/recipes/misc/sykes_sign.json`。**generated JSON 由 Gson 写出、无尾换行**，手抄文件带尾换行 ⇒ 一律以 datagen 输出为准。
+**手抄 JSON 的真实漂移（以 datagen 为真值）**：souri 的 recipe/model 只差 key 顺序与结尾换行；advancement 判据键由手抄的 `has_star_coin_dust` 变为 provider 产出的 `has_blank_chip`（`astral_dice:blank_chip`；2026-11-22 起判据键随中心改空白立牌变为 `has_blank_sign` / `astral_dice:blank_sign`），1.20.1 格式另有 `sends_telemetry_event: false` 与 `items` 数组化；26.1.2 另补出原本缺失的 `advancement/recipes/misc/sykes_sign.json`。**generated JSON 由 Gson 写出、无尾换行**，手抄文件带尾换行 ⇒ 一律以 datagen 输出为准。
 
 ⚠️ 跨线债务：`abyss_tentacle_collision` 的 blockstate/model 目前仍**只有 26.1.2（现 P0）** 有；P0 基准线 neo21/forge 与 P1 fabric 两线都没有 ⇒ 魔渊触须占位方块在这四线渲染为缺失模型。26.1.2 已满足；其余四线是否统一补，待裁决。
 

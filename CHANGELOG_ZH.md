@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.6.0-pre.3（2026-11-22）
+
+### 本次发布
+
+- 立牌配方修正：`al_sign`（少主）/ `inkshadow_sign`（小猎手）/ `souri_sign`（金鲤）五线的 3×3 中心材料由**空白筹码**改为**空白立牌**，同步改五线 `datagen/ModRecipeProvider` 的 `.define('C', …)`、`.unlockedBy("has_blank_sign", …)` 与 15 份生成配方 / 15 份进度 JSON；此前这三条配方与其它立牌（中心均为空白立牌）不一致，属首版占位遗留。
+- 全量核对 36 种立牌配方（五线共 180 条）：改动后 34 种中心为空白立牌，`lingling_sign`（怪力乱神）中心红石块为唯一设计例外，`blank_sign` 自身为基材配方；无其它错用空白筹码的立牌。
+- 版本号：五线 `mod_version` 统一 `1.6.0-pre.2+<loader>` → `1.6.0-pre.3+<loader>`；`starengine_version` 保持 `1.2.0-pre.2`。pre.2 条目里「pre.3 只是内部迭代号」的说法随本次实发布作废（版本号复用）。
+- 验收：`temp/verify_sign_recipes.py` 退出 0（175 条立牌块、170 条中心空白立牌、仅 lingling 例外、三条目标配方 `key.C = astral_dice:blank_sign`）；`scripts/verify/verify_crafting_recipe_uniqueness.py` 三线各 shaped=115 / collisions=0；`tools/verify_sign_display_names.py` PASS。
+- 本批未跑实机冒烟；未 push、未打 tag、未发布。
+
 ## 1.6.0-pre.2（2026-11-19）
 
 ### 本次发布
