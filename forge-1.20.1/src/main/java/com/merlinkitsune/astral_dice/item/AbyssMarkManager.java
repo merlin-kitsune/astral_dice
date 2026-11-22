@@ -56,14 +56,13 @@ public final class AbyssMarkManager {
     /**
      * 施加 1 层并绑定施印者。
      *
-     * <p>绑定规则：目标还没有印记（或旧印记没有 owner）时，第一个施印者绑定成功；
+     * <p>绑定规则：目标尚未绑定施印者时，第一个施印者绑定成功（印记自然到期不会解除绑定）；
      * 已有其他玩家的印记时**不改绑定**，但这次施加仍然照常 +1 层（区域/触须加层不会被吞）。
      */
     public static int apply(LivingEntity target, java.util.UUID owner) {
         MobEffectInstance existing = target.getEffect(ModEffects.ABYSS_MARK.get());
-        int current = existing != null ? Math.min(existing.getAmplifier() + 1, MAX_STACKS) : 0;
         java.util.UUID bound = getOwner(target);
-        if (owner != null && (current <= 0 || bound == null)) {
+        if (owner != null && bound == null) {
             setOwner(target, owner);
         }
         int amplifier = existing != null ? Math.min(existing.getAmplifier() + 1, MAX_STACKS - 1) : 0;
