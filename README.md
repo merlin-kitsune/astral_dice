@@ -32,7 +32,7 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 
 Recipe fixes on top of 1.6.0-pre.2. Three sign recipes (`al_sign`, `inkshadow_sign`, `souri_sign`) now use a blank sign in the centre slot instead of a blank chip, and `lingling_sign` now uses a blank sign instead of a redstone block; after auditing all 36 sign recipes, 35 have a blank sign in the centre and no other mismatch remains. StarEngine stays at 1.2.0-pre.2.
 
-The Abyss Larva sign passive is also reworked: entering the Abyss zone or being hit by a tentacle adds Abyss Mark stacks (max 20), and each stack increases damage taken. Every living target you marked grants you +1 attack, removed when the target dies. Marks are bound to the applier until the target dies — other players cannot apply them, though zone entry and tentacle hits still add stacks.
+The Abyss Larva sign passive is also reworked: entering the Abyss zone or being hit by a tentacle adds Abyss Mark stacks (max 20), and each stack increases damage taken from the Abyss Larva sign and its tentacles by 1. Every living target you marked grants you +1 attack, removed when the target dies. Marks are bound to the applier until the target dies — other players cannot apply them, though zone entry and tentacle hits still add stacks.
 
 ## What's new in 1.6.0-pre.2
 
