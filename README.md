@@ -28,6 +28,10 @@ Astral Dice is a survival expansion built around dice. Equip a dice and every me
 - Bountiful bounty board integration.
 - Jade shows defense instead of armor on all four lines.
 
+## What's new in 1.6.0-pre.3
+
+Recipe fix on top of 1.6.0-pre.2. Three sign recipes (`al_sign`, `inkshadow_sign`, `souri_sign`) now use a blank sign in the centre slot instead of a blank chip; an audit of all 36 sign recipes found no other mismatch. StarEngine stays at 1.2.0-pre.2.
+
 ## What's new in 1.6.0-pre.2
 
 This pre-release aligns the mod with StarEngine 1.2.0-pre.2 and the complete `api.astral` surface. The 1.6.0-pre.1 feature list below remains the baseline.
@@ -83,12 +87,12 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 
 | Support | Subproject | Minecraft | Loader | Java | Version | Patchouli |
 |---|---|---|---|---|---|---|
-| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.6.0-pre.2 | ✅ |
-| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47 | 17 | 1.6.0-pre.2 | ✅ |
-| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.6.0-pre.2 | ✅ |
-| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.6.0-pre.2 | ✅ |
+| ✅ | `neoforge-1.21.1` | 1.21.1 | NeoForge 21.1.235 | 21 | 1.6.0-pre.3 | ✅ |
+| ✅ | `forge-1.20.1` | 1.20.1 | Forge 47.1.47 | 17 | 1.6.0-pre.3 | ✅ |
+| ✅ | `neoforge-26.1.2` | 26.1.2 | NeoForge 26.1.2.109 | 25 | 1.6.0-pre.3 | ✅ |
+| ✅ | `fabric-1.20.1` | 1.20.1 | Fabric Loader 0.19.5 | 17 | 1.6.0-pre.3 | ✅ |
 
-- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.6.0-pre.2`) and published as a pre-release. CI builds every line in one run (`.github/workflows/build.yml`).
+- **All four lines are release lines.** `neoforge-1.21.1`, `forge-1.20.1`, `neoforge-26.1.2` and `fabric-1.20.1` stay at feature parity; every GitHub Release carries all four jars, tagged with the bare base version (this release: `1.6.0-pre.3`) and published as a pre-release. CI builds every line in one run (`.github/workflows/build.yml`).
 - `neoforge-26.1.2` is the 26.1.x migration line. It ships in the same batch as the other three, as an attachment on the same Release, and never gets its own tag. There is no Iron's Spells 'n Spellbooks integration here, since upstream ships no 26.1.x build.
 - `fabric-1.20.1` is the Fabric port line (added 2026-09-29, merged into `multi-main` on 2026-10-01) and has been a stable release line since 1.5.0: same Release and same tag as the other three. It has its own prerequisite set (see [Fabric prerequisites](#fabric-1201-prerequisites)), no Curios, Bountiful or Iron's Spells integration, and the four recipe-mechanism differences listed under "Platform & Compatibility" in [CHANGELOG.md](CHANGELOG.md).
 - `fabric-1.21.1` is a fifth subproject that builds from this worktree but is **not released**. It is the P1 scaffolding line (see [the port feasibility plan](docs/features/fabric-1211-port-feasibility-plan.md)): it stays out of this support matrix, out of every GitHub Release and off CurseForge until its acceptance gates are met. Its jar appears in the provenance table below only so the build output stays traceable.
@@ -127,29 +131,29 @@ The Abyss Reagent chip is named consistently now: display name, tooltip and ever
 ## Download
 
 - **GitHub Releases**: [merlin-kitsune/astral_dice/releases](https://github.com/merlin-kitsune/astral_dice/releases). Every Release carries all four jars: one each for `neoforge_1.21.1`, `forge_1.20.1`, `neoforge_26.1.2` and `fabric_1.20.1`.
-- **Tag rule**: the tag is always the bare base version (this release: `1.6.0-pre.2`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release. This 1.6.0-pre.2 release is published as a pre-release; the later stable 1.6.0 line will use the bare version. The Fabric line does not publish a separate pre-release or take its own tag.
-- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-1.2.0-pre.2.jar` / `starengine-forge-1.20.1-1.2.0-pre.2.jar` / `starengine-neoforge-26.1.2-1.2.0-pre.2.jar` / `starengine-fabric-1.20.1-1.2.0-pre.2.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.6.0-pre.2+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
-- **Build artefacts**: `astral_dice-1.6.0-pre.2+neoforge_1.21.1.jar`, `astral_dice-1.6.0-pre.2+forge_1.20.1.jar`, `astral_dice-1.6.0-pre.2+neoforge_26.1.2.jar` and `astral_dice-1.6.0-pre.2+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.6.0-pre.2).
+- **Tag rule**: the tag is always the bare base version (this release: `1.6.0-pre.3`) - no `v` prefix, no platform prefix, no loader suffix. All four jars belong to that one Release. This 1.6.0-pre.3 release is published as a pre-release; the later stable 1.6.0 line will use the bare version. The Fabric line does not publish a separate pre-release or take its own tag.
+- **CurseForge**: the builds go to the main project (`astral-dice`, project id `1662159`). StarEngine has its own project (`starengine`, id `1755415`); **none of the four lines bundles it any more**, so players must install that separate jar themselves: `starengine-neoforge-1.21.1-1.2.0-pre.2.jar` / `starengine-forge-1.20.1-1.2.0-pre.2.jar` / `starengine-neoforge-26.1.2-1.2.0-pre.2.jar` / `starengine-fabric-1.20.1-1.2.0-pre.2.jar`. Version numbers keep the `+<loader>_<MC>` suffix (for example `1.6.0-pre.3+neoforge_1.21.1`), and the release channel follows the version suffix. Modrinth publishing was permanently dropped on 2026-10-23; CurseForge is the only store channel.
+- **Build artefacts**: `astral_dice-1.6.0-pre.3+neoforge_1.21.1.jar`, `astral_dice-1.6.0-pre.3+forge_1.20.1.jar`, `astral_dice-1.6.0-pre.3+neoforge_26.1.2.jar` and `astral_dice-1.6.0-pre.3+fabric_1.20.1.jar`, each under its subproject's `build/libs/`; the version inside each jar matches the file name (1.6.0-pre.3).
 
-## Build provenance (1.6.0-pre.2)
+## Build provenance (1.6.0-pre.3)
 
-> All five lines were built from **`1d376ae0`** on 2026-11-19. This is a local pre-release candidate; not pushed or published.
+> All five lines were built from **`7d7eb015`** on 2026-11-22. This is a local pre-release candidate; not pushed or published.
 
 The Forge and NeoForge 1.21.1 jars carry `META-INF/astral_dice/build-info.json` with `{version, commit, builtAt,
-classCount}`; all five 1.6.0-pre.2 jars ship a sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the
+classCount}`; all five 1.6.0-pre.3 jars ship a sibling `<jar>.sha256`. `build-info.commit` names the **code commit** the
 jar was built from; the README update that records the hash does not change the artifact.
 
 | Line | Version | Built from | Built at | Size (B) | SHA-256 |
 |---|---|---|---|---|---|
-| neoforge-1.21.1 | 1.6.0-pre.2+neoforge_1.21.1 | `1d376ae0`, classCount 657 | 2026-11-19 | 3,071,135 | `f63fee78050201ae2f991ec93c47e42c9861a934b34cd14b2f476e0f7b75b2d4` |
-| forge-1.20.1 | 1.6.0-pre.2+forge_1.20.1 | `1d376ae0`, classCount 681 | 2026-11-19 | 3,121,422 | `93c2580eb62e537c61e054188afbba38c1dfc27efa1622eb8f4505b5ef614b46` |
-| neoforge-26.1.2 | 1.6.0-pre.2+neoforge_26.1.2 | no build-info, same `1d376ae0` batch | 2026-11-19 | 3,290,021 | `8f3adab0a47f92466b7775be6c78e9a6cae19a59cdf695f2fb5c2c2dc07c3910` |
-| fabric-1.20.1 | 1.6.0-pre.2+fabric_1.20.1 | no build-info, same `1d376ae0` batch | 2026-11-19 | 3,362,853 | `b90eb47080de757a96b27b191def9305fc595a7ff21afc4a6c2e2a001314944b` |
-| fabric-1.21.1 | 1.6.0-pre.2+fabric_1.21.1 | no build-info, same `1d376ae0` batch | 2026-11-19 | 3,399,442 | `b4f71bee4acfed3aebc8e9ae5a39e8ecc50ad9b22ff9ab5482b620ce1a61fcf0` |
+| neoforge-1.21.1 | 1.6.0-pre.3+neoforge_1.21.1 | `7d7eb015`, classCount 657 | 2026-11-22 | 3,071,845 | `3d23d442e3213ca555664238fdaecef183c50e01cf66571426f5475a28b27ef6` |
+| forge-1.20.1 | 1.6.0-pre.3+forge_1.20.1 | `7d7eb015`, classCount 681 | 2026-11-22 | 3,122,146 | `9eb5c212e80f15906799a7048e244ae171478d55daf26a768a319675975f9c89` |
+| neoforge-26.1.2 | 1.6.0-pre.3+neoforge_26.1.2 | no build-info, same `7d7eb015` batch | 2026-11-22 | 3,290,774 | `d5cf40de89eef72bfc84e798592e6be0a1dada99ead02db4e6587e2e9d66aa8a` |
+| fabric-1.20.1 | 1.6.0-pre.3+fabric_1.20.1 | no build-info, same `7d7eb015` batch | 2026-11-22 | 3,363,579 | `7c16f23951b9ed75573a5dea7f2d592ffd9b6088976706fdb57acd6b749103a9` |
+| fabric-1.21.1 | 1.6.0-pre.3+fabric_1.21.1 | no build-info, same `7d7eb015` batch | 2026-11-22 | 3,400,138 | `f6fc1505493af8fdc6313d01a2ef12a2fc8d1d929931ce78e1c1db6180f28e31` |
 
-The final `assemble` run was `BUILD SUCCESSFUL in 11s` (34 tasks: 27 executed, 7 cached). Only
+The final `assemble` run was `BUILD SUCCESSFUL in 6s` (15 tasks: 1 executed, 2 from cache, 12 up-to-date). Only
 `neoforge-1.21.1` and `forge-1.20.1` embed `build-info.json`; the other three lines are identified by size +
-hash only and are from the same `1d376ae0` commit. Local candidate; not pushed or published.
+hash only and are from the same `7d7eb015` commit. Local candidate; not pushed or published.
 
 Earlier `26.4-SNAPSHOT` generations are superseded by this release; their history remains in git and in
 `CHANGELOG.md`. The `build/libs` bytes above are the release artefacts; `pushToDevRun` copies under `run/*/mods/`
