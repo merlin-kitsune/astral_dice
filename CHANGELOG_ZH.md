@@ -11,6 +11,10 @@
 - 立牌配方修正：`al_sign`（少主）/ `inkshadow_sign`（小猎手）/ `souri_sign`（金鲤）五线的 3×3 中心材料由**空白筹码**改为**空白立牌**，同步改五线 `datagen/ModRecipeProvider` 的 `.define('C', …)`、`.unlockedBy("has_blank_sign", …)` 与 15 份生成配方 / 15 份进度 JSON；此前这三条配方与其它立牌（中心均为空白立牌）不一致，属首版占位遗留。
 - 立牌配方更正（2026-11-22 用户追加）：`lingling_sign`（怪力乱神）中心由**红石块**改为**空白立牌**（pattern `PDP/DCD/PTP`），同步改五线 provider 与 5 份配方 / 5 份进度 JSON；此前登记为「用户指定 pattern 例外」，本次更正后撤销该例外，36 种立牌全部回到统一规则。
 - 全量核对 36 种立牌配方（五线共 180 条）：改动后 35 种中心为空白立牌，`blank_sign` 自身为基材配方；无其它中心错用空白筹码或红石块的立牌。
+- 魔渊幼体立牌（`sykes_sign`）被动重做：第一条改为进入「魔渊区域」的敌对目标立即获得 1 层「渊蚀印记」、此后每次被「魔渊触须」命中再 +1 层，上限 20 层；第二条去掉「最多 20 层」描述；新增第三条：场上每有 1 个由你施加且仍存活的「渊蚀印记」目标，你的攻击力 +1，目标被击杀后加成消失。
+- 「渊蚀印记」绑定施印者且持续到目标被击杀：其他玩家无法再对其施印，但目标进入「魔渊区域」或被「魔渊触须」命中仍会增加层数；印记自然到期只掉层数与攻击力加成，不解除绑定。
+- 实现：五线 `AbyssMarkManager` 用 `astral_dice_abyss_owner:<uuid>` scoreboard tag 存绑定、只统计存活 `Enemy`；`SykesSignItem.curioTick` 每 20 tick 刷新攻击力加成、卸下或未装备骰子时清除；`SykeTentacleEntity` 每 5 tick 扫描区域入场施印、`performStrike` 命中加层；玩家攻击不再施印，只按既有层数加伤。15 份语言文件同步更新。
+- 本批验收：五线 `compileJava` 通过；立牌配方守门读数沿用同版上一轮（175/175 中心空白立牌、三线 collisions=0）。
 - 版本号：五线 `mod_version` 统一 `1.6.0-pre.2+<loader>` → `1.6.0-pre.3+<loader>`；`starengine_version` 保持 `1.2.0-pre.2`。pre.2 条目里「pre.3 只是内部迭代号」的说法随本次实发布作废（版本号复用）。
 - 验收：`temp/verify_sign_recipes.py` 退出 0（175 条立牌块 / 175 条中心空白立牌、无例外；四张目标配方 `key.C = astral_dice:blank_sign`）；`scripts/verify/verify_crafting_recipe_uniqueness.py` 三线各 shaped=115 / collisions=0；`tools/verify_sign_display_names.py` PASS。
 - 本批未跑实机冒烟；未 push、未打 tag、未发布。
