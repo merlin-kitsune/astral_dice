@@ -303,6 +303,13 @@ When extending this workspace:
 - 成功判据：`outcome="applied"` 且 `blocksCreated >= 1`；失败先重读 status，不重试旧 ref，也不改走 DSH 自带 `compress`。
 - 压缩不是任务推进的前提：代理拒绝或端口不可用时，继续正常干活，不反复调用压缩工具。
 
+## 🔢 主线版本 bump 纪律（2026-11-23 用户裁决，必须遵守）
+
+- **按推送周期计数，不按提交计数**：`multi-main` 上同一版本在推送到 `origin/multi-main` 之前，可以包含多个本地提交；多个提交共用同一 `mod_version`，不得因为「又提交了一次」而 bump。
+- **推送之后才重新起算**：当前版本已推送到 `origin/multi-main` 后，下一次**产品代码**改动才必须把五线 `mod_version` 统一 bump 到下一个版本，并在 `CHANGELOG.md` / `CHANGELOG_ZH.md` 新建对应版本段；bump 后到下次推送前，继续共用该版本。
+- **文档/规则/测试夹具例外**：只改文档、规则或测试夹具且未改产品代码、未重编译时，不强制 bump；若与产品改动同批提交，则跟随该产品版本。
+- **推送前核对**：用 `git status -sb` / `git log origin/multi-main..HEAD` 判断当前版本是否已上远端；推送前同时核对五线 `mod_version`、CHANGELOG 与根 `build/libs` 产物一致。不得在已推送版本上继续追加需要发布的产品改动。
+
 ## ✅ 提交纪律（2026-11-07 用户裁决，必须遵守）
 
 - **早提交、勤提交**：每完成一个可独立验证的改动单元（功能 / 修复 / 文档 / 规则 / 版本号），**立即本地提交**，不得把多轮改动堆在工作树里等批量提交。
