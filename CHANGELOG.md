@@ -4,6 +4,16 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.6.0-pre.5 (2026-11-23)
+
+### This release
+
+- Fixed the Abyss Tentacle attack animation never stopping: on all five lines, `animation.tentacleattack` in `sykestentacle.animation.json` changes from `loop: true` to `false`. This matches GeckoLib's `RawAnimation.thenPlay` → `LoopType.DEFAULT`, which follows the JSON loop flag, so the attack now plays once.
+- Fixed missing item tooltips in the NeoForge 1.21.1 Astral Anvil screen: `AstralAnvilScreen.render` now calls `this.renderTooltip(guiGraphics, mouseX, mouseY)` after `super.render`, restoring vanilla item tooltips for both the input slot and the player inventory. The 26.1.2 line uses the newer render-state API and is unaffected.
+- Fixed the attack-power readout briefly counting the old weapon after moving a tool out of the hotbar: all five `DiceCombatModifiers.attackDamageExcludingHeldWeapon` copies remove the "no held weapon → read the attribute directly" early return. They now always recompute from the `AttributeInstance` and exclude both the current and previous tick's held-weapon modifiers (`LAST_HELD_WEAPON_MODIFIERS`, a `WeakHashMap`), eliminating the stale weapon value that the dice screen could show for up to one second (20-tick refresh).
+- Version: all five `mod_version` values bump from `1.6.0-pre.4+<loader>` to `1.6.0-pre.5+<loader>`; `starengine_version` stays `1.2.0-pre.2`.
+- Verification for this batch: five-line `compileJava` passed (Gradle 9.5.1, `BUILD SUCCESSFUL in 31s`; only historical deprecation/unchecked warnings). No live test was run; not pushed, not tagged, not published.
+
 ## 1.6.0-pre.4 (2026-11-22)
 
 ### This release

@@ -4,6 +4,16 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.6.0-pre.5（2026-11-23）
+
+### 本次发布
+
+- 修复魔渊触须攻击动画不停止：五线 `sykestentacle.animation.json` 的 `animation.tentacleattack` 由 `loop: true` 改为 `false`，与 GeckoLib `RawAnimation.thenPlay` 的 `LoopType.DEFAULT` 语义一致，攻击动画只播放一次。
+- 修复 NeoForge 1.21.1 星愿铁砧界面不显示物品 tooltip：`AstralAnvilScreen.render` 在 `super.render` 后补 `this.renderTooltip(guiGraphics, mouseX, mouseY)`，上层输入槽与下层背包槽均恢复原版物品提示；26.1.2 使用新 render-state API，不受影响。
+- 修复快捷栏移出工具后攻击力读数短暂包含武器加成：五线 `DiceCombatModifiers.attackDamageExcludingHeldWeapon` 移除「当前未持有武器就直读属性」的早退，改为始终从 `AttributeInstance` 重算，并排除当前与上一 tick 的手持武器修饰器（`LAST_HELD_WEAPON_MODIFIERS`，`WeakHashMap`）；消除服务端骰子界面每 20 tick 刷新时最多约 1 秒的旧武器读数。
+- 版本号：五线 `mod_version` 统一 `1.6.0-pre.4+<loader>` → `1.6.0-pre.5+<loader>`；`starengine_version` 保持 `1.2.0-pre.2`。
+- 本批验收：五线 `compileJava` 通过（Gradle 9.5.1，`BUILD SUCCESSFUL in 31s`，仅历史弃用/未检查警告）；未跑实机，未 push、未打 tag、未发布。
+
 ## 1.6.0-pre.4（2026-11-22）
 
 ### 本次发布
