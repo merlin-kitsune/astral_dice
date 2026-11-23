@@ -1768,7 +1768,7 @@
 			}
 		},
 		"animation.tentacleattack": {
-			"loop": true,
+			"loop": false,
 			"animation_length": 2.46,
 			"bones": {
 				"root": {
