@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.entity;
 import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.AbyssMarkManager;
+import com.merlinkitsune.starengine.combat.EliteTargets;
 import com.merlinkitsune.starengine.geckolib.animatable.GeoEntity;
 import com.merlinkitsune.starengine.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import com.merlinkitsune.starengine.geckolib.core.animation.AnimatableManager;
@@ -15,6 +16,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -23,6 +25,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -41,7 +44,7 @@ import java.util.UUID;
  *   <li>存活 10 分钟；到期播「缩入地下」动画后消失，并移除自身的占格方块；</li>
  *   <li>每 6 秒对进入「魔渊区域」（触须居中的 5×5 格地表）内的敌对生物发动一次抽打：4 点技能伤害 +
  *       缓慢 II (0:30)，并附带玩家近战同款击退；命中时机 = 动画 12 tick 之后（真的抽到身上才结算）；</li>
- *   <li>吸引 4 格内敌对生物仇恨；被攻击（虽然免疫）⇒ 攻击者受到 1 点技能伤害；</li>
+ *   <li>吸引 4 格内敌对生物仇恨；被攻击（虽然免疫）时：普通敌对生物保持对触手的仇恨，精英/Boss 被施加印记后把仇恨转回印记绑定者；</li>
  *   <li>完全免疫伤害 / 治疗 / 状态效果，不会被推动、击退或传送；</li>
  *   <li>场上有多个触须时按「出生先后」依次播放攻击动画（共享 {@link #STRIKE_BUSY_UNTIL} 时间片）；</li>
  *   <li>不显示名牌、不显示血量（{@link #shouldShowName()} 恒 false）。</li>
@@ -295,12 +298,35 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
         }
     }
 
+    /**
+     * 精英/Boss 攻击触手：先施加/叠加印记，再把仇恨转给印记实际绑定者。
+     * 普通敌对生物不走这里，继续由 {@link #aggroNearbyEnemies()} 保持对触手的仇恨。
+     */
+    private void redirectEliteAggro(LivingEntity attacker) {
+        if (ownerId == null || !(attacker instanceof Mob mob) || !EliteTargets.isEliteOrBoss(mob)) {
+            return;
+        }
+        if (!(level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        AbyssMarkManager.apply(attacker, ownerId);
+        UUID markOwner = AbyssMarkManager.getOwner(attacker);
+        if (markOwner == null) {
+            return;
+        }
+        ServerPlayer player = serverLevel.getServer().getPlayerList().getPlayer(markOwner);
+        if (player == null || !player.isAlive() || !player.level().dimension().equals(serverLevel.dimension())) {
+            return;
+        }
+        mob.setTarget(player);
+    }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (!level().isClientSide()) {
             Entity attacker = source.getEntity();
             if (attacker instanceof LivingEntity living && living != this && living instanceof Enemy) {
-                living.hurt(ModDamageTypes.skillDamage(level(), this), 1.0F);
+                redirectEliteAggro(living);
             }
         }
         return false;

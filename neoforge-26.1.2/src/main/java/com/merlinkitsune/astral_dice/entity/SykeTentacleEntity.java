@@ -3,6 +3,7 @@ package com.merlinkitsune.astral_dice.entity;
 import com.merlinkitsune.astral_dice.block.ModBlocks;
 import com.merlinkitsune.astral_dice.damage.ModDamageTypes;
 import com.merlinkitsune.astral_dice.item.AbyssMarkManager;
+import com.merlinkitsune.starengine.combat.EliteTargets;
 import com.merlinkitsune.starengine.geckolib.animatable.GeoEntity;
 import com.merlinkitsune.starengine.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.merlinkitsune.starengine.geckolib.animatable.manager.AnimatableManager;
@@ -13,6 +14,7 @@ import com.merlinkitsune.starengine.geckolib.util.GeckoLibUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -47,10 +49,10 @@ import java.util.UUID;
  *       {@link #STRIKE_DAMAGE} 点技能伤害 + 每层「渊蚀印记」+1 + 缓慢 II（{@link #SLOW_TICKS}）+ 玩家近战同款击退；</li>
  *   <li>动画起手 {@link #ATTACK_HIT_DELAY_TICKS} tick 后才结算伤害（「抽到身上才算」）；
  *       多根在场时按 {@link #STRIKE_SLOT_TICKS} 时间片<b>依次</b>播放，不叠在一起；</li>
- *   <li>每 20 tick 吸引 {@link #AGGRO_RADIUS} 格内敌对生物的仇恨；</li>
+ *   <li>每 20 tick 吸引 {@link #AGGRO_RADIUS} 格内敌对生物的仇恨；普通敌对生物保持对触手的仇恨，
+ *       精英/Boss 攻击触手时被施加印记，并把仇恨转给印记实际绑定者；</li>
  *   <li>存活 {@link #LIFETIME_TICKS}（10 分钟）后播「缩入地下」动画并移除，同时移除占格方块；</li>
- *   <li>不受任何伤害 / 治疗 / 状态效果、不被推动 / 击退 / 传送、不显示名字与血条；
- *       敌对生物每次攻击它会受到 1 点技能伤害（反伤）。</li>
+ *   <li>不受任何伤害 / 治疗 / 状态效果、不被推动 / 击退 / 传送、不显示名字与血条。</li>
  * </ul>
  *
  * <p><b>26.1.2 与 1.21.1 的四处平台差异</b>（本线实装 jar / 源码 jar 取证）：
@@ -122,6 +124,15 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
         super(type, level);
         setNoGravity(true);
         setInvulnerable(true);
+    }
+
+    /**
+     * 26.1.2 的 {@code Mob.setTarget} 会通过 {@code canAttack} 校验目标；触手虽然伤害免疫，
+     * 但仍要能被敌对生物选为目标，否则普通怪无法保持对触手的仇恨。
+     */
+    @Override
+    public boolean canBeSeenAsEnemy() {
+        return this.isAlive() && !this.isRemoved();
     }
 
     /** 由立牌主动技能调用：绑定锚点（占格坐标）与召唤者。 */
@@ -327,15 +338,35 @@ public class SykeTentacleEntity extends LivingEntity implements GeoEntity {
     }
 
     /**
+     * 精英/Boss 攻击触手：先施加/叠加印记，再把仇恨转给印记实际绑定者。
+     * 普通敌对生物不走这里，继续由 {@link #aggroNearbyEnemies()} 保持对触手的仇恨。
+     */
+    private void redirectEliteAggro(ServerLevel level, LivingEntity attacker) {
+        if (ownerId == null || !(attacker instanceof Mob mob) || !EliteTargets.isEliteOrBoss(mob)) {
+            return;
+        }
+        AbyssMarkManager.apply(attacker, ownerId);
+        UUID markOwner = AbyssMarkManager.getOwner(attacker);
+        if (markOwner == null) {
+            return;
+        }
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(markOwner);
+        if (player == null || !player.isAlive() || !player.level().dimension().equals(level.dimension())) {
+            return;
+        }
+        mob.setTarget(player);
+    }
+
+    /**
      * 受伤入口（26.1.2：{@code hurt} 已 final，钩子在此）。
      *
-     * <p>触须本身不受任何伤害；但敌对生物每次攻击它会受到 1 点技能伤害（反伤）。
+     * <p>触须本身不受任何伤害；精英/Boss 攻击触手时转火，普通敌对生物保持仇恨。
      */
     @Override
     public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
         Entity attacker = source.getEntity();
         if (attacker instanceof LivingEntity living && living != this && living instanceof Enemy) {
-            living.hurt(ModDamageTypes.skillDamage(level, this), 1.0F);
+            redirectEliteAggro(level, living);
         }
         return false;
     }

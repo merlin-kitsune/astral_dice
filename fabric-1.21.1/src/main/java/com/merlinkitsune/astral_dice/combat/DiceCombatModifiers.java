@@ -1103,7 +1103,7 @@ public final class DiceCombatModifiers {
         for (EquipmentSlot slot : HELD_WEAPON_SLOTS) {
             ItemStack stack = player.getItemBySlot(slot);
             if (stack.isEmpty()) continue;
-            stack.getItem().getDefaultAttributeModifiers().forEach(slot, (attribute, modifier) -> {
+            stack.forEachModifier(slot, (attribute, modifier) -> {
                 if (attribute.value() == Attributes.ATTACK_DAMAGE.value()) ids.add(modifier.id());
             });
         }

@@ -10,9 +10,12 @@
 
 - 修复魔渊触须攻击动画不停止：五线 `sykestentacle.animation.json` 的 `animation.tentacleattack` 由 `loop: true` 改为 `false`，与 GeckoLib `RawAnimation.thenPlay` 的 `LoopType.DEFAULT` 语义一致，攻击动画只播放一次。
 - 修复 NeoForge 1.21.1 星愿铁砧界面不显示物品 tooltip：`AstralAnvilScreen.render` 在 `super.render` 后补 `this.renderTooltip(guiGraphics, mouseX, mouseY)`，上层输入槽与下层背包槽均恢复原版物品提示；26.1.2 使用新 render-state API，不受影响。
-- 修复快捷栏移出工具后攻击力读数短暂包含武器加成：五线 `DiceCombatModifiers.attackDamageExcludingHeldWeapon` 移除「当前未持有武器就直读属性」的早退，改为始终从 `AttributeInstance` 重算，并排除当前与上一 tick 的手持武器修饰器（`LAST_HELD_WEAPON_MODIFIERS`，`WeakHashMap`）；消除服务端骰子界面每 20 tick 刷新时最多约 1 秒的旧武器读数。
+- 修复快捷栏移出工具后攻击力读数短暂包含武器加成：五线 `DiceCombatModifiers.attackDamageExcludingHeldWeapon` 移除「当前未持有武器就直读属性」的早退，改为始终从 `AttributeInstance` 重算，并排除当前与上一 tick 的手持武器修饰器（`LAST_HELD_WEAPON_MODIFIERS`，`WeakHashMap`）；消除服务端骰子界面每 20 tick 刷新时最多约 1 秒的旧武器读数；另将 fabric-1.21.1 的 `heldWeaponModifierIds` 从 `Item.getDefaultAttributeModifiers()` 改为 `ItemStack.forEachModifier`，修复 1.21.1 组件化后武器修饰器枚举为空、显示仍含武器加成的问题。
+- 魔渊触须第二版：移除攻击触手时的 1 点反伤；普通敌对生物保持对触手的仇恨；精英/Boss 攻击触手时先施加/叠加渊蚀印记，再把仇恨转给印记实际绑定者（该玩家在线、存活且同维度时）。owner 离线、死亡或跨维度时不改目标。
+- 实现：五线 `SykeTentacleEntity` 的 `hurt` / `hurtServer` 只调用 `redirectEliteAggro`；helper 用 `EliteTargets.isEliteOrBoss` 过滤精英/Boss，用 `AbyssMarkManager.getOwner` 解析印记实际 owner。普通怪的 `aggroNearbyEnemies` 逻辑未改。
+- 修复 NeoForge 26.1.2 触须无法被敌对生物选为目标：触手构造器 `setInvulnerable(true)` 会使 `canBeSeenAsEnemy` 返回 false，而 26.1.2 的 `Mob.setTarget` 会做该校验；新增 `canBeSeenAsEnemy()` 返回 `isAlive() && !isRemoved()`，保留伤害免疫、只恢复可被选为目标。
 - 版本号：五线 `mod_version` 统一 `1.6.0-pre.4+<loader>` → `1.6.0-pre.5+<loader>`；`starengine_version` 保持 `1.2.0-pre.2`。
-- 本批验收：五线 `compileJava` 通过（Gradle 9.5.1，`BUILD SUCCESSFUL in 31s`，仅历史弃用/未检查警告）；未跑实机，未 push、未打 tag、未发布。
+- 本批验收：五线 `compileJava` 通过；五线实机回归均验证触须攻击动画只播一次、星愿铁砧上下层物品 tooltip、移出工具后攻击力显示不含武器、触须 v2（普通怪保持仇恨，精英/Boss 施印转火，无反伤）；fabric-1.21.1 修复手持武器修饰器枚举后重编译（`BUILD SUCCESSFUL in 9s`）并复测。证据见 `work/live-pre5/<line>/evidence.md`。未 push、未打 tag、未发布。
 
 ## 1.6.0-pre.4（2026-11-22）
 
