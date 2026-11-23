@@ -39,9 +39,12 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import com.merlinkitsune.starengine.api.combat.HostileTargets;
 import com.merlinkitsune.astral_dice.platform.util.Effects;
@@ -1049,6 +1052,10 @@ public final class DiceCombatModifiers {
      */
     private static final EquipmentSlot[] HELD_WEAPON_SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND};
 
+    /** 上一次手持武器提供的 ATTACK_DAMAGE 修饰器 id；移出后属性尚未刷新时继续排除，避免显示回弹。 */
+    private static final Map<Player, Set<ResourceLocation>> LAST_HELD_WEAPON_MODIFIERS =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
     /**
      * {@code ATTACK_DAMAGE} 的**不含手持武器（主手 + 副手）**取值：按原版
      * {@code AttributeInstance.calculateValue()} 的算法逐项重算,跳过手持物品提供的修饰器。
@@ -1069,13 +1076,17 @@ public final class DiceCombatModifiers {
         AttributeInstance instance = player.getAttributes().getInstance(Attributes.ATTACK_DAMAGE);
         if (instance == null) return player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         Set<ResourceLocation> held = heldWeaponModifierIds(player);
-        if (held.isEmpty()) return player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        Set<ResourceLocation> lastHeld = LAST_HELD_WEAPON_MODIFIERS.get(player);
+        Set<ResourceLocation> excluded = new HashSet<>(held);
+        if (lastHeld != null) excluded.addAll(lastHeld);
+        if (!held.isEmpty()) LAST_HELD_WEAPON_MODIFIERS.put(player, Set.copyOf(held));
+        if (excluded.isEmpty()) return player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         double base = instance.getBaseValue();
         double added = 0;
         double multipliedBase = 0;
         double multipliedTotal = 1;
         for (AttributeModifier modifier : instance.getModifiers()) {
-            if (held.contains(modifier.id())) continue;
+            if (excluded.contains(modifier.id())) continue;
             switch (modifier.operation()) {
                 case ADD_VALUE -> added += modifier.amount();
                 case ADD_MULTIPLIED_BASE -> multipliedBase += modifier.amount();
