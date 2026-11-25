@@ -568,7 +568,11 @@ mt_world_verify() {
     [ -n "$py" ] || { printf 'MT_WORLD: BLOCKED — PATH 里没有 python3/python\n' >&2; return 2; }
     "$py" "${MT_REPO_ROOT:-$PWD}/scripts/test/mt_env.py" world --verify --version "$v"
     rc=$?
-    return "$rc"
+    case "$rc" in
+        0|11) return "$rc" ;;
+        49) printf 'MT_WORLD: BLOCKED — python3 是 Microsoft Store 占位符（rc=49）；把真实解释器加入 PATH 或设 MT_PYTHON_EXE\n' >&2; return 2 ;;
+        *)  printf 'MT_WORLD: BLOCKED — 世界校验失败（python rc=%s）\n' "$rc" >&2; return 2 ;;
+    esac
 }
 
 # 完整 AutoJS 客户端侧探测：health==ok 且 status(client available=true)。
