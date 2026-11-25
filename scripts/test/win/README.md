@@ -133,6 +133,16 @@ bash scripts/test/win/stop.sh --all --purge-saves        # 收停 + 清测试世
 bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 ```
 
+### 5.1 世界规程（2026-11-26 修正，强制）
+
+- **实机世界必须是超平坦**（2026-11-02 用户裁决「建立存档一律使用超平坦」）：先跑
+  `bash scripts/test/win/mt.sh --version <线> --phase world`（等价
+  `python scripts/test/mt_env.py world --version <线>`；`1.20.1` / `26.1.2` 可加 `--seed` 用种子包快恢复）。
+- `--phase launch` 会先跑 `mt_env.py world --verify`：世界缺失或 `generator != flat` 一律
+  `BLOCKED(11)`。**不再允许** quickplay 自动创建默认世界来凑数。
+- 世界规格：`level-type=flat`、创造模式、`allow-cheats=true`、`keepInventory=true`、`max-players=2`；
+  `superflatworldnoslimes` + `collective` 压制史莱姆。
+
 线路映射（各线齐全；bash 侧版本表目前只有三条，本目录补齐 fabric）：
 
 | `--version` | Gradle 子项目 | 加载器 | toolchain | AutoJS 就绪判据 |

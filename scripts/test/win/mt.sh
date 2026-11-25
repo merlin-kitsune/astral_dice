@@ -8,10 +8,11 @@
 # 机器行、退出码、开关面与旧编排器逐字对齐；差异只有「能力缺口记 BLOCKED(11)」这一条：
 #   native 注入通道（窗口定位 / user32 合成输入）随旧资产删除而失效，见 phases.sh 的 launch 阶段。
 #
-# 阶段：env | build | launch | cases | report | stop（另接受 preflight，P2 迁移）
+# 阶段：env | build | world | launch | cases | report | stop（另接受 preflight，P2 迁移）
 #
 # 用法：
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase env
+#   bash scripts/test/win/mt.sh --version 1.21.1 --phase world          # 建立超平坦 testworld（launch 前置闸门）
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase build
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase launch
 #   bash scripts/test/win/mt.sh --version 1.21.1 --phase cases --case scripts/test/cases/X-1.21.1.json
@@ -56,6 +57,8 @@ OPT_CASE=""
 OPT_CHANNEL=""
 OPT_SIDE=""               # 仅 fabric 线（fabric-*）：client|server（其它线传了报错）
 OPT_FAB_AUTOJS=""         # 仅 fabric 线（fabric-*）：1=显式开 -PautojsTestMod=1，0=显式关
+OPT_SEED=0                 # world 阶段：1=用种子包快恢复（1.20.1 / 26.1.2）
+OPT_WORLD_TIMEOUT=""       # world 阶段：服务端生成世界的最长等待（秒）
 OPT_ALLOW_AUTO=0
 OPT_FORCE=0
 OPT_KEEP_DAEMON=0
@@ -85,6 +88,9 @@ while [ $# -gt 0 ]; do
         --side=*)    OPT_SIDE="${1#*=}"; shift ;;
         --enable-autojs)  OPT_FAB_AUTOJS=1; shift ;;
         --disable-autojs) OPT_FAB_AUTOJS=0; shift ;;
+        --seed)       OPT_SEED=1; shift ;;
+        --world-timeout) need_value world-timeout $(( $# - 1 )); OPT_WORLD_TIMEOUT="${2:-}"; shift 2 ;;
+        --world-timeout=*) OPT_WORLD_TIMEOUT="${1#*=}"; shift ;;
         --run-timeout|--case-timeout|--new|--feature|--spec|--cleanup-on-exit|--no-cleanup-on-exit)
             printf 'MT_ERROR: %s 尚未在 bash 编排层实现（P1 范围外；环境变量/后续批次替代，见 docs/features/bash-first-test-flow-plan.md）\n' "$1" >&2
             exit 2 ;;
@@ -113,6 +119,8 @@ else
 fi
 MT_CHANNEL="$CHANNEL"
 export MT_CHANNEL
+export MT_SEED="${OPT_SEED:-0}"
+export MT_WORLD_TIMEOUT="${OPT_WORLD_TIMEOUT:-}"
 
 # 放行开关：--allow-auto 或 MT_ALLOW_AUTO=1（正则 ^(1|true|yes|on)$，大小写不敏感）
 ALLOW_AUTO=0

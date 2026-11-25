@@ -864,8 +864,21 @@ def _read_text(path):
         return ""
 
 
-def cmd_world(version, seed, timeout):
+def cmd_world(version, seed, timeout, verify=False):
     paths = mc.get_paths(version)
+    if verify:
+        level_dat = os.path.join(paths.client_world, "level.dat")
+        if not os.path.isfile(level_dat):
+            mc.write_mt_line("MT_WORLD: BLOCKED — 世界不存在（" + paths.client_world
+                             + "）；先跑 bash scripts/test/win/mt.sh --version " + version + " --phase world")
+            return EXIT_BLOCKED
+        bad = require_flat_world(level_dat, "现有世界 " + paths.client_world)
+        if bad:
+            mc.write_mt_line(bad)
+            return EXIT_BLOCKED
+        mc.write_mt_line("MT_WORLD: OK — 现有世界校验通过（generator=" + GEN_FLAT + "） "
+                         + paths.client_world)
+        return EXIT_PASS
     # fabric 的 run 目录按 client / server 分侧（mt_compat.run_root），而 get_paths 默认 side=client：
     # 服务端生成世界必须用 side=server 的目录写 server.properties、盯日志、搬存档。
     srv = mc.get_paths(version, "server") if mc.is_fabric(version) else paths
@@ -1143,6 +1156,7 @@ def usage():
         "子命令:",
         "  mods     kubejs 模板同步 + 渲染模组同步 + options.txt 三项守门（1.21.1 / fabric / 1.20.1 / 26.1.2）",
         "  world    重建测试世界（默认起专用服务端生成；--seed 从种子包快恢复）",
+        "  world --verify  只读校验现有世界：必须存在且 generator=flat（不重建、不写盘）",
         "  kill     收停本版本的本流程进程",
         "  kubejs   只做 kubejs 模板同步（sha256 比对 + 清理模板里已删除的旧脚本）",
         "  shaders  光影开关（--state on|off|status）",
@@ -1151,6 +1165,7 @@ def usage():
         "选项:",
         "  --version <v>             必填：1.21.1 | 1.20.1 | 26.1.2 | fabric-1.20.1 | fabric-1.21.1",
         "  --seed                    world 用种子包快恢复（需要 resources/testworld-seed-<v>.zip）",
+        "  --verify                  world 只校验现有世界是否超平坦（供 launch 闸门调用）",
         "  --state <on|off|status>   shaders 用（默认 status）",
         "  --shaders <on|off|status>  debug 用（默认 status）",
         "  --pause-lock <on|off|status>  debug 用（默认 status）",
@@ -1171,6 +1186,7 @@ def main(argv):
     cmd = ""
     version = ""
     seed = False
+    verify = False
     state = "status"
     pause_lock = "status"
     keybinds = "status"
@@ -1211,6 +1227,10 @@ def main(argv):
             seed = True
             index += 1
             continue
+        if token.startswith("-") and key == "verify":
+            verify = True
+            index += 1
+            continue
         if token.startswith("-"):
             mc.write_mt_error_line("未知参数 " + token)
             return EXIT_ERROR
@@ -1231,7 +1251,7 @@ def main(argv):
     if cmd == "mods":
         return cmd_mods(version)
     if cmd == "world":
-        return cmd_world(version, seed, timeout)
+        return cmd_world(version, seed, timeout, verify)
     if cmd == "kill":
         return cmd_kill(version)
     if cmd == "kubejs":

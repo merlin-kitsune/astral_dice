@@ -558,6 +558,19 @@ mt_strip_headers() {
     awk 'BEGIN { h = 1 } h && /^\r?$/ { h = 0; next } !h { print }'
 }
 
+# 世界闸门（2026-11-26 用户指令）：实机世界必须是超平坦。
+# 只读校验 run/<线>/saves/testworld/level.dat（fabric 为子项目内 run/client）；
+# 返回 0=通过，11=BLOCKED（世界缺失或 generator!=flat），2=解释器不可用。
+mt_world_verify() {
+    local v="${1:-}" py rc
+    [ -n "$v" ] || { printf 'MT_WORLD: BLOCKED — 缺少版本号\n' >&2; return 2; }
+    py="${MT_PYTHON_EXE:-$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)}"
+    [ -n "$py" ] || { printf 'MT_WORLD: BLOCKED — PATH 里没有 python3/python\n' >&2; return 2; }
+    "$py" "${MT_REPO_ROOT:-$PWD}/scripts/test/mt_env.py" world --verify --version "$v"
+    rc=$?
+    return "$rc"
+}
+
 # 完整 AutoJS 客户端侧探测：health==ok 且 status(client available=true)。
 # 成功 stdout 打印 'health=ok state=… registered=… available=true'；失败返回 1。
 # ⚠ 全程不落临时文件（本机 /tmp、$TEMP、run/ 都可能被 ACL/沙箱拒写）：

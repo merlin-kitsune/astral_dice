@@ -46,7 +46,7 @@ fi
 : "${MT_EXIT_TIMEOUT:=12}"
 
 # 阶段集合：任务要求的六个 + preflight（preflight 已改接 python，不依赖任何外部脚本）。
-MT_PHASES="env build launch cases report stop preflight"
+MT_PHASES="env build world launch cases report stop preflight"
 
 # ── 小工具 ───────────────────────────────────────────────────────────────
 mt_phase_info()  { printf 'MT_INFO: %s\n' "$*"; }
@@ -252,11 +252,41 @@ mt_phase_build() {
     return "$rc"
 }
 
+# ══ 阶段：world（超平坦测试世界；python mt_env.py world）════════════════
+mt_phase_world() {
+    local v="${1:-}" py rc
+    mt_phase_require_version "$v" || return $?
+    mt_phase_require_repo || return $?
+    py="${MT_PYTHON_EXE:-$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)}"
+    [ -n "$py" ] || { mt_phase_err 'python 不可用（PATH 里没有 python3 / python）'; return "$MT_EXIT_ERROR"; }
+    local -a args=("$MT_REPO_ROOT/scripts/test/mt_env.py" world --version "$v")
+    [ "${MT_SEED:-0}" = "1" ] && args+=(--seed)
+    [ -n "${MT_WORLD_TIMEOUT:-}" ] && args+=(--timeout "$MT_WORLD_TIMEOUT")
+    if [ "${MT_DRY_RUN:-0}" = 1 ]; then
+        mt_phase_dry "cd ${MT_REPO_ROOT} && ${py} ${args[*]}" \
+            '判据：MT_WORLD: OK → PASS(0)；BLOCKED(11) / 生成期崩溃(1) 原样透传' \
+            '世界：generator=flat + allowCommands=1 + keepInventory=true（2026-11-02 用户裁决）'
+        return 0
+    fi
+    ( cd "$MT_REPO_ROOT" && "$py" "${args[@]}" )
+    rc=$?
+    mt_phase_verdict WORLD "$rc"
+    return "$rc"
+}
+
 # ══ 阶段：launch（bash 原生 launch.sh；native 通道过渡期已失效）════════════
 mt_phase_launch() {
     local v="${1:-}" rc
     mt_phase_require_version "$v" || return $?
     mt_phase_require_repo || return $?
+    # 世界闸门（2026-11-26）：世界必须由 mt_env.py world 建立且为超平坦；server 侧不校验 client 存档。
+    if [ "${MT_SIDE:-client}" = "client" ]; then
+        if ! mt_world_verify "$v"; then
+            mt_phase_err '世界未通过超平坦校验；先跑 bash scripts/test/win/mt.sh --version '"$v"' --phase world'
+            mt_phase_verdict LAUNCH "$MT_EXIT_BLOCKED"
+            return "$MT_EXIT_BLOCKED"
+        fi
+    fi
     # fabric 线（fabric-*）：走 fabric.sh 的 bash 实现（双 run 目录 + 按侧就绪 marker），不委托外部脚本
     if mt_is_fabric "$v"; then
         mt_fab_phase_launch "$v"
@@ -432,6 +462,7 @@ mt_run_phase() {
     case "$phase" in
         env)       mt_phase_env "$v" ;;
         build)     mt_phase_build "$v" ;;
+        world)     mt_phase_world "$v" ;;
         launch)    mt_phase_launch "$v" ;;
         cases)     mt_phase_cases "$v" "$casepath" ;;
         report)    mt_phase_report "$v" ;;

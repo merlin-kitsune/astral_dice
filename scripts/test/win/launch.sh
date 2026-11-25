@@ -160,6 +160,15 @@ PIDFILE="$RUN_DIR/win-run.pid"
 ENDPOINT="$(mt_aj_endpoint)"
 BASE_URL="${ENDPOINT%/mcp}"
 
+# 世界闸门（2026-11-26）：实机世界必须是 mt_env.py world 建立的超平坦世界。
+# 只拦 client 侧（server 侧存档与 client 不同目录，按需单测）。
+if [ "$DRY" != "1" ] && [ "${FAB_SIDE:-client}" = "client" ]; then
+    if ! mt_world_verify "$VERSION"; then
+        echo "LAUNCH: BLOCKED — 世界未通过超平坦校验；先跑 bash scripts/test/win/mt.sh --version $VERSION --phase world" >&2
+        exit 11
+    fi
+fi
+
 # 就绪 marker：fabric 按侧取（server=Done (...) For help，client=Sound engine），
 # 其它三线沿用原判据函数（行为逐字节不变）。
 launch_marker_hit() {
