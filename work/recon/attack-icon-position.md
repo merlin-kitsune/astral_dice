@@ -1,7 +1,7 @@
 # 攻击力图标位置不对 — 根因定位报告（fabric-1.20.1 实机截图）
 
 > 范围：只做 Phase 1–2（根因 + 差异对比 + 候选方案）。**未修改任何代码、未启停任何进程、未改配置。**
-> 仓库：`F:/MCProject/astral_dice_multiloader`（四线同树）；git HEAD `be6bc10e`。
+> 仓库：`D:/MCProject/astral_dice_multiloader`（四线同树）；git HEAD `be6bc10e`。
 
 ---
 
@@ -46,7 +46,7 @@
 **grep 原始片段（可直接复现）**
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 grep -rn "ATTACK_FULL\|ATTACK_HALF" fabric-1.20.1/src/main/java
 grep -rn "attack_bar\|defense_bar"   fabric-1.20.1/src/main/java
 grep -rn "attackPowerDisplayOf"      fabric-1.20.1/src

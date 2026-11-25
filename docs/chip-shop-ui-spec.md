@@ -1,6 +1,6 @@
 # 筹码商店界面规范（第一版：仅界面，逻辑待定）
 
-> 生成 2026-10-11（Asia/Hong_Kong）｜工作树 F:\MCProject\astral_dice_multiloader-next（分支 multi-dev-next）
+> 生成 2026-10-11（Asia/Hong_Kong）｜工作树 D:\MCProject\astral_dice_multiloader-next（分支 multi-dev-next）
 > 范围：**P0 两线**（neoforge-1.21.1 + forge-1.20.1 同批）｜状态：**界面骨架 + 素材接线**；购买/刷新的业务逻辑待用户后续下达
 > 守门：scripts/verify/verify_chip_shop_ui.py（本规范的机器判据；先失败后实现）
 

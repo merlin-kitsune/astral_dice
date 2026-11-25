@@ -2,7 +2,7 @@
 
 > 状态：P1 已落地（2026-11-01）。契约正本仍是 `docs/features/windows-channel-decoupling-spec.md`；
 > 本文只回答「谁接管默认路径」与「pwsh 怎么一步步退场」。
-> 行数一律 `wc -l` 实测（2026-11-01，工作树 `F:\MCProject\astral_dice_multiloader`），不做估算。
+> 行数一律 `wc -l` 实测（2026-11-01，工作树 `D:\MCProject\astral_dice_multiloader`），不做估算。
 
 ## 0. 一句话结论
 

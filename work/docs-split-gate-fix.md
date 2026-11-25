@@ -1,6 +1,6 @@
 # 文档门禁修复报告：`docs/agent/verify-split.py` 全绿
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`
+- 仓库：`D:\MCProject\astral_dice_multiloader`
 - 执行环境：Windows 原生 / CPython（`python`）/ git 工作树（非 worktree 子目录）
 - 时间：2026-11-02
 - 未执行：`commit` / `push` / `stash` / `checkout` / 任何分支或索引操作

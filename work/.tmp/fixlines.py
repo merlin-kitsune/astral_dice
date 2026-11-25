@@ -1,5 +1,5 @@
 
-p = r"F:/MCProject/astral_dice_multiloader/work/fix-fabric-defensebar-position.md"
+p = r"D:/MCProject/astral_dice_multiloader/work/fix-fabric-defensebar-position.md"
 raw = open(p, encoding="utf-8", newline="").read()
 t = raw.replace("\r\n", "\n")
 BT = chr(96)

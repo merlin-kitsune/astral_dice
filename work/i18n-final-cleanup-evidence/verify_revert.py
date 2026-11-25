@@ -1,6 +1,6 @@
 
 import subprocess, os, json
-ROOT = r"F:/MCProject/astral_dice_multiloader"
+ROOT = r"D:/MCProject/astral_dice_multiloader"
 KEY = '"tooltip.astral_dice.sign.fanny_active":'
 out = []
 for rel in ["neoforge-26.1.2/src/main/resources/assets/astral_dice/lang/%s.json" % x for x in ("zh_cn","en_us","ja_jp")]:

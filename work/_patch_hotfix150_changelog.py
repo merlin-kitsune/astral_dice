@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-os.chdir(r'F:/MCProject/astral_dice_multiloader')
+os.chdir(r'D:/MCProject/astral_dice_multiloader')
 NL = bytes([13, 10])
 HOT = b'## 1.5.0-hotfix (2026-11-02)' + NL
 ANCHOR = b'## 1.5.0 (2026-11-02)' + NL

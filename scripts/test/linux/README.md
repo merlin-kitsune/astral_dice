@@ -251,10 +251,10 @@ Dependency requires at least JVM runtime version 21. This build uses a Java 17 J
 
 宿主从 VMware 虚拟机 + hgfs 共享盘迁到**原生 Linux 真机（双系统，与 Windows 共用一块 NTFS 盘）**，本目录随之调整：
 
-- **仓库路径**：`/mnt/f/MCProject/astral_dice_multiloader`（Windows `F:` 的原生挂载，ntfs3）；前置库 `/mnt/f/MCProject/starengine`。旧 `/mnt/hgfs/MCProject/...` 与 `~/Project/*` 四副本**全部作废**（`~/Project` 已不存在）。
+- **仓库路径**：`/mnt/d/MCProject/astral_dice_multiloader`（Windows `F:` 的原生挂载，ntfs3）；前置库 `/mnt/d/MCProject/starengine`。旧 `/mnt/hgfs/MCProject/...` 与 `~/Project/*` 四副本**全部作废**（`~/Project` 已不存在）。
 - **整合包根**：`/mnt/d/.minecraft`（Windows `D:` 的原生挂载）；`MC_HOME` 仍可覆盖。根 `build.gradle` 的 `mcHomePath` 解析顺序改为 `MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`。
 - **env.sh 键名变化**：`hgfs_writable` → **`repo_writable`**（`ntfs3/ext4/xfs/btrfs` 走 OK 并注明链接可用）；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁**只报不删**）；`mt.conf` 的 Windows 路径提示由 `WARN` 降为 `INFO`；`mount` 行新增 `ntfs3|ntfs` 分支。
-- **锁目录**：`/mnt/f/MCProject/.agent-locks`（与 Windows 同一目录）。
+- **锁目录**：`/mnt/d/MCProject/.agent-locks`（与 Windows 同一目录）。
 - **实测（2026-10-31 17:5x，改后首跑）**：`ENV_RESULT: WARN — 0 项阻塞，1 项提示`；`pack_dirs=OK（整合包根=/mnt/d/.minecraft，各线目标 mods 目录齐全）`、`repo_writable=OK`、`locks_stale` 无陈旧锁、`gradle_daemon_jvm=OK`。
 - **未变**：daemon JVM 仍统一 21、toolchain 按线（17/21/25）、`stop.sh` 收停协议、`launch.sh` 以 AutoJS 判 READY、`run/<子项目名>/linux-run.pid` 协议。
 - 详细迁移实测与剩余 checklist 见 `docs/handover-2026-10-31-native-linux-migration.md`。

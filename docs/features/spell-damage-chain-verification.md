@@ -39,7 +39,7 @@ PY
 ### 0.2 工作树快照（取证时刻）
 
 ```bash
-git -C F:/MCProject/astral_dice_multiloader status --short -uall
+git -C D:/MCProject/astral_dice_multiloader status --short -uall
 ```
 
 读取到的状态（**别人的并行改动，本审查员未动**）：
@@ -220,7 +220,7 @@ for (SpellDamageModifier modifier : SpellDamageRegistry.modifiers()) {
 
 - 触发：`ctx.hasCurio(ModItems.AMETHYST_DICE.get())`（`:389`）。
 - 公式：`bonus + AmethystDiceHandler.rollD6(ctx.attacker)`（`:394`）。
-- 库实现（`F:/MCProject/starengine` @ `16b48c4` release 1.1.0，`common/.../event/AmethystDiceHandler.java:25-27`）：
+- 库实现（`D:/MCProject/starengine` @ `16b48c4` release 1.1.0，`common/.../event/AmethystDiceHandler.java:25-27`）：
   ```java
   public static int rollD6(Player roller) { return ThreadLocalRandom.current().nextInt(1, D6_FACES + 1); }
   ```
@@ -389,7 +389,7 @@ if (bonus > 0 && !APPLYING_TRUE_BONUS.get()) {
 
 ### 6.3 「两线口径一致」取证（可复跑 + 真实输出）
 
-    cd F:/MCProject/astral_dice_multiloader
+    cd D:/MCProject/astral_dice_multiloader
     # 1) 资源层：damage_type + tags 逐字节
     diff -r --strip-trailing-cr neoforge-1.21.1/src/main/resources/data/astral_dice/damage_type \
                               forge-1.20.1/src/main/resources/data/astral_dice/damage_type

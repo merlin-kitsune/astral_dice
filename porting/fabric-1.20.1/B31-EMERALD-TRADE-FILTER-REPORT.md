@@ -1,6 +1,6 @@
 # B31 绿宝石骰子「星币代替绿宝石」交易过滤器 — fabric-1.20.1 移植报告
 
-- 分支：`multi-main`（工作树 `F:/MCProject/astral_dice_multiloader`）
+- 分支：`multi-main`（工作树 `D:/MCProject/astral_dice_multiloader`）
 - 基准：以 **neoforge-1.21.1 为主基准**、**forge-1.20.1 为次基准**（同 MC 1.20.1，机制最接近，作直接蓝本）
 - 范围：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/{trade,mixin/trade}/**`（未动 lang / patchouli / build.gradle / gradle.properties / accesswidener / mixins.json）
 - 结论：最新主线**确有**这段逻辑（两条基准线都有），fabric 侧**确缺**（移植前 4 个符号全仓 0 命中）。已按次基准 1:1 移植落码并通过编译与产物校验。

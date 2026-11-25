@@ -1,6 +1,6 @@
 # AGENTS-kimi —— Kimi Code 专属规则
 
-> 生效：2026-10-24。适用工作树 `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`）。
+> 生效：2026-10-24。适用工作树 `D:\MCProject\astral_dice_multiloader`（分支 `multi-main`）。
 > 本文件**只对 Kimi Code 生效**。DSH 读 `docs/agent/AGENTS-dsh.md`，Codex 读 `docs/agent/AGENT-SPLIT.md`；公共分派见根 `AGENTS.md`。
 
 ## 0. 用户三项明确纪律（2026-10-24，优先于本文其余条款）
@@ -11,7 +11,7 @@
 
 ## 1. 接手顺序（每次新会话先做，一律实读）
 
-1. `git -C F:/MCProject/astral_dice_multiloader status --short -uall` + `git -C ... log -1 --oneline`：确认分支、HEAD、是否有他人未提交改动。
+1. `git -C D:/MCProject/astral_dice_multiloader status --short -uall` + `git -C ... log -1 --oneline`：确认分支、HEAD、是否有他人未提交改动。
 2. 读 `docs/handover-2026-10-24-kimi-takeover.md`（Kimi 当前接手正本）；再用 `ls docs/handover-*` 找最新一份，与 `docs/handover-new-session-context.md` 交叉核对。
 3. 读 `docs/agent/PROJECT-REFERENCE.md`（当前工程参考：拓扑、各线基线、目录职责、常用命令）。
 4. 要具体规则 ⇒ 在 `docs/agent/AGENTS-full.md` 里**按标题名检索**（`grep -n '^#' docs/agent/AGENTS-full.md`，行号总表见 `docs/agent/AGENTS-TOC.md`），只取命中区间 `sed -n '<a>,<b>p'`。
@@ -20,9 +20,9 @@
 
 ## 2. 工作树与分支归属
 
-- 两棵常驻树：主线 `F:\MCProject\astral_dice_multiloader`（`multi-main`，各线同树）；开发线 `F:\MCProject\astral_dice_multiloader-next`（`multi-dev-next`）。
+- 两棵常驻树：主线 `D:\MCProject\astral_dice_multiloader`（`multi-main`，各线同树）；开发线 `D:\MCProject\astral_dice_multiloader-next`（`multi-dev-next`）。
 - 任务属于哪个分支就**只在那个树的绝对路径**上改；禁止镜像 / 回填 / 同步到另一棵树。
-- 跨树写文件一律**绝对路径**（`F:/MCProject/...`），不依赖进程 cwd —— 相对路径会静默落到主会话 cwd（历史事故：一条 0 字节用例文件落错树）。
+- 跨树写文件一律**绝对路径**（`D:/MCProject/...`），不依赖进程 cwd —— 相对路径会静默落到主会话 cwd（历史事故：一条 0 字节用例文件落错树）。
 - 收尾对**另一棵树**跑一次 `git status --short`，确认没有落错文件。
 - 主线里的 `scripts/test/**` 属封包内容，只在用户于主线内明确裁决时才动。
 
@@ -32,7 +32,7 @@
 |---|---|---|
 | 文件 / 目录 / 文本 / git 语义 | **Git Bash** | `ls`、`cp`、`grep -rn`、`git -C ... status`、`sha256sum` |
 | 多行命令或需 bash 语义 | `bash <绝对路径>` | `bash scripts/test/win/mt.sh --version 1.21.1 --phase stop` |
-| 单行路径判断 | `test` / `ls` | `test -f F:/MCProject/.agent-locks/kimi.lock` |
+| 单行路径判断 | `test` / `ls` | `test -f D:/MCProject/.agent-locks/kimi.lock` |
 | JSON / 哈希 / 字符数 / 文本一致性校验 | `python`（仅标准库） | `python -c "import json;json.load(open('x.json',encoding='utf-8'))"` |
 
 - **禁止**使用 Windows 旧原生 shell 5.1（该口径已作废）；shell 语义一律走 Git Bash。
@@ -81,9 +81,9 @@
 
 ## 6. 构建与部署副作用
 
-- 编译只用**定向任务**：`cd /f/MCProject/astral_dice_multiloader && ./gradlew :neoforge-1.21.1:classes`（同理 `:forge-1.20.1:classes` / `:neoforge-26.1.2:classes` / `:fabric-1.20.1:classes`）。
+- 编译只用**定向任务**：`cd /d/MCProject/astral_dice_multiloader && ./gradlew :neoforge-1.21.1:classes`（同理 `:forge-1.20.1:classes` / `:neoforge-26.1.2:classes` / `:fabric-1.20.1:classes`）。
 - **`gradlew build` 不是纯编译**：旧流程里它会在收尾阶段把产物投放到整合包 `run/<线>/mods`（部署副作用）。Kimi **默认不跑 `build` / `deploy` / 任何投放脚本**；确需时先说清会写哪些目录，拿到明确授权再跑。
-- 构建前：查 `F:/MCProject/.agent-locks/`；查 `build/` 最近修改时间（近 30 分钟有写入却无锁 ⇒ 可能他人正在编译，等待或询问）。
+- 构建前：查 `D:/MCProject/.agent-locks/`；查 `build/` 最近修改时间（近 30 分钟有写入却无锁 ⇒ 可能他人正在编译，等待或询问）。
 - 构建后：产物以工作树 `build/libs` 为唯一来源；做过投放必须 `sha256sum` 核验并贴原文，不把同名当新构建。
 - 不因「顺手」而自动部署、自动上传、自动发版。
 
@@ -115,13 +115,13 @@
 
 ## 10. 互斥锁协议（可执行）
 
-锁目录：`F:/MCProject/.agent-locks/`（在仓库之外，不入 git）。DSH 用 `dsh.lock`，Kimi 用 `kimi.lock`，Codex 只读不加锁。
+锁目录：`D:/MCProject/.agent-locks/`（在仓库之外，不入 git）。DSH 用 `dsh.lock`，Kimi 用 `kimi.lock`，Codex 只读不加锁。
 
 **写文件 / 跑 Gradle 之前先查：**
 
 ```bash
-ls -la /f/MCProject/.agent-locks/ 2>/dev/null
-cat /f/MCProject/.agent-locks/dsh.lock 2>/dev/null   # PID/TIME/TASK 三行
+ls -la /d/MCProject/.agent-locks/ 2>/dev/null
+cat /d/MCProject/.agent-locks/dsh.lock 2>/dev/null   # PID/TIME/TASK 三行
 ```
 
 - `dsh.lock` **活跃**（PID 存活）⇒ 等待或询问用户；**不得删除、不得覆盖**。只读任务不受限。
@@ -131,13 +131,13 @@ cat /f/MCProject/.agent-locks/dsh.lock 2>/dev/null   # PID/TIME/TASK 三行
 **开始动工作树时创建自己的锁：**
 
 ```bash
-printf 'PID=%s\nTIME=%s\nTASK=%s\n' "$$" "$(date -Iseconds)" "<任务名>" > /f/MCProject/.agent-locks/kimi.lock
+printf 'PID=%s\nTIME=%s\nTASK=%s\n' "$$" "$(date -Iseconds)" "<任务名>" > /d/MCProject/.agent-locks/kimi.lock
 ```
 
 **结束（成功 / 失败 / 中断）都删掉自己的锁：**
 
 ```bash
-rm -f /f/MCProject/.agent-locks/kimi.lock
+rm -f /d/MCProject/.agent-locks/kimi.lock
 ```
 
 - 只清理 `kimi.lock`；`dsh.lock` 与任何未知锁文件一律不碰。
@@ -145,8 +145,8 @@ rm -f /f/MCProject/.agent-locks/kimi.lock
 
 ## 11. 收尾自查清单
 
-1. `git -C F:/MCProject/astral_dice_multiloader status --short -uall` —— 只应出现自己改的文件；他人改动与素材目录改动如实列出，不代改。
+1. `git -C D:/MCProject/astral_dice_multiloader status --short -uall` —— 只应出现自己改的文件；他人改动与素材目录改动如实列出，不代改。
 2. `git -C ... rev-parse --short HEAD` —— 默认口径下不应有新提交。
-3. `ls /f/MCProject/.agent-locks/` —— 自己的 `kimi.lock` 已清理。
+3. `ls /d/MCProject/.agent-locks/` —— 自己的 `kimi.lock` 已清理。
 4. 报告涉及版本号 / 路径 / 行号的，全部用命令重算，不抄旧文档。
 5. 报告必须含：文件清单 + 行号、命令与原始输出片段、未验证项 / 风险、`git rev-parse --short`。

@@ -1,7 +1,7 @@
 
 import subprocess, sys, json, io, os
 
-ROOT = r"F:/MCProject/astral_dice_multiloader"
+ROOT = r"D:/MCProject/astral_dice_multiloader"
 KEY = "tooltip.astral_dice.sign.fanny_active"
 rel_paths = [
     "neoforge-26.1.2/src/main/resources/assets/astral_dice/lang/zh_cn.json",

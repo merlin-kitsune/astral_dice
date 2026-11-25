@@ -1,7 +1,7 @@
 # forge-1.20.1：`build/libs` 与 `run/1.20.1/mods` 的 jar 不一致 —— 调查结论
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`
+- 仓库：`D:\MCProject\astral_dice_multiloader`
 - 分支：`multi-1.20.1-1.21.1`，HEAD `a67caa7`（工作树干净）
 - 调查时间：本次双版本构建之后（jar mtime 2026-09-15 20:04:52 / 20:05:10-11）
 - 调查者：构建产物调查者（subagent）

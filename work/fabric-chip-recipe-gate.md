@@ -1,9 +1,9 @@
 # fabric-1.20.1 筹码配方条件门控 — 实施与自证报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`，分支 `multi-main`
+- 仓库：`D:/MCProject/astral_dice_multiloader`，分支 `multi-main`
 - 只改 `fabric-1.20.1/`；未触碰 `astral_dice_multiloader-next`；未 `git add/commit/push`；未启动游戏
 - 时间：2026-11-02（Asia/Hong_Kong）
-- 互斥锁：`F:/MCProject/.agent-locks/dsh.lock`（原内容为 2026-10-31 的陈旧 Linux 锁 PID=26899 TASK=2612-live-verify，已改写为 TASK=fabric-chip-recipe-gate；仓库内无 kimi.lock）
+- 互斥锁：`D:/MCProject/.agent-locks/dsh.lock`（原内容为 2026-10-31 的陈旧 Linux 锁 PID=26899 TASK=2612-live-verify，已改写为 TASK=fabric-chip-recipe-gate；仓库内无 kimi.lock）
 
 ## 0. 结论
 
@@ -270,10 +270,10 @@ non-chip files carrying condition block: 0
 > Task :fabric-1.20.1:build
 
 > Task :fabric-1.20.1:pushToDevRun
-pushToDevRun: pushed astral_dice-1.5.0+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
+pushToDevRun: pushed astral_dice-1.5.0+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
 
 > Task :fabric-1.20.1:pushToRootBuild
-pushToRootBuild: pushed astral_dice-1.5.0+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\build\libs
+pushToRootBuild: pushed astral_dice-1.5.0+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\build\libs
 
 BUILD SUCCESSFUL in 3s
 8 actionable tasks: 5 executed, 1 from cache, 2 up-to-date
@@ -282,7 +282,7 @@ BUILD SUCCESSFUL in 3s
 产物：
 
 ```
-JAR: F:/MCProject/astral_dice_multiloader/fabric-1.20.1/build/libs/astral_dice-1.5.0+fabric_1.20.1.jar
+JAR: D:/MCProject/astral_dice_multiloader/fabric-1.20.1/build/libs/astral_dice-1.5.0+fabric_1.20.1.jar
   bytes=2944296 (2,944,296)
   sha256=d185d7dd24e14dddbfb17486f405cddd77dd7891227876323ca52bad60c84b31
 ```
@@ -329,7 +329,7 @@ jar advancements 109 | not from generated: ['data/astral_dice/advancements/recip
 ## 7. 工作树最终状态
 
 ```
-$ git -C F:\MCProject\astral_dice_multiloader status --porcelain -- fabric-1.20.1
+$ git -C D:\MCProject\astral_dice_multiloader status --porcelain -- fabric-1.20.1
 （137 项）' M' x 137 + '??' x 1（.tmp-runclient.log，非本批产生，未动）
 
 $ git ... diff --stat -- fabric-1.20.1   →  137 files changed, 757 insertions(+), 25 deletions(-)
@@ -362,10 +362,10 @@ ChipRecipesEnabledCondition.java        bytes=6438    CRLF=118   bareLF=0
 
 ```powershell
 # 0) 锁
-#    F:/MCProject/.agent-locks/dsh.lock 已改写为 TASK=fabric-chip-recipe-gate
+#    D:/MCProject/.agent-locks/dsh.lock 已改写为 TASK=fabric-chip-recipe-gate
 
 # 1) 编译
-Set-Location F:\MCProject\astral_dice_multiloader
+Set-Location D:\MCProject\astral_dice_multiloader
 .\gradlew.bat :fabric-1.20.1:compileJava --console=plain
 
 # 2) datagen（当前仓库状态会失败；需先临时停用 ModItemModelProvider::new）

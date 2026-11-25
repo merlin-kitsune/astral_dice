@@ -1,6 +1,6 @@
 # Astral Dice 1.5.0 发布验收 · 独立只读复核报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`（分支 `multi-main`，HEAD `33fe2f5e7eadf4e9b78ce8504b140e8d5b60f7cc`）
+- 仓库：`D:/MCProject/astral_dice_multiloader`（分支 `multi-main`，HEAD `33fe2f5e7eadf4e9b78ce8504b140e8d5b60f7cc`）
 - 复核时间：2026-11-02（系统时区 Asia/Hong_Kong）
 - 复核方式：**只读**。未执行任何 `git add/commit/push/tag`、未运行 Gradle、未启动游戏、未修改任何文件（本文件是本次唯一写入）。
 - 分支/版本/状态一律以实读命令为准；取不到证据的条目显式写「无法判定」。

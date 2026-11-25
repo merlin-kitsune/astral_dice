@@ -1,5 +1,5 @@
 import zipfile
-J = r"F:/MCProject/astral_dice_multiloader/forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar"
+J = r"D:/MCProject/astral_dice_multiloader/forge-1.20.1/build/moddev/artifacts/forge-1.20.1-47.4.10-sources.jar"
 with zipfile.ZipFile(J) as z:
     names = [n for n in z.namelist() if n.endswith("client/gui/Gui.java")]
     print("ENTRIES:", names)

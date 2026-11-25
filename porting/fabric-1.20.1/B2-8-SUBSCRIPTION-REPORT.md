@@ -1,7 +1,7 @@
 # B2-8 Fabric 事件订阅者补登记报告
 
 - 批次：B2-8（Fabric 1.20.1 自建总线 LoaderBus 补齐 `@Mod.EventBusSubscriber` 语义）
-- 工作树：F:/MCProject/astral_dice_multiloader（分支 multi-main）
+- 工作树：D:/MCProject/astral_dice_multiloader（分支 multi-main）
 - 结论：11 个候选中 **4 个登记**（全部服务端）、**7 个判定不该登记**（零 `@SubscribeEvent` 方法，纯注释误报）；客户端 0 新增，未触碰 `AstralDiceClient.java` / `client/ModClientEvents.java`。
 
 ## 1. 定性判据（三步，禁猜）

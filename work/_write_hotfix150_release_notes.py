@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-os.chdir(r'F:/MCProject/astral_dice_multiloader')
+os.chdir(r'D:/MCProject/astral_dice_multiloader')
 NL = bytes([13, 10])
 
 ZH = [

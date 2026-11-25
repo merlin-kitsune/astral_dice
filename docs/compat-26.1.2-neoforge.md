@@ -1,6 +1,6 @@
 # MC 26.1.2 / NeoForge 26.1.2.109 迁移文档（P1 线）
 
-> 适用子项目：`neoforge-26.1.2`（**2026-09-17 起已并入主线**：原本的独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`，现行工作目录即主线根目录，第三子项目与之同树）
+> 适用子项目：`neoforge-26.1.2`（**2026-09-17 起已并入主线**：原本的独立 worktree `D:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`，现行工作目录即主线根目录，第三子项目与之同树）
 > 迁移基线：主线 `multi-1.20.1-1.21.1` 的 `1.2.1`（commit `fda8ca9`）
 > 本文与 `compat-1.20.1-forge.md` 同级；`docs/` 在 `.gitignore` 内，属**本机文档**，不入库。
 

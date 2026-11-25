@@ -1,6 +1,6 @@
 # fabric-1.20.1 筹码配方条件门控 —— 实施前取证报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`，分支 `multi-main`，目标线 `fabric-1.20.1`
+- 仓库：`D:/MCProject/astral_dice_multiloader`，分支 `multi-main`，目标线 `fabric-1.20.1`
 - 性质：**只读取证**。未修改任何源码/资源/配置，未运行构建、未运行 datagen、未启动游戏、未做任何 git 写操作。本报告与 `work/recon/_scan*.py`（临时脚本）是本次唯一的落盘产物。
 - 取证工具：`javap`（`/c/Program Files/Zulu/zulu-21/bin/javap`，Java 21.0.12）、`unzip`、`grep`、Windows 原生 Python 3.12（`/c/Users/xmace/.local/bin/python`）。
 - 取证对象（实读，非记忆）：
@@ -647,7 +647,7 @@ $ grep -rn 'ConfigReload|configReload|Reloading' --include=*.java fabric-1.20.1/
 
 ## 6. 实施清单（按文件 + 精确锚点）
 
-> 以下均为**待实施**内容，本次未执行任何改动。所有路径相对仓库根 `F:/MCProject/astral_dice_multiloader`。
+> 以下均为**待实施**内容，本次未执行任何改动。所有路径相对仓库根 `D:/MCProject/astral_dice_multiloader`。
 
 ### 6.1 文件 A：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/recipe/condition/ChipRecipesEnabledCondition.java`
 
@@ -834,7 +834,7 @@ advancement 由该 `save` 内部构造并挂在 `FinishedRecipe` 上，最终由
 
 ```bash
 # 0) 变量
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 JAVAP='/c/Program Files/Zulu/zulu-21/bin/javap'
 MC="C:/Users/xmace/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.20.1-loom.mappings.1_20_1.layered+hash.2198-v2/minecraft-merged-1.20.1-loom.mappings.1_20_1.layered+hash.2198-v2.jar"
 RC=$(ls .gradle/loom-cache/remapped_mods/remapped/net/fabricmc/fabric-api/fabric-resource-conditions-api-v1-c2d2b86c/*/*.jar | grep -v sources | head -1)

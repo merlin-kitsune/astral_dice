@@ -9,21 +9,21 @@
 
 | 项 | 值 |
 |---|---|
-| 工作树 | `F:/MCProject/astral_dice_multiloader-next`（主仓 `astral_dice_multiloader` 的 **git worktree**） |
+| 工作树 | `D:/MCProject/astral_dice_multiloader-next`（主仓 `astral_dice_multiloader` 的 **git worktree**） |
 | 分支 | `multi-dev-next` |
 | HEAD | `b7d71a1c`（2026-11-07 18:1x，本地提交；**未 push**） |
 | 版本 | 五线 `mod_version=26.4-SNAPSHOT.6+<line>` |
-| 前置库 | `starengine_version=26.4-SNAPSHOT.1`，区间 `starengine_version_range=>=26.4-SNAPSHOT.1 <27.0.0`（源码在 `F:/MCProject/starengine_next`，分支 `next`） |
+| 前置库 | `starengine_version=26.4-SNAPSHOT.1`，区间 `starengine_version_range=>=26.4-SNAPSHOT.1 <27.0.0`（源码在 `D:/MCProject/starengine_next`，分支 `next`） |
 | 五条自包含线 | `forge-1.20.1` / `neoforge-1.21.1`（P0）、`neoforge-26.1.2` / `fabric-1.20.1` / `fabric-1.21.1`（P1） |
 | 与主线关系 | 主线 1.5.0 的 36 个提交已反同步完成（`docs/handover-2026-11-02-dev-next-mainline-150.md` 是那轮的交接） |
 
 ## 2. 实读快照（2026-11-07 18:16）
 
 ```
-git -C F:/MCProject/astral_dice_multiloader-next rev-parse --abbrev-ref HEAD   # multi-dev-next
-git -C F:/MCProject/astral_dice_multiloader-next log --oneline -1              # b7d71a1c
-git -C F:/MCProject/astral_dice_multiloader-next log --oneline origin/multi-dev-next..HEAD | wc -l   # 10（未 push）
-git -C F:/MCProject/astral_dice_multiloader-next status --short -uall
+git -C D:/MCProject/astral_dice_multiloader-next rev-parse --abbrev-ref HEAD   # multi-dev-next
+git -C D:/MCProject/astral_dice_multiloader-next log --oneline -1              # b7d71a1c
+git -C D:/MCProject/astral_dice_multiloader-next log --oneline origin/multi-dev-next..HEAD | wc -l   # 10（未 push）
+git -C D:/MCProject/astral_dice_multiloader-next status --short -uall
 #   ?? docs/features/tooltip-frame-third-party-compat.md   ← 本会话新增文档（下一步要提交）
 #   ?? 立牌计划表.txt                                        ← 一直未裁决是否入库，**别 add**
 ```
@@ -38,7 +38,7 @@ git -C F:/MCProject/astral_dice_multiloader-next status --short -uall
   3. **一个文件同一时刻只一个写者**；发现别的实机（别的会话/别的线）在跑，**必须搁置并告知用户**。
 - **提交纪律**（`838bcf69` 用户裁决）：完成一个可独立验证的单元就**立即本地提交**；
   **默认不 push**（要用户明确放行，远程走代理 `http://127.0.0.1:7897`）。
-- 红线本身不变：**默认不启动实机 / 不部署 / 不 commit-push 未获授权 / 保护素材与他人改动 / 改文件或跑 Gradle 前查 `F:/MCProject/.agent-locks/`**。
+- 红线本身不变：**默认不启动实机 / 不部署 / 不 commit-push 未获授权 / 保护素材与他人改动 / 改文件或跑 Gradle 前查 `D:/MCProject/.agent-locks/`**。
 - 默认编辑器口径：`docs/*.md` 与 HTML/MAPPING 用 **LF**；`CHANGELOG*` 与 `release/*.md` 用 **CRLF**；Java / json / gradle 用 **CRLF**。
   改完用 `python -c` 数 CRLF 与裸 LF 复核。
 
@@ -113,7 +113,7 @@ b1fddf61 style(lang): tooltip 标点全量归一（五线 × 三语）+ sykes �
 ## 7. 接手第一步（照抄执行）
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader-next
+cd /d/MCProject/astral_dice_multiloader-next
 git rev-parse --abbrev-ref HEAD                    # 期望 multi-dev-next
 git log --oneline -3
 git status --short -uall

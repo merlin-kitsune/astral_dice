@@ -5,18 +5,18 @@
 
 ---
 
-你接手 `F:\MCProject\astral_dice_multiloader-next` 的 Astral Dice 多加载器工程。先加载技能 `using-superpowers`，再读根 `AGENTS.md` 与 `docs/agent/AGENTS-dsh.md`（当前是 Windows 宿主；`AGENTS-dsh-linux.md` 只是 Linux 历史正本），然后按本文核对现状。不要凭本文数字直接下结论，分支 / HEAD / 版本 / 产物一律先实读。
+你接手 `D:\MCProject\astral_dice_multiloader-next` 的 Astral Dice 多加载器工程。先加载技能 `using-superpowers`，再读根 `AGENTS.md` 与 `docs/agent/AGENTS-dsh.md`（当前是 Windows 宿主；`AGENTS-dsh-linux.md` 只是 Linux 历史正本），然后按本文核对现状。不要凭本文数字直接下结论，分支 / HEAD / 版本 / 产物一律先实读。
 
 ## 一、当前事实（2026-11-12 01:42 交接快照）
 
-- 工作树：`F:\MCProject\astral_dice_multiloader-next`，分支 `multi-dev-next`。
+- 工作树：`D:\MCProject\astral_dice_multiloader-next`，分支 `multi-dev-next`。
 - HEAD：`43f821adf0779320e2efe752aefa76cfd5711eb7`；`origin/multi-dev-next` 与本地同哈希，代码已 push。
 - Tracked 工作树干净。未跟踪仅：6 个 `models/*.bbmodel`、`work/audit/`、`work/souri/`、根目录 `立牌计划表.txt` —— 一律不动，不 add / 不删。
 - 五线版本均为 `26.4-SNAPSHOT.13+<加载器后缀>`：
   - P0：`neoforge-1.21.1`、`forge-1.20.1`、`neoforge-26.1.2`
   - P1：`fabric-1.20.1`、`fabric-1.21.1`
 - `.13` 是 2026-11-12 01:10 从 `a248f13e` 构建的 **仅审计构建**：五线 `:build` PASS，根 `build/libs` 五枚 jar 与 `.sha256` 已更新；**未实机、不可作为发布版本**。未打 tag、未发 Release、未上传 CurseForge。
-- 当前没有实机在跑。接手后先复核端口 `25585`（AutoJS）/ `25565`（游戏）/ `25575`（fabric RCON）是否为空，并检查 `F:/MCProject/.agent-locks/` 是否有他人的活跃锁。
+- 当前没有实机在跑。接手后先复核端口 `25585`（AutoJS）/ `25565`（游戏）/ `25575`（fabric RCON）是否为空，并检查 `D:/MCProject/.agent-locks/` 是否有他人的活跃锁。
 
 ## 二、本轮已完成、不要重做
 

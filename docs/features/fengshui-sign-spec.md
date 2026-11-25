@@ -2,8 +2,8 @@
 
 > **性质**：本文件是**契约冻结件**，不是实现报告。两条实现线（`v121` = `neoforge-1.21.1`，`v120` = `forge-1.20.1`）
 > 与 `verifier` 一律以本文件的 **§1 最终 id 表** 为唯一命名依据。
-> **证据口径**：所有结论均给「文件:行号」。仓库 = `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，
-> 冻结时点 HEAD = `1970de2c`）。共享前置库 = `F:\MCProject\starengine_lib`（分支 `main`，**本批不改库**）。
+> **证据口径**：所有结论均给「文件:行号」。仓库 = `D:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，
+> 冻结时点 HEAD = `1970de2c`）。共享前置库 = `D:\MCProject\starengine_lib`（分支 `main`，**本批不改库**）。
 > ⚠️ **行号基准 = `git show 1970de2c:<path>`（HEAD），不是并行实现中的工作区**：`v121`/`v120` 正在改动同一批文件，
 > 工作区行号已在漂移（实测：`neoforge-1.21.1/.../item/sign/FenSignItem.java` 的 `MAX_RECHARGE` 在 HEAD 为 `:37`，
 > 工作区已移到 `:39`）。复核任一引用请用 `git show 1970de2c:<path> | grep -n '<符号>'`。
@@ -924,8 +924,8 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 > ⚠️ **闸门运行陷阱（`t8` 亲历的假绿，必须遵守）**：`verify_bountiful_pools.py` 的 `-Root` 默认 **`'.'`**，
 > 在**非目标工作树**的 cwd 下运行会去校验**另一棵树**并给出 `结果: ALL OK` 的**假绿**（实测：在会话根
-> `F:\MCProject\astral_dice_multiloader` 下运行，校验的是不含本批改动的发布线树 ⇒ 全绿，而 dev 树实为 4 项致命偏差）。
-> ⇒ 任何赏金池判定**必须**显式 `-Root F:\MCProject\astral_dice_multiloader-next`（或在 dev 树根下运行）。
+> `D:\MCProject\astral_dice_multiloader` 下运行，校验的是不含本批改动的发布线树 ⇒ 全绿，而 dev 树实为 4 项致命偏差）。
+> ⇒ 任何赏金池判定**必须**显式 `-Root D:\MCProject\astral_dice_multiloader-next`（或在 dev 树根下运行）。
 > 该假绿与 ④ 的失明区是**同类**问题：验证工具与被验证对象不同源时，闸门给出的绿不成立。
 
 ### 14.8 用户裁决（2026-09-26，**最高优先级**）：专属效果牌**禁止进入赏金池** —— 推翻 §14.7 ① 的后半
@@ -1091,7 +1091,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 - 全部行号基准 = **HEAD `1970de2c`**，复核方式 `git show 1970de2c:<path> | grep -n '<符号>'`；
   **不要**直接读工作区行号 —— `v121`/`v120` 正在并行修改同一批文件，工作区行号已漂移
   （实测：`neoforge-1.21.1/.../item/sign/FenSignItem.java` 的 `MAX_RECHARGE` 在 HEAD 为 `:37`、工作区为 `:39`）。
-- 库文件（`F:\MCProject\starengine_lib`，分支 `main`）本批**零改动** ⇒ 其行号即当前 `main` 工作区行号。
+- 库文件（`D:\MCProject\starengine_lib`，分支 `main`）本批**零改动** ⇒ 其行号即当前 `main` 工作区行号。
 - 原版 / 加载器证据取自 §1 头部列出的两个反编译源 jar，引用写作 `<jar 内路径>:<行号>`。
 
 ---
@@ -1100,7 +1100,7 @@ for (Player ally : EventTargetCollector.collectTeamPlayers(triggerer)) {
 
 ```bash
 # 图标映射（逐字节比对）
-img='F:/MCProject/astral_dice_multiloader-next/images'
+img='D:/MCProject/astral_dice_multiloader-next/images'
 sha256sum "$img/反击.png" "$img/风水师立牌.png" "$img/符卡-福.png" "$img/符卡-祸.png" "$img/厄运.png"
 # 缺失图标（应报 No such file）
 test -f "$img/白泽赐福.png"; test -f "$img/养精蓄锐.png"
@@ -1109,7 +1109,7 @@ test -f "$img/白泽赐福.png"; test -f "$img/养精蓄锐.png"
 # 冒烟级别
 python docs/agent/verify-split.py       # 作用域校验
 # t6 回填后的自检（规格文件完整性 + 两树同哈希）
-cd /f/MCProject/astral_dice_multiloader-next
+cd /d/MCProject/astral_dice_multiloader-next
 grep -cE 'onDroppedByPlayer|grantBonusPlay|完整冒烟|tags/items' docs/features/fengshui-sign-spec.md
-sha256sum docs/features/fengshui-sign-spec.md /f/MCProject/astral_dice_multiloader/docs/features/fengshui-sign-spec.md
+sha256sum docs/features/fengshui-sign-spec.md /d/MCProject/astral_dice_multiloader/docs/features/fengshui-sign-spec.md
 ```

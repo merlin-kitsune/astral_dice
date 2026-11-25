@@ -2,7 +2,7 @@
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 被测提交：`6e06cf4c`（`fix(sign): 地雷女立牌 ame_overdose 自然到期只结算一次（.128，P0 两线）`，2026-10-17 12:40:19 +0800）
-- 工作树：`/mnt/f/mcproject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD = `6e06cf4c`）
+- 工作树：`/mnt/d/mcproject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD = `6e06cf4c`）
 - 实测线：`neoforge-1.21.1`（MC 1.21.1 / NeoForge 21.1.235）与 `forge-1.20.1`（MC 1.20.1 / Forge 47.4.10），两线均逐项复测
 - 测试世界：`testworld`（超平坦/创造/允许命令/keepInventory；两线测后已 purge，见 §6）
 - 判据通道：服务端 KubeJS 探针 `/astralkame`（`sendFailure` → `latest.log` 的 `AP_*` 行）+ tick 级采样器 `/astralkame poll`

@@ -1,6 +1,6 @@
 # AGENT-SPLIT —— Codex 与 DSH 的操作模式分离（2026-10-22 用户裁决）
 
-适用：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，版本 1.5.0-pre.4）。
+适用：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，版本 1.5.0-pre.4）。
 一句话：**DSH 是唯一执行者，Codex 只做只读验证**；两种模式并行时互不踩踏。
 
 ## 一、职责矩阵
@@ -21,7 +21,7 @@ Codex 私有副本的编译结果**不作为验收证据**（副本与工作树�
 
 ## 二、互斥（同一工作树只允许一个执行者）
 
-1. 锁目录：`F:\MCProject\.agent-locks\`（在仓库之外，不入 git）。
+1. 锁目录：`D:\MCProject\.agent-locks\`（在仓库之外，不入 git）。
 2. DSH **每次动工作树前**创建 `dsh.lock`，内容三行：`PID=<进程号>` / `TIME=<ISO8601>` / `TASK=<任务名>`；
    本轮结束（成功 / 失败 / 中断）**必须删除**。
 3. Codex 只读，**不加锁**，也不得创建或删除 `dsh.lock`。
@@ -31,8 +31,8 @@ Codex 私有副本的编译结果**不作为验收证据**（副本与工作树�
 5. 抢锁/查锁命令（只读，任意一侧可跑）：
 
 ```bash
-cat F:/MCProject/.agent-locks/dsh.lock 2>/dev/null
-find F:/MCProject/astral_dice_multiloader -maxdepth 3 -type d -name build -printf '%TY-%Tm-%TdT%TH:%TM:%TS  %p\n'
+cat D:/MCProject/.agent-locks/dsh.lock 2>/dev/null
+find D:/MCProject/astral_dice_multiloader -maxdepth 3 -type d -name build -printf '%TY-%Tm-%TdT%TH:%TM:%TS  %p\n'
 ```
 
 ## 三、交接
@@ -54,8 +54,8 @@ find F:/MCProject/astral_dice_multiloader -maxdepth 3 -type d -name build -print
 ## 五、核查（收尾自查，任一方向适用）
 
 ```bash
-git -C F:\MCProject\astral_dice_multiloader status --short -uall      # 只应有自己改的文件
-test -f F:/MCProject/.agent-locks/dsh.lock || echo 'no dsh.lock（收尾后应为不存在）'
+git -C D:\MCProject\astral_dice_multiloader status --short -uall      # 只应有自己改的文件
+test -f D:/MCProject/.agent-locks/dsh.lock || echo 'no dsh.lock（收尾后应为不存在）'
 python docs/agent/verify-split.py                                      # 动过规则文件后四项全 [OK]
 ```
 
@@ -72,5 +72,5 @@ python docs/agent/verify-split.py                                      # 动过�
 5. 追加到第五节的自查口径（只读，双方可跑）：
 
 ```bash
-test -f F:/MCProject/.agent-locks/kimi.lock || echo 'no kimi.lock（收尾后应为不存在）'
+test -f D:/MCProject/.agent-locks/kimi.lock || echo 'no kimi.lock（收尾后应为不存在）'
 ```

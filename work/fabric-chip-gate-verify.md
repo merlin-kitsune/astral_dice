@@ -1,7 +1,7 @@
 # Fabric 1.20.1 实机验证：筹码配方开关（enable_chip_recipes）
 
 - 验证日期：2026-11-02 14:17–14:25（Asia/Hong_Kong）
-- 仓库：`F:/MCProject/astral_dice_multiloader`（分支 `multi-main`，HEAD `6fe38138`）
+- 仓库：`D:/MCProject/astral_dice_multiloader`（分支 `multi-main`，HEAD `6fe38138`）
 - 只读源码、未改任何默认值；运行时配置 `fabric-1.20.1/run/client/config/astral_dice-common.toml` 在收尾时已改回 `enable_chip_recipes = false`
 - 未执行 git add / commit / push
 

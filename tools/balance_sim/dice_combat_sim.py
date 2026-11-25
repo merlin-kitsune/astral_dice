@@ -12,7 +12,7 @@
 
 公式唯一事实源（本脚本逐条对齐，不得凭记忆改动）
 ------------------------------------------------
-- 库共享公式：F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/combat/
+- 库共享公式：D:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/combat/
     CombatFormula.playerDefense / mobDefenseInt
     TargetBattleStats.baseAttack / baseDefense
     DiceBattleResolver.resolve                          (max(1, atk - def))

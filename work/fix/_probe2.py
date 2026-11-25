@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from PIL import Image
-SHOTS = {"land":"F:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/land_no_air.png",
-         "water":"F:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/underwater_air_row.png"}
+SHOTS = {"land":"D:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/land_no_air.png",
+         "water":"D:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/underwater_air_row.png"}
 BRIGHT = None
 def block(im, gx, gy, S=4):
     y0, x0 = gy*S, gx*S

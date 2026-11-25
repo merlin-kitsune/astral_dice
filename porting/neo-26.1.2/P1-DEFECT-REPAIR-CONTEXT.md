@@ -180,7 +180,7 @@ forge-1.20.1 同文件 :31/:85 同值同构 ⇒ 两条基准一致，26.1.2 是�
 
 ## 9. 验收命令与判据（可复制）
 
-    cd /d F:\MCProject\astral_dice_multiloader
+    cd /d D:\MCProject\astral_dice_multiloader
     gradlew.bat :neoforge-26.1.2:build --console=plain
     python tools/check_lang_sync.py            # 四线三语键集一致
     python tools/verify_effect_icons.py        # 四线效果图标守门（若动了 ModEffects）

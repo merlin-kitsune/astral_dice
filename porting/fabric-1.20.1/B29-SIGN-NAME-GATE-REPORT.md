@@ -1,6 +1,6 @@
 # B29 立牌英文名门禁覆盖 fabric 线 + fabric 立牌英文名订正
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，工作树未提交；本批未 commit / push / stash / add / checkout，未跑 gradle，未启动游戏）
+- 仓库：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，工作树未提交；本批未 commit / push / stash / add / checkout，未跑 gradle，未启动游戏）
 - 基线：`neoforge-1.21.1`（P0 主基准）、`forge-1.20.1`（P0 次基准）为权威实现；`fabric-1.20.1` 为对齐目标
 - 命名正本：技能 `astral-dice-sign-i18n-naming`（流程）+ 权威表 `tools/sign_display_names.json`（32 条）
 - 执行日期：2026-11-01

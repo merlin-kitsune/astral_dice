@@ -1,7 +1,7 @@
 # B30 · fabric-1.20.1 文案数值同步报告（对齐 neoforge-1.21.1 / forge-1.20.1 主线口径）
 
 - 批次：B30-LANG-NUMBER-SYNC
-- 工作树：`F:/MCProject/astral_dice_multiloader`（分支 `multi-main`，Windows 原生）
+- 工作树：`D:/MCProject/astral_dice_multiloader`（分支 `multi-main`，Windows 原生）
 - 执行日期：2026-11-01
 - 权威裁决：以最新主线为准（neoforge-1.21.1 主基准 / forge-1.20.1 次基准）；fabric 侧与主线语义冲突的旧行为一律改向主线，不再保留"平台差异"。
 - 结论：**11 个键 × 3 语 = 33 处文案数值已与 forge-1.20.1 / neoforge-1.21.1 逐字一致；帕秋莉手册无需改动（无内联文本，全部走 lang 键）**；三道守门全绿。

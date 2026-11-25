@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, numpy as np
 from PIL import Image
-sys.path.insert(0, "F:/MCProject/astral_dice_multiloader/work/fix")
+sys.path.insert(0, "D:/MCProject/astral_dice_multiloader/work/fix")
 from _pix import load_mod, load_van
 
 def scores(img, tex, S=4):

@@ -1,7 +1,7 @@
 # 02 · 「试剂-深渊」改名 + 版本号 → 1.5.0 影响面测绘（只读取证）
 
-- 工作树：`F:\MCProject\astral_dice_multiloader`
-- 分支 / HEAD：`multi-main` / `fd990c15`（`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD`）
+- 工作树：`D:\MCProject\astral_dice_multiloader`
+- 分支 / HEAD：`multi-main` / `fd990c15`（`git -C D:\MCProject\astral_dice_multiloader rev-parse --short HEAD`）
 - 取证时间：2026-11-02（Asia/Hong_Kong）
 - 取证方式：全部 `grep -rn --binary-files=without-match` + `sed -n` + `diff -q`，**未运行 gradlew、未启动游戏、未修改任何仓库文件**（唯一新建文件 = 本报告）。
 - 工作树预置状态（非本次分析所致，勿触碰）：`AGENTS.md` M、`docs/agent/AGENTS-dsh-linux.md` M、`docs/agent/AGENTS-full.md` M、`docs/compat-1.5.0-porting.md` M、`fabric-1.20.1/build.gradle` M、`fabric-1.20.1/src/generated/**` 大量 D。
@@ -34,10 +34,10 @@
 
 | # | 文件（绝对路径） | 行号 | 键 / 上下文 | 当前值 |
 |---|---|---|---|---|
-| 1 | `F:\MCProject\astral_dice_multiloader\neoforge-1.21.1\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **379** | `item.astral_dice.abyss_reagent_chip` | `试剂-深渊` |
-| 2 | `F:\MCProject\astral_dice_multiloader\neoforge-26.1.2\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **888** | 同上 | `试剂-深渊` |
-| 3 | `F:\MCProject\astral_dice_multiloader\forge-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **385** | 同上 | `试剂-深渊` |
-| 4 | `F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **921** | 同上 | `试剂-深渊` |
+| 1 | `D:\MCProject\astral_dice_multiloader\neoforge-1.21.1\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **379** | `item.astral_dice.abyss_reagent_chip` | `试剂-深渊` |
+| 2 | `D:\MCProject\astral_dice_multiloader\neoforge-26.1.2\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **888** | 同上 | `试剂-深渊` |
+| 3 | `D:\MCProject\astral_dice_multiloader\forge-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **385** | 同上 | `试剂-深渊` |
+| 4 | `D:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json` | **921** | 同上 | `试剂-深渊` |
 
 证据（原文行）：
 ```json
@@ -157,10 +157,10 @@ neoforge-1.21.1/src/main/resources/assets/astral_dice/lang/zh_cn.json:379:  "ite
 必须改 4 个文件 / 4 行：
 
 ```
-F:\MCProject\astral_dice_multiloader\neoforge-1.21.1\src\main\resources\assets\astral_dice\lang\zh_cn.json   第 379 行
-F:\MCProject\astral_dice_multiloader\neoforge-26.1.2\src\main\resources\assets\astral_dice\lang\zh_cn.json 第 888 行
-F:\MCProject\astral_dice_multiloader\forge-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json     第 385 行
-F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json    第 921 行
+D:\MCProject\astral_dice_multiloader\neoforge-1.21.1\src\main\resources\assets\astral_dice\lang\zh_cn.json   第 379 行
+D:\MCProject\astral_dice_multiloader\neoforge-26.1.2\src\main\resources\assets\astral_dice\lang\zh_cn.json 第 888 行
+D:\MCProject\astral_dice_multiloader\forge-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json     第 385 行
+D:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\assets\astral_dice\lang\zh_cn.json    第 921 行
 ```
 
 改后这些行应为（缩进/逗号/CRLF 保持不变，逐行替换即可）：
@@ -169,7 +169,7 @@ F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\assets\ast
   "item.astral_dice.abyss_reagent_chip": "深渊试剂",
 ```
 
-**验收命令（在 `F:\MCProject\astral_dice_multiloader` 下，git bash）：**
+**验收命令（在 `D:\MCProject\astral_dice_multiloader` 下，git bash）：**
 
 ```bash
 # 1) 玩家可见面必须 0 残留
@@ -185,7 +185,7 @@ grep -rn 'item.astral_dice.abyss_reagent_chip' */src/main/resources/assets/astra
 #       若 en_us/ja_jp 也按 lead 裁决同步，则值改为 Abyss Reagent / 深淵試薬
 
 # 4) id 面零改动（应与改动前一致）
-git -C F:\MCProject\astral_dice_multiloader diff --stat -- '*/src/main/resources/data/**' '*/src/main/resources/assets/*/patchouli_books/**'
+git -C D:\MCProject\astral_dice_multiloader diff --stat -- '*/src/main/resources/data/**' '*/src/main/resources/assets/*/patchouli_books/**'
 # 期望：无输出
 ```
 
@@ -204,10 +204,10 @@ grep -rn --binary-files=without-match '试剂-深渊'   neoforge-1.21.1/src neof
 
 | 线 | 文件（绝对路径） | 行号 | 当前值 | 目标值 |
 |---|---|---|---|---|
-| neoforge-1.21.1 | `F:\MCProject\astral_dice_multiloader\neoforge-1.21.1\gradle.properties` | **37** | `1.5.0-rc.7+neoforge_1.21.1` | `1.5.0+neoforge_1.21.1` |
-| neoforge-26.1.2 | `F:\MCProject\astral_dice_multiloader\neoforge-26.1.2\gradle.properties` | **54** | `1.5.0-rc.7+neoforge_26.1.2` | `1.5.0+neoforge_26.1.2` |
-| forge-1.20.1 | `F:\MCProject\astral_dice_multiloader\forge-1.20.1\gradle.properties` | **41** | `1.5.0-rc.7+forge_1.20.1` | `1.5.0+forge_1.20.1` |
-| fabric-1.20.1 | `F:\MCProject\astral_dice_multiloader\fabric-1.20.1\gradle.properties` | **29** | `1.5.0-rc.7+fabric_1.20.1` | `1.5.0+fabric_1.20.1` |
+| neoforge-1.21.1 | `D:\MCProject\astral_dice_multiloader\neoforge-1.21.1\gradle.properties` | **37** | `1.5.0-rc.7+neoforge_1.21.1` | `1.5.0+neoforge_1.21.1` |
+| neoforge-26.1.2 | `D:\MCProject\astral_dice_multiloader\neoforge-26.1.2\gradle.properties` | **54** | `1.5.0-rc.7+neoforge_26.1.2` | `1.5.0+neoforge_26.1.2` |
+| forge-1.20.1 | `D:\MCProject\astral_dice_multiloader\forge-1.20.1\gradle.properties` | **41** | `1.5.0-rc.7+forge_1.20.1` | `1.5.0+forge_1.20.1` |
+| fabric-1.20.1 | `D:\MCProject\astral_dice_multiloader\fabric-1.20.1\gradle.properties` | **29** | `1.5.0-rc.7+fabric_1.20.1` | `1.5.0+fabric_1.20.1` |
 
 > 注意：只删 `-rc.7`，**保留 `+<loader>_<mcver>` 构建元数据后缀**。该后缀被部署脚本用于「只清理本线 jar」判定（见 B.7）且是 CI 剥后缀的输入。
 
@@ -226,7 +226,7 @@ grep -rn --binary-files=without-match '试剂-深渊'   neoforge-1.21.1/src neof
 | Curios | — | `curios_version_range=[15,)` | — | — |
 | Patchouli | — | — | — | `patchouli_version=1.20.1-85-FABRIC` |
 
-**根目录 `F:\MCProject\astral_dice_multiloader\gradle.properties`（7 行）不含任何版本号**，只有 `org.gradle.jvmargs=-Xmx3G` / daemon / parallel / caching / `configuration-cache=true` ⇒ 不需改。
+**根目录 `D:\MCProject\astral_dice_multiloader\gradle.properties`（7 行）不含任何版本号**，只有 `org.gradle.jvmargs=-Xmx3G` / daemon / parallel / caching / `configuration-cache=true` ⇒ 不需改。
 
 **产物命名规则**：四线均 `version = mod_version` + `base { archivesName = 'astral_dice' }`（行号见 B.7）⇒ `astral_dice-<mod_version>.jar`。
 
@@ -291,7 +291,7 @@ grep -rn --binary-files=without-match '试剂-深渊'   neoforge-1.21.1/src neof
 
 ### B.8 CI 配置
 
-**存在，唯一文件**：`F:\MCProject\astral_dice_multiloader\.github\workflows\build.yml`
+**存在，唯一文件**：`D:\MCProject\astral_dice_multiloader\.github\workflows\build.yml`
 
 | 关注点 | 事实 | 行号 |
 |---|---|---|
@@ -327,7 +327,7 @@ grep -rn --binary-files=without-match '试剂-深渊'   neoforge-1.21.1/src neof
 ## 附录：本次取证命令（原文，可复跑）
 
 ```bash
-cd F:/MCProject/astral_dice_multiloader
+cd D:/MCProject/astral_dice_multiloader
 # A 项
 grep -rn --binary-files=without-match '试剂-深渊' .            # 123 文件命中（含生成物）
 grep -rn --binary-files=without-match '试剂 - 深渊' .           # 0

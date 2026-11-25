@@ -2,7 +2,7 @@
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 被测线：`neoforge-1.21.1`（MC 1.21.1 / NeoForge 21.1.235 / Java 21）
-- 工作树：`/mnt/f/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD = `f7ee13e0`）
+- 工作树：`/mnt/d/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD = `f7ee13e0`）
 - 版本：`2.0.0-SNAPSHOT.128`；产物 `astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar`
   （`sha256 = bed6443296ccceb02f0e1a70bb08de71ec78478e55f4e094a221aa8b61181141`，`build/libs` 与 `run/1.21.1/mods` **逐字相同**）
 - 用例来源：`docs/features/card-choice-screen-spec.md` §9（8 条）、`docs/features/jade-shop-cooldown-spec.md` §5（5 条）
@@ -371,7 +371,7 @@ bash scripts/test/win/mt.sh --version 1.21.1 --phase stop --purge-saves
 ## 9. 回归验证（2026-10-17 第二轮：CC-FILTER 新口径 / CC-DBLCLICK 多牌栈 / 右键 / 无 Jade）
 
 - 被测线：`neoforge-1.21.1`（MC 1.21.1 / NeoForge 21.1.235 / Java 21）
-- 工作树：`/mnt/f/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD `96352433` + 本批未提交修复）
+- 工作树：`/mnt/d/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`，HEAD `96352433` + 本批未提交修复）
 - 版本：`2.0.0-SNAPSHOT.128`；产物 `astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar`
   （`sha256 = 44f16811d4dafe52396da4fcd47e9557ba25edcc15975250e3488edb2d7c93af`，`build/libs` 与 `run/1.21.1/mods` 逐字相同）
 - 证据目录：`temp/ccregress-20261017/`（用例输出 `case-*.log`、启动日志 `temp/mt_detached/mt_launch_20261017-20*.log`、无 Jade 日志 `logs-nojade/`）

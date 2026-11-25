@@ -24,8 +24,8 @@
 
 | 线 | 路径 | 字节数 | sha256 |
 |---|---|---|---|
-| neoforge-1.21.1 | F:/MCProject/astral_dice_multiloader/neoforge-1.21.1/build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar | 2,614,053 | 6109A1C34250CE5FE0461C98FC9B2A254CAEA63E97160E1F9CEF6062403FD6B1 |
-| forge-1.20.1 | F:/MCProject/astral_dice_multiloader/forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar | 2,662,359 | D173E290B36BAE207A4E08C2E1F6E1DBD03608A28F09EA4628013F9E244975F4 |
+| neoforge-1.21.1 | D:/MCProject/astral_dice_multiloader/neoforge-1.21.1/build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar | 2,614,053 | 6109A1C34250CE5FE0461C98FC9B2A254CAEA63E97160E1F9CEF6062403FD6B1 |
+| forge-1.20.1 | D:/MCProject/astral_dice_multiloader/forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar | 2,662,359 | D173E290B36BAE207A4E08C2E1F6E1DBD03608A28F09EA4628013F9E244975F4 |
 
 两条均与任务书给定的字节数 / sha256 前 16 位一致（6109a1c34250ce5f、d173e290b36bae20）。
 
@@ -102,7 +102,7 @@
     #32 [ FAIL] 32. assert — MT_ASSERT_LOG: FAIL(SOURCE_ECHO) — /Astral Dice 1\.5\.0\+neoforge_1\.21\.1/ 命中 1 行但无一是平台输出行（回显/续行/平台行内的 eval 源码载荷都不构成证据）（latest:latest.log@0B(win=whole)） L821 [echo] Astral Dice 1.5.0+neoforge_1.21.1 (astral_dice)
     #36 [ FAIL] 36. assert — MT_ASSERT_LOG: FAIL — /\[REL150\] ver=1\.21\.1 .* item=astral_dice:abyss_reagent_chip/ 未命中（latest:latest.log@2012199B(win=case)）
     #51 [ FAIL] 51. assert — MT_ASSERT_EVAL: FAIL — 路径 <root> 期望 {regex:"\\[REL150\\] ver=\\S+ gamemode=creative pos=100,-?[0-9]+,100 hp=20 .*item=astral_dice:abyss_reagent_chip"} 实际 "\"[REL150] ver=1.21.1 gamemode=creative pos=100,120,100 hp=20 food=20 xp=30 arm=0 slotted=6 chips=3 item=minecraft:air dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1\""
-    #56 [INCONCL] 56. assert — MT_ASSERT_CRASH: INCONCLUSIVE — crash-reports 目录不存在（F:\MCProject\astral_dice_multiloader\run\1.21.1\crash-reports）
+    #56 [INCONCL] 56. assert — MT_ASSERT_CRASH: INCONCLUSIVE — crash-reports 目录不存在（D:\MCProject\astral_dice_multiloader\run\1.21.1\crash-reports）
 
 ### 2.5 根因（已用实读证据定案）
 

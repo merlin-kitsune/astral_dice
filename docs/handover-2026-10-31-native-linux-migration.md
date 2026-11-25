@@ -7,7 +7,7 @@
 
 ## 0 一句话结论
 
-同一份仓库（`/mnt/f/MCProject/astral_dice_multiloader`，Windows 侧 `F:\MCProject\astral_dice_multiloader`）在原生 Ubuntu 26.04.1 真机上 **可自举构建**：Gradle 9.2.1 wrapper 落地 → starengine 1.1.0 各线发布进本机 `~/.m2` → `:neoforge-1.21.1:classes` 与 `:forge-1.20.1:classes` 均 `BUILD SUCCESSFUL`；`env.sh` 只剩 1 条预期提示（AutoJS 未运行）。
+同一份仓库（`/mnt/d/MCProject/astral_dice_multiloader`，Windows 侧 `D:\MCProject\astral_dice_multiloader`）在原生 Ubuntu 26.04.1 真机上 **可自举构建**：Gradle 9.2.1 wrapper 落地 → starengine 1.1.0 各线发布进本机 `~/.m2` → `:neoforge-1.21.1:classes` 与 `:forge-1.20.1:classes` 均 `BUILD SUCCESSFUL`；`env.sh` 只剩 1 条预期提示（AutoJS 未运行）。
 
 ## 1 宿主实读（与 VM 的差别）
 
@@ -16,7 +16,7 @@
 | 虚拟化 | VMware 虚拟机 | `systemd-detect-virt` = `none`，DMI `MS-7E59`（MSI 主板） |
 | 系统 | Kubuntu 26.04.1 | `Ubuntu 26.04.1 LTS`（resolute），内核 `7.0.0-42-generic` |
 | 桌面 | KDE Plasma Wayland | 同为 KDE Plasma Wayland（`XDG_SESSION_TYPE=wayland`, `WAYLAND_DISPLAY=wayland-0`, `DISPLAY=:0`），XWayland 在跑 |
-| 仓库 | `/mnt/hgfs/MCProject/...`（vmhgfs-fuse） | `/mnt/f/MCProject/...`（`ntfs3`，`/dev/nvme2n1p1`，rw） |
+| 仓库 | `/mnt/hgfs/MCProject/...`（vmhgfs-fuse） | `/mnt/d/MCProject/...`（`ntfs3`，`/dev/nvme2n1p1`，rw） |
 | 游戏目录 | `/mnt/hgfs/.minecraft` | `/mnt/d/.minecraft`（`ntfs3`，`/dev/nvme0n1p5`，rw） |
 | 工作副本层 | `~/Project/*` 四副本 + rsync 回镜像 | **无副本层**，仓库即正本（`~/Project` 已不存在） |
 | Maven Central | 对本机 IP **403**，靠 `~/.gradle/init.d` 镜像 | **200 直连正常**，`init.d` 不需要 |
@@ -31,10 +31,10 @@
 
 | 用途 | Windows（未变，勿改） | 原生 Linux（本批启用） |
 |---|---|---|
-| 仓库 | `F:\MCProject\astral_dice_multiloader` | `/mnt/f/MCProject/astral_dice_multiloader` |
-| 前置库 | `F:\MCProject\starengine` | `/mnt/f/MCProject/starengine` |
-| 2.0 线 | `F:\MCProject\astral_dice_multiloader-next` | `/mnt/f/MCProject/astral_dice_multiloader-next` |
-| 验证锁 | `F:\MCProject\.agent-locks\` | `/mnt/f/MCProject/.agent-locks/` |
+| 仓库 | `D:\MCProject\astral_dice_multiloader` | `/mnt/d/MCProject/astral_dice_multiloader` |
+| 前置库 | `D:\MCProject\starengine` | `/mnt/d/MCProject/starengine` |
+| 2.0 线 | `D:\MCProject\astral_dice_multiloader-next` | `/mnt/d/MCProject/astral_dice_multiloader-next` |
+| 验证锁 | `D:\MCProject\.agent-locks\` | `/mnt/d/MCProject/.agent-locks/` |
 | 整合包根 | `D:\.minecraft` | `/mnt/d/.minecraft` |
 | mavenLocal | `%USERPROFILE%\.m2\repository` | `/home/kitsune/.m2/repository`（**两份独立，互不影响**） |
 
@@ -42,11 +42,11 @@
 
 1. **`build.gradle`**（根）：`mcHomePath` 的 Linux 分支由 `/mnt/hgfs/.minecraft` 改为 `/mnt/d/.minecraft`，仍保持 `MC_HOME` > Linux 路径 > `D:/.minecraft` 的解析顺序 ⇒ Windows 侧行为不变。实跑验证：构建日志打印 `整合包根目录 (MC_HOME): /mnt/d/.minecraft`。
 2. **各线 `build.gradle`**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`）：`packModsDir` 注释里的 `/mnt/hgfs/.minecraft` 全部改指 `/mnt/d/.minecraft`；逻辑不动。
-3. **`scripts/test/linux/env.sh`**：新增 `ntfs3|ntfs` 挂载分支；可写检查键 `hgfs_writable` → **`repo_writable`**；`conf_windows` 由 WARN 降为 INFO；`mc_home` 默认 `/mnt/d/.minecraft`；锁目录改 `/mnt/f/MCProject/.agent-locks`；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁只报不删）。
+3. **`scripts/test/linux/env.sh`**：新增 `ntfs3|ntfs` 挂载分支；可写检查键 `hgfs_writable` → **`repo_writable`**；`conf_windows` 由 WARN 降为 INFO；`mc_home` 默认 `/mnt/d/.minecraft`；锁目录改 `/mnt/d/MCProject/.agent-locks`；新增 **`locks_stale`**（按锁文件 `PID=` 做 `kill -0`，陈旧锁只报不删）。
 4. **`scripts/test/linux/launch.sh`**：一处 `（hgfs 常见）` 文案改 `（NTFS/FUSE 挂载常见）`。
 5. **`run/start-{1.20.1,1.21.1,26.1.2}.sh`**：注释 `hgfs 上` → `NTFS(/mnt/f) 上`（`run/` 被 `.gitignore` 忽略，不入库）。
 6. **`scripts/dev/rsync-original.sh`**：整脚本**停用**——默认打印两行 ERROR 并 `exit 3`，仅 `ALLOW_LEGACY_HGFS_RSYNC=1` 可越过；实测 `bash -n` 通过、直接执行 exit=3。
-7. **`AGENTS.md`**：本仓路径行改「原生 Linux = 同一块 NTFS 盘的原生挂载 `/mnt/f/...`，无 hgfs」；红线 5 锁路径改 `/mnt/f/MCProject/.agent-locks/`；索引行改指本文；桌面通道行改 `computer-use-linux` + `screen-ocr`。
+7. **`AGENTS.md`**：本仓路径行改「原生 Linux = 同一块 NTFS 盘的原生挂载 `/mnt/f/...`，无 hgfs」；红线 5 锁路径改 `/mnt/d/MCProject/.agent-locks/`；索引行改指本文；桌面通道行改 `computer-use-linux` + `screen-ocr`。
 8. **`docs/agent/AGENTS-dsh-linux.md`**：**整篇重写为原生 Linux 口径**（361 行 / 45,641 B / 30,206 字符，LF），保留全部既有小节名与红线替换口径表，删掉 hgfs/`~/Project`/VM 工具链口径；见 §6。
 9. **`docs/agent/PROJECT-REFERENCE.md`**：投放根改 `/mnt/d/.minecraft`；`starengine-*-1.1.0-pre.2.jar` 标题改 `1.1.0.jar`；§6.1 桌面通道改 `computer-use-linux` + `screen-ocr`；迁移指针改本文。
 10. **`scripts/test/linux/README.md`**：§8 坑位、§9.1 实测记录、§9.5 假 WARN 条目改原生口径；新增 §9.8「原生 Linux 真机迁移：路径与键名变更」。
@@ -126,7 +126,7 @@ CHECK: autojs_jar_*=OK（各线均有 AutoJS jar）/ autojs_health=WARN（000，
 CHECK: residue=OK / conf_windows=INFO（mt.conf 的 D:/、C:/ 属 Windows 台配置，Linux 忽略不改）
 CHECK: cwd=OK / repo_writable=OK（ntfs3）/ jdk_paths=OK / gradle_daemon_jvm=OK
 CHECK: git_autocrlf=OK / pack_dirs=OK / locks_other=OK（仅 dsh.lock，属本宿主）
-INFO:  locks — /mnt/f/MCProject/.agent-locks: dsh.lock
+INFO:  locks — /mnt/d/MCProject/.agent-locks: dsh.lock
 ENV_RESULT: WARN — 0 项阻塞，1 项提示（仅 autojs_health：游戏未启动）
 ```
 

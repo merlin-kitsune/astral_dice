@@ -1,6 +1,6 @@
 # CI 守门本地复现 + build.yml 四线同批发布改动
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`
+- 仓库：`D:\MCProject\astral_dice_multiloader`
 - 基线：`HEAD=fd990c15`，分支 `multi-main`（ahead 24）
 - 作业时间：2026-11-02
 - 唯一被写的仓库文件：`.github/workflows/build.yml`（本报告按交付要求另写）
@@ -22,7 +22,7 @@
 
 做过（只读）：
 
-- `git -C F:\MCProject\astral_dice_multiloader status --porcelain` / `rev-parse` / `log` / `ls-files --eol` / `show HEAD:<file>` / `diff --numstat`
+- `git -C D:\MCProject\astral_dice_multiloader status --porcelain` / `rev-parse` / `log` / `ls-files --eol` / `show HEAD:<file>` / `diff --numstat`
 - 四线 `gradle.properties` 的 `mod_version`、四线 `build.gradle` 的 `archivesName`
 - 14 条守门脚本**只运行**（先 `grep` 确认它们内部无 `Out-File/Set-Content/write_text/open(...,'w')/New-Item/mkdir` 等写操作，也无 `gradlew` 调用，才执行）
 
@@ -225,9 +225,9 @@ run blocks: 12  failures: 0
 ### 3.2 D7 失败原始输出（尾部 30 行；该脚本总输出 25 行，即全量）
 
 ```
-[root] F:\MCProject\astral_dice_multiloader
-[target:neo-26.1.2] F:\MCProject\astral_dice_multiloader\neoforge-26.1.2\src\main\java\com\merlinkitsune\astral_dice\combat\DiceCombatEvents.java
-[target:fabric-1.20.1] F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\java\com\merlinkitsune\astral_dice\combat\DiceCombatEvents.java
+[root] D:\MCProject\astral_dice_multiloader
+[target:neo-26.1.2] D:\MCProject\astral_dice_multiloader\neoforge-26.1.2\src\main\java\com\merlinkitsune\astral_dice\combat\DiceCombatEvents.java
+[target:fabric-1.20.1] D:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\java\com\merlinkitsune\astral_dice\combat\DiceCombatEvents.java
 
 
 [OK] neo-26.1.2-01 no unguarded mob.getAttributeValue(ATTACK_DAMAGE)  [hits [none] (expected [none]); resolveMobMeleeAttack @ combat/DiceCombatEvents.java:L1037-L1105]

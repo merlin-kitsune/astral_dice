@@ -410,7 +410,7 @@ case "$autocrlf" in
 esac
 
 # ── 11. 互斥锁目录 ───────────────────────────────────────────────────────
-lock_dir="$(mt_to_msys "${MT_LOCK_DIR:-F:/MCProject/.agent-locks}")"
+lock_dir="$(mt_to_msys "${MT_LOCK_DIR:-D:/MCProject/.agent-locks}")"
 if [ -d "$lock_dir" ]; then
     others=""
     stale=""

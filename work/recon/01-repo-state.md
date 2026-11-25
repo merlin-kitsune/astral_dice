@@ -1,7 +1,7 @@
 # 01 · 仓库状态取证（1.5.0 正式版发布前置）
 
 - 采集时间：2026-11-02T01:37:43+08:00 之后（Asia/Hong_Kong，本机 2026-11-01 23:5x 时段的工作树）
-- 工作树：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`）
+- 工作树：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`）
 - 取证方式：只读命令（git / ls / find / grep / du）。**未跑 gradlew、未启动游戏、未修改仓库内任何文件**（唯一写入是本报告）。
 - 口径：每条结论后附「文件:行号」或命令原文片段；取不到证据处明确写「无法判定」。
 
@@ -12,7 +12,7 @@
 ### 1.1 命令原文
 
 ```
-$ git -C F:\MCProject\astral_dice_multiloader log -1 --oneline
+$ git -C D:\MCProject\astral_dice_multiloader log -1 --oneline
 fd990c15 fix(26.1.2): 补齐收尾验证发现的混入缺口，并把立牌半透明改成 26.1.2 两段式实现
 
 $ git -C ... rev-parse --short HEAD
@@ -216,7 +216,7 @@ BUILD SUCCESSFUL in 7s
 
 ```
 javac.20261101_184525.args -> @fabric-1.20.1/build/b2-6-before/args-before.txt
-javac.20261101_184606.args -> @F:/MCProject/astral_dice_multiloader/fabric-1.20.1/build/b2-6-before/args-before.txt  [-verbose]
+javac.20261101_184606.args -> @D:/MCProject/astral_dice_multiloader/fabric-1.20.1/build/b2-6-before/args-before.txt  [-verbose]
 javac.20261101_184616.args -> @F:/...\fabric-1.20.1\build\javac-check\args_jade_plain.txt
 javac.20261101_184632.args -> @F:\...\fabric-1.20.1\build\javac-check\args.txt
 javac.20261101_184910.args -> @F:\...\fabric-1.20.1\build\javac-check\args.txt

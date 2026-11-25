@@ -18,7 +18,7 @@
 | `~/Project/starengine` | `main` / `16b48c4`（2026-10-25） | 1.1.0 | 863 M | 库 1.1 线（本仓构建的 mavenLocal 来源） |
 | `~/Project/starengine_next` | `next` / `1b02b80`（2026-10-27） | 26.4-SNAPSHOT.1 | 331 M | 库 2.0 线（worktree，见 §2.1） |
 
-原始镜像（hgfs，保持原样）：`/mnt/hgfs/MCProject/<同名目录>`，Windows 宿主侧仍是 `F:\MCProject\<同名目录>`。
+原始镜像（hgfs，保持原样）：`/mnt/hgfs/MCProject/<同名目录>`，Windows 宿主侧仍是 `D:\MCProject\<同名目录>`。
 
 ## 2 本次为「复制到本机盘」做的改动
 
@@ -27,10 +27,10 @@
 `astral_dice_multiloader-next` 与 `starengine_next` 是 **git worktree**，`.git` 是文件而不是目录，原先内容指向 Windows 绝对路径：
 
 ```
-astral_dice_multiloader-next/.git            -> gitdir: F:/MCProject/astral_dice_multiloader/.git/worktrees/astral_dice_multiloader-next
-astral_dice_multiloader/.git/worktrees/.../gitdir -> F:/MCProject/astral_dice_multiloader-next/.git
-starengine_next/.git                          -> gitdir: F:/MCProject/starengine/.git/worktrees/starengine_lib_next
-starengine/.git/worktrees/starengine_lib_next/gitdir -> F:/MCProject/starengine_next/.git
+astral_dice_multiloader-next/.git            -> gitdir: D:/MCProject/astral_dice_multiloader/.git/worktrees/astral_dice_multiloader-next
+astral_dice_multiloader/.git/worktrees/.../gitdir -> D:/MCProject/astral_dice_multiloader-next/.git
+starengine_next/.git                          -> gitdir: D:/MCProject/starengine/.git/worktrees/starengine_lib_next
+starengine/.git/worktrees/starengine_lib_next/gitdir -> D:/MCProject/starengine_next/.git
 ```
 
 改为 Linux 绝对路径（4 个文件，逐行替换）：
@@ -135,7 +135,7 @@ python3 -B docs/agent/verify-split.py
 | 用途 | 路径 |
 |---|---|
 | 本机盘工作副本根 | `/home/kitsune/Project/{astral_dice_multiloader, astral_dice_multiloader-next, starengine, starengine_next}` |
-| 原始镜像根 | `/mnt/hgfs/MCProject/<同名目录>`（Windows `F:\MCProject\<同名目录>`） |
+| 原始镜像根 | `/mnt/hgfs/MCProject/<同名目录>`（Windows `D:\MCProject\<同名目录>`） |
 | JDK | `/usr/lib/jvm/java-{17,21,25}-openjdk-amd64` |
 | mavenLocal | `~/.m2/repository/com/merlinkitsune/starengine/` |
 | Gradle init | `~/.gradle/init.d/{00-aliyun-central-mirror.gradle, 10-neoforged-offline-mirror.gradle.disabled}` |

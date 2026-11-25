@@ -1,6 +1,6 @@
 
 import os, json
-base = "F:/MCProject/astral_dice_multiloader"
+base = "D:/MCProject/astral_dice_multiloader"
 lines = {
  "fabric-1.20.1": ("recipes", "advancements"),
  "forge-1.20.1": ("recipes", "advancements"),

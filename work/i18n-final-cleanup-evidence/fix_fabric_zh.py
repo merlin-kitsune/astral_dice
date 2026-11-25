@@ -1,7 +1,7 @@
 
 import json, os, shutil, sys
 
-ROOT = r"F:/MCProject/astral_dice_multiloader"
+ROOT = r"D:/MCProject/astral_dice_multiloader"
 rel = "fabric-1.20.1/src/main/resources/assets/astral_dice/lang/zh_cn.json"
 abs_p = os.path.join(ROOT, rel)
 bak = abs_p + ".bak-i18n-final"

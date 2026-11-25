@@ -70,6 +70,6 @@
   - 装载方式: Fabric Loom: modRuntimeOnly 解析期 intermediary->named
 - `cc.sighs.autojs:AutoJS-fabric-1.21.1:1.0.0`
   - jar: `scripts/test/resources/mods/autojs/AutoJS-fabric-1.21.1-1.0.0.jar`（SHA256 `f498cf4a9d8df3a26554d09b09ce615eb2badba08120964460703677c4822fa3`）
-  - 构建来源: `F:\MCProject\AutoJS\targets\fabric-1.21.1\build\libs\AutoJS-fabric-1.21.1-1.0.0.jar`
+  - 构建来源: `D:\MCProject\AutoJS\targets\fabric-1.21.1\build\libs\AutoJS-fabric-1.21.1-1.0.0.jar`
   - 装载方式: Fabric Loom: modRuntimeOnly 解析期 intermediary->named（依赖 rhino 2101 多加载器单 jar）
 

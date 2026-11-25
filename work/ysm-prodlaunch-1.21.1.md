@@ -1,7 +1,7 @@
 # neoforge-1.21.1 发布验收 · production 形态实机报告（绕开 YSM err54）
 
 - 日期：2026-11-02 02:52–03:32（Asia/Hong_Kong）
-- 工作树：`F:\MCProject\astral_dice_multiloader`
+- 工作树：`D:\MCProject\astral_dice_multiloader`
 - 被测产物：`build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar`
 - 生产实例（未改动其存档）：`D:\.minecraft\versions\狐の航空学 Voxy Edition`（1.21.1 / NeoForge 21.1.264，512 个模组 jar）
 - 结论：**production 形态跑通**。RELEASE150-1.21.1 全 31 steps 执行完毕，26 条可自动化判定中 **25 PASS / 0 FAIL**，2 条 vision 人工读图判定 PASS（其中 1 条以补充截图为准）。YSM 侧 **无 `err: 54`、无 `Failed to load native lib`、无 attachment 崩溃**，并以像素证据证明其在 production 下接管玩家渲染。
@@ -42,7 +42,7 @@
 # 文件：run/1.21.1/.tmp/prodlaunch.py（照 run/26.1.2/.tmp/prodlaunch.py 改写）
 # 关键常量：MC=D:\.minecraft   INST=versions\狐の航空学 Voxy Edition
 #           JAVA=C:\Program Files\Zulu\zulu-21\bin\java.exe
-#           GAMEDIR=F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame
+#           GAMEDIR=D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame
 #           ASSETS=D:\.minecraft\assets   LIBS=D:\.minecraft\libraries
 # 与 26.1.2 模板的差异：classpath 去重；补 classpath_separator=";" 与 user_type="legacy"；
 #   --autojs-port N → 插 -Dautojs.port=N；--xmx（默认 8G）；--username；可重复 --game-arg；
@@ -60,7 +60,7 @@ dry-run 原文（关键行）：
 
 ```
 java      : C:\Program Files\Zulu\zulu-21\bin\java.exe
-gamedir   : F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame
+gamedir   : D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame
 classpath entries: 107 missing: 0
 unresolved placeholders: none
 argv entries: 62
@@ -83,7 +83,7 @@ ARG| -Dautojs.port=25587
  -cp <107 项，分号分隔>
  cpw.mods.bootstraplauncher.BootstrapLauncher
  --username DevTester --version 狐の航空学 Voxy Edition
- --gameDir F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame
+ --gameDir D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame
  --assetsDir D:\.minecraft\assets --assetIndex 17
  --uuid 00000000000000000000000000000001 --accessToken 0 --clientId 0 --xuid 0
  --userType legacy --versionType release
@@ -255,11 +255,11 @@ crash-reports dir exists = False
 
 | tag | 绝对路径 | 大小 | sha256 |
 |---|---|---|---|
-| `abyss_reagent_tooltip` | `F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\abyss_reagent_tooltip.png` | 165951 B | `20da11f7101b84891827beba3de92f7b6b44a333e0f428ddb5548baa3b0b7ae6` |
-| `chip_shop_ui` | `F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\chip_shop_ui.png` | 94752 B | `93d54e4d4dcb27356b1e09ec477807a1821c53f3201737e81d45d5170bc88b8d` |
-| `release150_guide` | `F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\release150_guide.png` | 105910 B | `3846fe2ba5e1dbf15362268f978d86539c871b55520e0d3c69a731a0f5448225` |
-| `abyss_reagent_tooltip_prod`（补充，非用例 tag） | `F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\abyss_reagent_tooltip_prod.png` | 84147 B | `9d7f9e47227111270d1d7f481d0cb1f9b03bc84c62960b2c9d21a87a81de272a` |
-| `ysm_thirdperson_prod`（YSM 正证据，非用例 tag） | `F:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\ysm_thirdperson_prod.png` | 112728 B | `d44f25a7028df1cc7006d81ee432dbfea50f2dd2f73eebd0d5ab32f6fe58ea9b` |
+| `abyss_reagent_tooltip` | `D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\abyss_reagent_tooltip.png` | 165951 B | `20da11f7101b84891827beba3de92f7b6b44a333e0f428ddb5548baa3b0b7ae6` |
+| `chip_shop_ui` | `D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\chip_shop_ui.png` | 94752 B | `93d54e4d4dcb27356b1e09ec477807a1821c53f3201737e81d45d5170bc88b8d` |
+| `release150_guide` | `D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\release150_guide.png` | 105910 B | `3846fe2ba5e1dbf15362268f978d86539c871b55520e0d3c69a731a0f5448225` |
+| `abyss_reagent_tooltip_prod`（补充，非用例 tag） | `D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\abyss_reagent_tooltip_prod.png` | 84147 B | `9d7f9e47227111270d1d7f481d0cb1f9b03bc84c62960b2c9d21a87a81de272a` |
+| `ysm_thirdperson_prod`（YSM 正证据，非用例 tag） | `D:\MCProject\astral_dice_multiloader\run\1.21.1\prodgame\screenshots\ysm_thirdperson_prod.png` | 112728 B | `d44f25a7028df1cc7006d81ee432dbfea50f2dd2f73eebd0d5ab32f6fe58ea9b` |
 
 读图结论（人工）：
 - `abyss_reagent_tooltip_prod.png`：**可清晰读出**「深渊试剂 / 栏位: 筹码 / astral_dice:abyss_reagent_chip / 装备时治愈层数 +3，触发治愈回血时：获得实际治疗量 ×2 的伤害吸收 / 当前治愈: 0 / 32 / 按住 CTRL 来查看标签 / Astral Dice」共 9 行。

@@ -3,7 +3,7 @@
 # 说明: 只读用例 JSON / 日志 / 截图 / jar / 状态文件；不写入任何被测目录。
 import io, json, os, re, zipfile, datetime
 
-ROOT = "F:/MCProject/astral_dice_multiloader"
+ROOT = "D:/MCProject/astral_dice_multiloader"
 OUT = {}
 
 def jload(p):

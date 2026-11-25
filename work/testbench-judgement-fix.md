@@ -1,7 +1,7 @@
 # 测试台判据修复记录（1.5.0 四线实机验收前置）
 
 - 时间：2026-11-02（本机时区 +08:00）
-- 仓库：F:\MCProject\astral_dice_multiloader，HEAD=fd990c15（工作树含前序未提交改动，本批不回退）
+- 仓库：D:\MCProject\astral_dice_multiloader，HEAD=fd990c15（工作树含前序未提交改动，本批不回退）
 - 改动面：仅 scripts/test/**；未触碰模组源码 / lang / build.gradle / gradle.properties / .github / run/**
 - 未启动任何游戏、未跑 gradle（26.1.2 实机用例仍在跑，25565/25585 被占用）
 - 备份：每个被改文件先留 .bak-judgement-20261102-034500（见 §7）
@@ -322,7 +322,7 @@ java 包访问器 (?<![A-Za-z0-9_.$])java\.[A-Za-z_]。逐档生成并检查：
 
 ### 4.4 通道五态（work/_probe/verify-channel.ps1）
 
-    mods_dir=F:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\mods
+    mods_dir=D:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\mods
     A（无状态文件）     mode=autojs deployed=False command=delegated key=delegated mouse=delegated shot=delegated reload=delegated
     B（写入 autojs=1）  deployed=True command=autojs key=autojs mouse=autojs shot=autojs reload=autojs
     C（autojs=0）       deployed=False 五面全 delegated
@@ -338,11 +338,11 @@ lib/Mt.Paths.psm1；real 模式走真 Get-MtCurrentShots -SinceUnix，stub 模�
 
     == vision gate check mode=real windowStart=2026-11-02 04:03:17.455
     PASS [real] image=fresh expect=DELEGATED got=DELEGATED
-          detail=VISION_PATH=F:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\fresh.png | 请判定截图中的视觉断言是否成立
+          detail=VISION_PATH=D:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\fresh.png | 请判定截图中的视觉断言是否成立
     PASS [real] image=stale expect=BLOCKED got=BLOCKED
           detail=截图 'stale' 不属于当前世代 (世代内: ['broken.png', 'fresh.png', 'tiny.png'], tag 表: ['broken', 'fresh', 'ghost', 'stale', 'tiny'])
     PASS [real] image=tiny expect=BLOCKED got=BLOCKED
-          detail=截图文件过小（1000 B < 20480 B，视为无效/空帧）：F:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\tiny.png
+          detail=截图文件过小（1000 B < 20480 B，视为无效/空帧）：D:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\tiny.png
     PASS [real] image=ghost expect=BLOCKED got=BLOCKED
           detail=截图 'ghost' 不属于当前世代 (世代内: ['broken.png', 'fresh.png', 'tiny.png'], tag 表: ['broken', 'fresh', 'ghost', 'stale', 'tiny'])
     PASS [real] image=broken expect=BLOCKED got=BLOCKED
@@ -351,10 +351,10 @@ lib/Mt.Paths.psm1；real 模式走真 Get-MtCurrentShots -SinceUnix，stub 模�
     == vision gate check mode=stub windowStart=2026-11-02 04:03:20.516
     PASS [stub] image=fresh expect=DELEGATED got=DELEGATED
     PASS [stub] image=stale expect=BLOCKED got=BLOCKED
-          detail=截图不是本轮产物（mtime=2026-11-02 02:03:25.536 早于用例窗口起点 2026-11-02 04:03:20.516）：F:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\stale.png
+          detail=截图不是本轮产物（mtime=2026-11-02 02:03:25.536 早于用例窗口起点 2026-11-02 04:03:20.516）：D:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\stale.png
     PASS [stub] image=tiny expect=BLOCKED got=BLOCKED
     PASS [stub] image=ghost expect=BLOCKED got=BLOCKED
-          detail=截图文件不存在：F:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\ghost.png
+          detail=截图文件不存在：D:\MCProject\astral_dice_multiloader\work\_probe\tmp_vision\ghost.png
     PASS [stub] image=broken expect=BLOCKED got=BLOCKED
     RESULT=PASS mode=stub 5/5
 
@@ -408,7 +408,7 @@ lib/Mt.Paths.psm1；real 模式走真 Get-MtCurrentShots -SinceUnix，stub 模�
 ### 4.8 crash 断言三线实测
 
     $ pwsh mt_assert.ps1 crash --version 1.21.1
-    MT_ASSERT_CRASH: INCONCLUSIVE — crash-reports 目录不存在（F:\MCProject\astral_dice_multiloader\run\1.21.1\crash-reports）
+    MT_ASSERT_CRASH: INCONCLUSIVE — crash-reports 目录不存在（D:\MCProject\astral_dice_multiloader\run\1.21.1\crash-reports）
         「目录不存在」≠「目录存在且无新增」：本轮从未建立崩溃报告目录 ⇒ 无法断言无崩溃（不记 PASS）。
     MT_WARN: MT_ASSERT_INCONCLUSIVE: WARN — ...
     exit 0

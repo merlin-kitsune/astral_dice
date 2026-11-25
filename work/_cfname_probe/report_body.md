@@ -1,6 +1,6 @@
 # CF 上传：站点显示名自动推导 + changelog 附带策略（2026-11-02）
 
-- 仓库：F:/MCProject/astral_dice_multiloader
+- 仓库：D:/MCProject/astral_dice_multiloader
 - 目标文件：tools/curseforge_upload.py（纯标准库；改后 1,579 行 / 78,077 B / 全 LF）
 - 实际改动文件（共 2 个）：tools/curseforge_upload.py（保持 LF）、docs/agent/AGENTS-dsh.md（保持 CRLF）
 - 依据：用户 2026-11-02 规则 —— ① CF 上传件显示名固定 ⟦Astral Dice <版本> (<加载器> <MC>)⟧；② 小版本更新不在 CF 写 changelog

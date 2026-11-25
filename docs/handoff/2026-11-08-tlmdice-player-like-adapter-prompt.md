@@ -1,12 +1,12 @@
 # TLMDice 接入「类玩家生物能力面」任务 prompt
 
-> 用法：整段复制给 TLMDice 仓库（`F:/MCProject/touhou_little_maid_astraldice`）的会话即可。
+> 用法：整段复制给 TLMDice 仓库（`D:/MCProject/touhou_little_maid_astraldice`）的会话即可。
 > 上游（`astral_dice_multiloader-next`）本批落点：`34d2d3a3` / `831ec4d8` / `03ab1b86` / `842b17a8` / `83ac4ced`，
 > 契约文档 `docs/features/player-like-entities-api.md`。
 
 ---
 
-你是 `F:/MCProject/touhou_little_maid_astraldice`（TLMDice，modid `touhou_little_maid_astra_dice`，双线 `neoforge-1.21.1` + `forge-1.20.1`）的资深维护者。不要使用任何人设、语气修饰或昵称自称，按职业身份以中性技术口吻回答。
+你是 `D:/MCProject/touhou_little_maid_astraldice`（TLMDice，modid `touhou_little_maid_astra_dice`，双线 `neoforge-1.21.1` + `forge-1.20.1`）的资深维护者。不要使用任何人设、语气修饰或昵称自称，按职业身份以中性技术口吻回答。
 
 ## 0. 背景（已完成，不需要你重做）
 

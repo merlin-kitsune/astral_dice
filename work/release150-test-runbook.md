@@ -33,7 +33,7 @@
 
 ## 2. 共同事实（跑之前先记住这 6 条）
 
-1. **报告落点**：`F:\MCProject\astral_dice_multiloader\scripts\test\reports\<run_id>\<version>\`
+1. **报告落点**：`D:\MCProject\astral_dice_multiloader\scripts\test\reports\<run_id>\<version>\`
    （`report.md` / `latest.log` / `debug.log` / `kubejs_server.log` / `runclient_launch.log` / `screenshots/`）。
    `<run_id>` 是**粘性**的，存在 `scripts\test\cases\.mt_active_run`。
 2. **截图真值**：`run/<version>/screenshots/`（fabric：`fabric-1.20.1/run/client/screenshots/`），
@@ -60,53 +60,53 @@
 
 ```powershell
 # 1) 前置：只查本线残留进程（不 --all，避免误停别的线）
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase preflight
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase preflight
 
 # 2) 环境：分两步，**不要**用 mt.ps1 --phase env（原因见下方注）
 #    2a) 模组稳态
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt_env.ps1' mods --version 1.21.1
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt_env.ps1' mods --version 1.21.1
 #    2b) 世界重建：本线没有种子包 ⇒ 现起 runServer 生成 testworld。
 #        ⚠️ 世界生成期限由 mt_env.ps1 自己的 --timeout 决定（默认 180s）；mt.ps1 --phase env **不转发**该参数
 #        （mt.ps1:478 只把相位预算当进程超时传给子进程），所以必须直接调 mt_env 并把 --timeout 抬到 900
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt_env.ps1' world --version 1.21.1 --timeout 900
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt_env.ps1' world --version 1.21.1 --timeout 900
 #  期望：MT_WORLD: OK — 世界重建（allowCommands=1, keepInventory=true） …\run\1.21.1\saves\testworld
 #  失败取证：run\1.21.1\mt_server_gen.log 与 .err
 #  注：mt.ps1 --phase env 也能跑，但它给 world 子阶段的是「相位预算」（MT_ENV_TIMEOUT_SEC，默认 240s），
 #      而 world 内部的生成期限仍是 180s ⇒ 生成慢时照样 MT_WORLD: BLOCKED。发布验收要跑大世界，直接用上面两步。
 
 # 3) 启动：客户端 quickplay=testworld 直接进世界后**脱离执行**（本命令返回时游戏仍在跑）
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase launch
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase launch
 #  期望：MT_LAUNCH: OK — 已进入世界（quickplay=testworld）
 
 # 4) 用例（单条，**不需要** --allow-auto）
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase cases --case 'F:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-1.21.1.json'
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase cases --case 'D:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-1.21.1.json'
 #  期望：MT_CASE_RESULT: RELEASE150-1.21.1 = PASS
 
 # 5) 报告（需要 --allow-auto）
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase report --allow-auto
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase report --allow-auto
 
 # 6) 收停 + 清档
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase stop --force --purge-saves
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.21.1 --phase stop --force --purge-saves
 ```
 
 **备用快路径（不想等世界生成时）**：若 `run\1.21.1\saves\testworld` 已存在（或把
 `run\1.21.1\saves\verify` 复制成 `testworld`），可只跑 `mt_env.ps1 mods`，跳过 `world` 子阶段：
 
 ```powershell
-Copy-Item -Recurse -Force 'F:\MCProject\astral_dice_multiloader\run\1.21.1\saves\verify' 'F:\MCProject\astral_dice_multiloader\run\1.21.1\saves\testworld'
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt_env.ps1' mods --version 1.21.1
+Copy-Item -Recurse -Force 'D:\MCProject\astral_dice_multiloader\run\1.21.1\saves\verify' 'D:\MCProject\astral_dice_multiloader\run\1.21.1\saves\testworld'
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt_env.ps1' mods --version 1.21.1
 ```
 
 ### 3.2 forge-1.20.1
 
 ```powershell
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase preflight
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase env
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase preflight
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase env
 #  本线有 resources/testworld-seed-1.20.1.zip ⇒ 秒级快恢复，无需抬预算
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase launch
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase cases --case 'F:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-1.20.1.json'
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase report --allow-auto
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase stop --force --purge-saves
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase launch
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase cases --case 'D:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-1.20.1.json'
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase report --allow-auto
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 1.20.1 --phase stop --force --purge-saves
 ```
 
 > 建议**先跑 1.20.1**：它的 `env` 会产生 `run\1.20.1\saves\testworld`，fabric 线（§4）的世界可以直接从它复制。
@@ -114,13 +114,13 @@ pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1'
 ### 3.3 neoforge-26.1.2
 
 ```powershell
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase preflight
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase env
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase launch
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase preflight
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase env
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase launch
 #  本线就绪 marker 与另两线不同（logged in with entity id + Loaded <N> advancements）
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase cases --case 'F:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-26.1.2.json'
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase report --allow-auto
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase stop --force --purge-saves
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase cases --case 'D:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-26.1.2.json'
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase report --allow-auto
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version 26.1.2 --phase stop --force --purge-saves
 ```
 
 ---
@@ -144,13 +144,13 @@ pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1'
 # 前置 A：dev 内嵌库投放（KI-F23）。Loom 重映射会剥掉 fabric.mod.json 的 jars 声明，
 #         不打这一步 Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS 在 dev 里全起不来
 #         （HARD_DEP_NO_CANDIDATE / NoClassDefFoundError）。换 -PtestTrinkets / -PtestAccessories 后必须重跑。
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\fabric\ft_env.ps1' --side both --install-embedded
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\fabric\ft_env.ps1' --side both --install-embedded
 
 # 前置 B：世界（quickplay 默认 testworld，而 fabric-1.20.1\run\client\saves 目前是空的；
 #         缺世界 ⇒ 客户端停在标题画面，服务端 eval 全废）
-$dst = 'F:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\saves'
+$dst = 'D:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\saves'
 New-Item -ItemType Directory -Force -Path $dst | Out-Null
-Copy-Item -Recurse -Force 'F:\MCProject\astral_dice_multiloader\run\1.20.1\saves\testworld' (Join-Path $dst 'testworld')
+Copy-Item -Recurse -Force 'D:\MCProject\astral_dice_multiloader\run\1.20.1\saves\testworld' (Join-Path $dst 'testworld')
 #  若 1.20.1 线还没跑过（没有 saves\testworld），退而用同版本的 run\1.20.1\saves\verify 复制成 testworld；
 #  再不行就起一次 fabric 服务端生成：bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase launch，收停后把
 #  fabric-1.20.1/run/server/world 复制成 fabric-1.20.1/run/client/saves/testworld。
@@ -160,28 +160,28 @@ Copy-Item -Recurse -Force 'F:\MCProject\astral_dice_multiloader\run\1.20.1\saves
 
 ```bash
 # 1) 环境（bash 权威实现；只查本线）
-bash /f/MCProject/astral_dice_multiloader/scripts/test/win/mt.sh --version fabric-1.20.1 --side client --phase env
+bash /d/MCProject/astral_dice_multiloader/scripts/test/win/mt.sh --version fabric-1.20.1 --side client --phase env
 
 # 2) 启动客户端并**显式开 AutoJS**（--enable-autojs = -PautojsTestMod=1；
 #    不开则 AutoJS 不是运行时依赖，注入退回 RCON，本用例的 eval_js/截图断言全部无法成立）
-bash /f/MCProject/astral_dice_multiloader/scripts/test/win/mt.sh --version fabric-1.20.1 --side client --enable-autojs --phase launch
+bash /d/MCProject/astral_dice_multiloader/scripts/test/win/mt.sh --version fabric-1.20.1 --side client --enable-autojs --phase launch
 #  期望：LAUNCH: READY … （AutoJS /health 探到 side=client available=true）
 ```
 
 ```powershell
 # 3) 用例（pwsh；MT_SIDE 显式钉到 client，避免 report/case 读到 server 的 run 目录）
 $env:MT_SIDE='client'
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt_case.ps1' run --version fabric-1.20.1 --case 'F:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-fabric-1.20.1.json'
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt_case.ps1' run --version fabric-1.20.1 --case 'D:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-fabric-1.20.1.json'
 #  等价的包装入口：pwsh -NoProfile -File ...\mt.ps1 --version fabric-1.20.1 --phase cases --case <同上>
 #  期望：MT_CASE_RESULT: RELEASE150-fabric-1.20.1 = PASS
 
 # 4) 报告
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version fabric-1.20.1 --phase report --allow-auto
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1' --version fabric-1.20.1 --phase report --allow-auto
 ```
 
 ```bash
 # 5) 收停 + 清档（fabric 收停同样以 bash 为准）
-bash /f/MCProject/astral_dice_multiloader/scripts/test/win/stop.sh --version fabric-1.20.1 --force --purge-saves
+bash /d/MCProject/astral_dice_multiloader/scripts/test/win/stop.sh --version fabric-1.20.1 --force --purge-saves
 ```
 
 > `--side` 只有 `--version fabric-1.20.1` 接受；对另三线传 `--side` 会直接
@@ -193,8 +193,8 @@ bash /f/MCProject/astral_dice_multiloader/scripts/test/win/stop.sh --version fab
 
 ```powershell
 # A) 本轮报告目录
-$rid = (Get-Content 'F:\MCProject\astral_dice_multiloader\scripts\test\cases\.mt_active_run' -Raw).Trim()
-$rep = "F:\MCProject\astral_dice_multiloader\scripts\test\reports\$rid\1.21.1"   # fabric 改成 fabric-1.20.1
+$rid = (Get-Content 'D:\MCProject\astral_dice_multiloader\scripts\test\cases\.mt_active_run' -Raw).Trim()
+$rep = "D:\MCProject\astral_dice_multiloader\scripts\test\reports\$rid\1.21.1"   # fabric 改成 fabric-1.20.1
 Get-ChildItem $rep | Select-Object Name,Length
 
 # B) 模拟玩家数据证据行（一用例只有一条，前缀 [REL150]）
@@ -205,9 +205,9 @@ Select-String -LiteralPath (Join-Path $rep 'latest.log') -Pattern '\[REL150\]' |
 #  形如： [REL150] ver=1.21.1 gamemode=creative pos=100,120,100 hp=20 food=20 xp=30 arm=0 slotted=16 chips=3 item=astral_dice:abyss_reagent_chip dim=minecraft:overworld modver=1.5.0+neoforge_1.21.1
 
 # D) 截图清单（tag → 文件；用测试台唯一认可入口，别 glob）
-pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt_capture.ps1' list --version 1.21.1
-#  或直接读清单： Get-Content 'F:\MCProject\astral_dice_multiloader\run\1.21.1\screenshots\.mt_shots.json' -Raw | ConvertFrom-Json | Select-Object -ExpandProperty shots | Format-Table tag,file,ts
-#  fabric： run 根换成 F:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\screenshots\.mt_shots.json
+pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt_capture.ps1' list --version 1.21.1
+#  或直接读清单： Get-Content 'D:\MCProject\astral_dice_multiloader\run\1.21.1\screenshots\.mt_shots.json' -Raw | ConvertFrom-Json | Select-Object -ExpandProperty shots | Format-Table tag,file,ts
+#  fabric： run 根换成 D:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\screenshots\.mt_shots.json
 
 # E) 结论与断言明细
 Get-Content (Join-Path $rep 'report.md') -Raw
@@ -276,7 +276,7 @@ Get-Content (Join-Path $rep 'report.md') -Raw
    1.20.1 `mod_version=1\.5\.0\+forge_1\.20\.1` / 26.1.2 `astral_dice-1\.5\.0\+neoforge_26\.1\.2\.jar` /
    fabric `- astral_dice 1\.5\.0\+fabric_1\.20\.1`）＋ 用例内 `modver=1\.5\.0\+` 断言；
    发布前再补一条文件级核对：
-   `Get-ChildItem F:\MCProject\astral_dice_multiloader\<subproject>\build\libs\astral_dice-1.5.0*.jar | Select-Object Name`
+   `Get-ChildItem D:\MCProject\astral_dice_multiloader\<subproject>\build\libs\astral_dice-1.5.0*.jar | Select-Object Name`
 5. **rc 与正式版的版本号差异**：现有 `latest.log` 快照里出现过 `1.5.0-rc.7+…`。本版锁正式版后，
    版本行断言用的正则不匹配 `-rc` 前缀（`1\.5\.0\+` 要求紧跟 `+`）⇒ 若构建产物仍是 rc 号，
    四条用例会在**第一条断言**就红——这是**期望行为**（发布验收就该拦住 rc 号），不要改用例去迁就。
@@ -304,7 +304,7 @@ Get-Content (Join-Path $rep 'report.md') -Raw
 
 ```powershell
 foreach ($f in '1.21.1','1.20.1','26.1.2','fabric-1.20.1') {
-  pwsh -NoProfile -File 'F:\MCProject\astral_dice_multiloader\scripts\test\mt_case.ps1' validate --case "F:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-$f.json"
+  pwsh -NoProfile -File 'D:\MCProject\astral_dice_multiloader\scripts\test\mt_case.ps1' validate --case "D:\MCProject\astral_dice_multiloader\scripts\test\cases\RELEASE150-$f.json"
 }
 # 期望四行：MT_VALIDATE: OK — RELEASE150-1.21.1 / …-1.20.1 / …-26.1.2 / …-fabric-1.20.1
 ```

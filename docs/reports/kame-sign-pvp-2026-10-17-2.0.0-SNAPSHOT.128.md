@@ -2,7 +2,7 @@
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 被测版本：`2.0.0-SNAPSHOT.128`；HEAD `5695832e281a9eb270ed4f4badcc4764bdc5a1c0`（2026-10-17 13:24:28 +0800）
-- 工作树：`/mnt/f/mcproject/astral_dice_multiloader-next`（分支 `multi-dev-next`）
+- 工作树：`/mnt/d/mcproject/astral_dice_multiloader-next`（分支 `multi-dev-next`）
 - 两线 jar 重建：`run/1.21.1/mods/astral_dice-2.0.0-SNAPSHOT.128+neoforge_1.21.1.jar` mtime **13:26:58**、`run/1.20.1/mods/astral_dice-2.0.0-SNAPSHOT.128+forge_1.20.1.jar` mtime **13:27:02**（均晚于提交时间 13:24:28）
 - 测试台：`scripts/test/win/mt.sh`（当时的 Windows 测试台，经 `cmd.exe /c` 互操作）；世界 `testworld`；靶子非亡灵（`minecraft:pillager`）；假人 = Carpet 真 `ServerPlayer`，**非 bot 前缀**（`Fake1`/`Fake2`/`Fake3`/`Fake4`）
 - 证据留档：`temp/kame-20261017/{1.21.1,1.20.1}/`（`latest.log`、`kubejs_server.log`、`client.log`、`sha256.txt`）

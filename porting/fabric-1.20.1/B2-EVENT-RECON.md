@@ -1,7 +1,7 @@
 # B2-EVENT-RECON：事件体系（17 类缺口）移植前取证
 
 批次：B2-EVENT-RECON（只读取证，不落源码）。基线 `forge-1.20.1`（必要时对照 `neoforge-1.21.1` 同路径），目标 `fabric-1.20.1`（MC 1.20.1 + FAPI 0.92.12 + Loom，Mojang 映射，Java 17）。
-仓库：`F:/MCProject/astral_dice_multiloader`。本报告未运行 gradle、未启动游戏、未修改任何源码。
+仓库：`D:/MCProject/astral_dice_multiloader`。本报告未运行 gradle、未启动游戏、未修改任何源码。
 
 > **快照口径**：取证时点 `2026-11-01 18:0x +08:00`。期间 `fabric-1.20.1` 工作树**正被其它批次并发写入**
 > （消失/新增的痕迹：`choice/CardChoiceManager.java`、`item/InvestigationEventUtil.java`、`event/BarricadeAggroHandler.java` 等）。

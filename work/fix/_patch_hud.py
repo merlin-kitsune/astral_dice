@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import io, sys
 
-ROOT = r"F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice"
+ROOT = r"D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice"
 
 def load(p):
     with io.open(p, "r", encoding="utf-8", newline="") as f:

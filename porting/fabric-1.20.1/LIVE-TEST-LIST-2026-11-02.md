@@ -41,7 +41,7 @@
 **启动前一次性清障（用户终端，必做）**：
 
 ```bat
-cd /d F:\MCProject\astral_dice_multiloader
+cd /d D:\MCProject\astral_dice_multiloader
 rmdir /s /q fabric-1.20.1\run\server\.fabric
 rmdir /s /q fabric-1.20.1\run\client\.fabric
 ```

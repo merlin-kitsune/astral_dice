@@ -1,6 +1,6 @@
 # B12 · forge-1.20.1 ↔ fabric-1.20.1 同名类语义漂移审计
 
-- 仓库：F:/MCProject/astral_dice_multiloader，分支 multi-main（工作区实读，含 fabric 线并行批次的未提交改动）
+- 仓库：D:/MCProject/astral_dice_multiloader，分支 multi-main（工作区实读，含 fabric 线并行批次的未提交改动）
 - 审计时间：2026-11-01；性质：只读（本报告是唯一写入的文件）
 - 目标：找出 fabric 线的**功能性滞后**（forge 有、fabric 无，或两线行为不同）
 

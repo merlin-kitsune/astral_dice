@@ -1,6 +1,6 @@
 # B26 — R-3（RenShield 文档漂移）/ R-5（弱点击破守卫缺失）报告
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`（未 commit / 未 stash / 未 add / 未 checkout，未跑 gradle，未启动游戏）
+- 仓库：`D:\MCProject\astral_dice_multiloader`，分支 `multi-main`（未 commit / 未 stash / 未 add / 未 checkout，未跑 gradle，未启动游戏）
 - 目标线：`fabric-1.20.1`（功能基线 = `forge-1.20.1` P0 次基准 + `neoforge-1.21.1` P0 主基准）
 - 本批改动仅两个文件：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/RenShieldManager.java`、`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java`
 - 取证工具：`C:/Program Files/Zulu/zulu-21/bin/javap.exe`；合并 jar = `C:/Users/xmace/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.20.1-loom.mappings.1_20_1.layered+hash.2198-v2/minecraft-merged-1.20.1-loom.mappings.1_20_1.layered+hash.2198-v2.jar`（26,688,459 B，21,644 entries）

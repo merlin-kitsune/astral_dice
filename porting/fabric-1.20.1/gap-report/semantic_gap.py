@@ -26,7 +26,7 @@ def _astral_heal_stdio() -> None:  # pragma: no cover - 环境适配
 
 _astral_heal_stdio()
 
-ROOT = r'F:\MCProject\astral_dice_multiloader'
+ROOT = r'D:\MCProject\astral_dice_multiloader'
 PKG = 'src/main/java/com/merlinkitsune/astral_dice'
 
 PLAT_SUBS = [

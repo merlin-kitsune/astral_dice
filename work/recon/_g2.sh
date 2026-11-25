@@ -1,4 +1,4 @@
-cd F:/MCProject/astral_dice_multiloader
+cd D:/MCProject/astral_dice_multiloader
 echo "--- concurrency / shell / set - ---"
 grep -n "concurrency\|^    defaults\|shell:\|set -" .github/workflows/build.yml
 echo "--- env block of release step ---"

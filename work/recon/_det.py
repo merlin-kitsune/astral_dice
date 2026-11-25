@@ -1,9 +1,9 @@
 
 import numpy as np
 from PIL import Image
-img = np.array(Image.open(r"F:/MCProject/astral_dice_multiloader/work/recon/user_screenshot.png").convert("RGB")).astype(np.int16)
+img = np.array(Image.open(r"D:/MCProject/astral_dice_multiloader/work/recon/user_screenshot.png").convert("RGB")).astype(np.int16)
 H,W,_ = img.shape
-base = r"F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/"
+base = r"D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/"
 def detect(name):
     t = np.array(Image.open(base+name+".png").convert("RGBA")).astype(np.int16)
     a = t[:,:,3]

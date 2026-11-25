@@ -1,6 +1,6 @@
 # astral_dice 1.5.0-hotfix+fabric_1.20.1 启动冒烟报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`（分支未改动，未执行任何 git 操作）
+- 仓库：`D:/MCProject/astral_dice_multiloader`（分支未改动，未执行任何 git 操作）
 - 任务性质：**只做启动冒烟**（加载 + 进世界），不验证玩法、不验证渲染正确性、不改源码
 - 执行时间：2026-11-02 18:35:53 启动 → 18:36:11 进世界 → 18:39 前后停机
 - 环境：Minecraft 1.20.1 / Fabric Loader 0.19.5 / 87 个 mod
@@ -139,7 +139,7 @@ $ grep -c "com\.merlinkitsune" latest.log
 4. 唯一 ERROR（`SyncEntireContainer`，EntityId: 2）本次**未追查影响面**，只确认其不属于本模组、无堆栈、未导致崩溃。
 5. 构建输出目录 `fabric-1.20.1/build/libs/` 内**新旧两个 jar 并存**（`astral_dice-1.5.0+fabric_1.20.1.jar` 与 `astral_dice-1.5.0-hotfix+fabric_1.20.1.jar`）；按任务口径本次只要求运行期 mods 目录是 hotfix 件，已满足，构建目录未清理。
 6. 本次改动仅限：删除构建产物 `fabric-1.20.1/build/loom-cache/argFiles/runClient`（任务要求），新增 `work/_smoke/`（辅助脚本、控制台日志、日志快照）与本报告。未改源码、未 commit/push、未触碰 `astral_dice_multiloader-next`。
-7. 启动前后 `F:/MCProject/.agent-locks/` 只有两个与本次无关的 `_b1_*.py` 文件，无 `dsh.lock`/`kimi.lock` 活跃锁。
+7. 启动前后 `D:/MCProject/.agent-locks/` 只有两个与本次无关的 `_b1_*.py` 文件，无 `dsh.lock`/`kimi.lock` 活跃锁。
 
 ## 复跑用命令
 

@@ -1,6 +1,6 @@
 # B3 — 电击手套重设计移植报告（forge-1.20.1 → fabric-1.20.1）
 
-- 宿主 `F:\MCProject\astral_dice_multiloader`，分支 `multi-main`；唯一蓝本 = forge-1.20.1 同路径（2026-10-21 重设计）。
+- 宿主 `D:\MCProject\astral_dice_multiloader`，分支 `multi-main`；唯一蓝本 = forge-1.20.1 同路径（2026-10-21 重设计）。
 - 落地 **4 个文件**：`ElectricGloveChipItem.java | 173 ++++--`、`SpellDamageRegistry.java | 93 +++---`、`DamageCardFxScheduler.java | 43 +++-`、`RailgunStrikeScheduler.java | 59 ++++-`（合计 `4 files changed, 267 insertions(+), 101 deletions(-)`，只含本批 4 文件）。
 - 未 commit、未启动游戏、未跑 gradle。4 个文件全部 CRLF（`ElectricGloveChipItem 190/0`、`SpellDamageRegistry 534/0`、`DamageCardFxScheduler 635/0`、`RailgunStrikeScheduler 206/0`，格式 = CRLF 数 / 裸 LF 数）。
 - 4 个文件内 `net.minecraftforge` / `net.neoforged` 引用 **0 命中**（grep 已验证）。

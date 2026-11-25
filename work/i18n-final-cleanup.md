@@ -1,6 +1,6 @@
 # i18n 收口：回滚 26.1.2 的 D 项 + 修正 fabric-1.20.1 两处中文标题
 
-- 工作树：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`）
+- 工作树：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`）
 - 范围：只动 lang JSON 与本文档；**未**改任何 Java/资源行为、**未**改审计判据、**未** add/commit/push/tag、**未**触碰他人的进程与改动。
 - 判定口径（单一事实源）：`docs/tooltip-color-rules.md` §6 例外 1；本线实现与手册条目（fabric）。
 
@@ -238,9 +238,9 @@ R1 = 66 / R2 = 72 / R3 = 92。其中 `neoforge-26.1.2` 三份由 22/23/27 降为
 ## 7. 复核命令（可直接粘贴）
 
 ```powershell
-cd F:\MCProject\astral_dice_multiloader
+cd D:\MCProject\astral_dice_multiloader
 python tools/check_lang_sync.py
 pwsh -NoProfile -File scripts/audit/tooltip_color_audit.ps1
-git -C F:\MCProject\astral_dice_multiloader diff --numstat -- scripts/audit/tooltip_color_audit.ps1   # 应为空
+git -C D:\MCProject\astral_dice_multiloader diff --numstat -- scripts/audit/tooltip_color_audit.ps1   # 应为空
 python work/i18n-final-cleanup-evidence/verify_revert.py                                              # 三份 byte_identical: true
 ```

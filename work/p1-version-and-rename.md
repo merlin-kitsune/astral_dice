@@ -1,6 +1,6 @@
 # P1：四线版本号统一 1.5.0 + 物品「试剂-深渊」→「深渊试剂」
 
-- 工作树：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，动手前 `## multi-main...origin/multi-main [ahead 24]`）
+- 工作树：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，动手前 `## multi-main...origin/multi-main [ahead 24]`）
 - 执行时间：2026-11-02 01:46 ~ 01:5x（Asia/Hong_Kong）
 - 结论：**G1/G3/G4/G5 全绿；G2a 全绿；G2b 非 0（残留全部落在 brief 明令禁改/测试台资产内，未改动）；四线 build 全成功并产 jar**。
 - 全程未 `git push` / 未打 tag / 未动 `.git` / 未手工复制 jar 到整合包。
@@ -20,7 +20,7 @@
 | 40268 | `-Dfabric.dli.config=...\fabric-1.20.1\launch.cfg -Dfabric.dli.env=server ... net.fabricmc.devlaunchinjector.Main nogui nogui` = KnotServer | MC 服务端 | **停** |
 
 ### 0.2 停止（仓内口径优先，脚本适用）
-`pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version fabric-1.20.1 --phase stop --force` → exit=0
+`pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version fabric-1.20.1 --phase stop --force` → exit=0
 
 ```
 MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
@@ -86,7 +86,7 @@ MT_STOP: OK (1s) — 收停完成，无本流程残留进程
 ## 3. 改动 3：四线构建
 
 ```
-pwsh -NoProfile -Command "$env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'; Set-Location 'F:\MCProject\astral_dice_multiloader';
+pwsh -NoProfile -Command "$env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'; Set-Location 'D:\MCProject\astral_dice_multiloader';
   & .\gradlew.bat --console=plain :neoforge-1.21.1:build :forge-1.20.1:build :neoforge-26.1.2:build :fabric-1.20.1:build"
 ```
 
@@ -223,5 +223,5 @@ pushToGame: pushed astral_dice-1.5.0+fabric_1.20.1.jar -> D:\.minecraft\versions
 5. 构建 stderr 的 `JAVA_HOME` 噪声行（见 §3 注），不影响产物。
 
 ## 6. 证据文件
-- 构建全量日志：`F:\MCProject\astral_dice_multiloader\work\p1-build.log`（74 KB，74,203 B）
-- 本报告：`F:\MCProject\astral_dice_multiloader\work\p1-version-and-rename.md`
+- 构建全量日志：`D:\MCProject\astral_dice_multiloader\work\p1-build.log`（74 KB，74,203 B）
+- 本报告：`D:\MCProject\astral_dice_multiloader\work\p1-version-and-rename.md`

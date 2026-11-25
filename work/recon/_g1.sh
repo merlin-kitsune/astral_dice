@@ -1,2 +1,2 @@
-cd F:/MCProject/astral_dice_multiloader
+cd D:/MCProject/astral_dice_multiloader
 grep -n -E "^name:|^on:|^  (push|pull_request|workflow_dispatch|tags|branches):|permissions|contents:|fetch-depth|fetch-tags|distribution:|java-version|uses:|run:|if:|name: |^      - name:" .github/workflows/build.yml | sed -n "1,120p"

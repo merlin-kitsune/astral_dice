@@ -1,5 +1,5 @@
 import json,base64,io,os,sys
-p='/mnt/f/mcproject/astral_dice_multiloader-next/models/强化拒止 - Converted.bbmodel'
+p='/mnt/d/mcproject/astral_dice_multiloader-next/models/强化拒止 - Converted.bbmodel'
 d=json.load(open(p,encoding='utf-8'))
 print('resolution',d.get('resolution'))
 src=d['textures'][0]['source']
@@ -23,8 +23,8 @@ def diff(a,b,mx=False,my=False):
     aa=list(a.getdata()); bb=list(b.getdata()); n=len(aa)
     return round(sum(abs(x0-y0)+abs(x1-y1)+abs(x2-y2)+abs(x3-y3) for (x0,x1,x2,x3),(y0,y1,y2,y3) in zip(aa,bb))/(4*n),2)
 A=crop(2,5,14,17); B=crop(16,5,28,17)
-A.resize((A.width*10,A.height*10),Image.NEAREST).save('/mnt/f/mcproject/astral_dice_multiloader-next/work/verify-denial/plateN_x10.png')
-B.resize((B.width*10,B.height*10),Image.NEAREST).save('/mnt/f/mcproject/astral_dice_multiloader-next/work/verify-denial/plateS_x10.png')
+A.resize((A.width*10,A.height*10),Image.NEAREST).save('/mnt/d/mcproject/astral_dice_multiloader-next/work/verify-denial/plateN_x10.png')
+B.resize((B.width*10,B.height*10),Image.NEAREST).save('/mnt/d/mcproject/astral_dice_multiloader-next/work/verify-denial/plateS_x10.png')
 print('sizes',A.size,B.size)
 print('plate identity %.2f  mirrorX %.2f  mirrorY %.2f  rot180 %.2f'%(diff(A,B),diff(A,B,True,False),diff(A,B,False,True),diff(A,B,True,True)))
 print('selfN mirrorX %.2f mirrorY %.2f'%(diff(A,A,True,False),diff(A,A,False,True)))

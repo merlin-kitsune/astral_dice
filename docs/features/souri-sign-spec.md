@@ -192,7 +192,7 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ## §8 复跑清单
 
 ```bash
-cd /mnt/f/MCProject/astral_dice_multiloader-next
+cd /mnt/d/MCProject/astral_dice_multiloader-next
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 bash scripts/test/linux/env.sh --quiet            # 期望 ENV_RESULT: WARN，0 blocking
 bash scripts/test/linux/launch.sh --version 1.21.1 --quickplay testworld --timeout 900 --wait-world 300

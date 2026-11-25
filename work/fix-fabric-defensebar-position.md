@@ -1,6 +1,6 @@
 # fabric-1.20.1 防御条（左列）行位缺陷 — 修复报告
 
-- 仓库：F:/MCProject/astral_dice_multiloader（**只改 fabric-1.20.1 线**，只碰指定的三个文件）
+- 仓库：D:/MCProject/astral_dice_multiloader（**只改 fabric-1.20.1 线**，只碰指定的三个文件）
 - 作业时间：2026-11-02 19:04 → 19:20（Asia/Hong_Kong）
 - 方案：**S1'**——保留「读 leftHeight 累加量 + 画完自增」的协作模型，只把每帧的**种子常量 49** 换成按原版心排数复算的值
 - 实机：Fabric dev client（quickplay testworld，1920x1080，guiScale 4.0，H=270）+ AutoJS 客户端侧 eval；**六态读数 + 六张截图像素核验**
@@ -194,8 +194,8 @@ git diff 关键 hunk：
 
     ./gradlew.bat :fabric-1.20.1:build --console=plain -x pushToGame
     > Task :fabric-1.20.1:compileJava / jar / remapJar / build
-    pushToRootBuild: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\build\libs
-    pushToDevRun:    pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
+    pushToRootBuild: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\build\libs
+    pushToDevRun:    pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
     BUILD SUCCESSFUL in 3s
 
 产物：fabric-1.20.1/build/libs/astral_dice-1.5.0-hotfix+fabric_1.20.1.jar = **2,945,260 B**（2026-11-02 19:08）。同一目录下旧包 astral_dice-1.5.0+fabric_1.20.1.jar（2,944,296 B，14:14）未动。
@@ -300,7 +300,7 @@ jar 内 class 指纹（`work/evidence/fabric-defensebar/jar-class-sha.txt`）：
 
 - 端口：取证前 `25565/25585` 均无监听（PORTS FREE）；结束后 `netstat -ano | grep LISTENING` 对 25565/25585 = **NONE**（仅剩 25585 的 TIME_WAIT 残留连接）
 - 进程：`Stop-Process -Force` 停 **38684**（net.fabricmc.devlaunchinjector.Main，即 dev client）与 **3280**（gradle wrapper `:fabric-1.20.1:runClient`）；`jcmd -l` 复核只剩 **35180 GradleDaemon 9.5.1**——按纪律**未杀 daemon**
-- 锁：本轮创建的 F:/MCProject/.agent-locks/dsh.lock 已删除（目录内只剩他人的 `_b1_*.py`）
+- 锁：本轮创建的 D:/MCProject/.agent-locks/dsh.lock 已删除（目录内只剩他人的 `_b1_*.py`）
 - 工作树：三文件仍为 `M`（未 commit / 未 push / 未打 tag）；其余仓库改动（docs、tools、models 等）与本轮无关，未触碰
 - 临时文件：取证用的 `.tmp/` 已清理，关键证据移入 work/evidence/fabric-defensebar/（Gui 反汇编 5369 行 + jar 内 class 指纹）
 - 实机副作用已复原：水下玻璃盒 fill air（36 + 114 格）、马已 kill、`max_health` 回 20、health 回 20

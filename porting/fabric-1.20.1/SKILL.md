@@ -9,7 +9,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 > 开发线现为**各线同仓**（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / **`fabric-1.20.1`**），
 > 且 fabric 线功能已补齐到与非 fabric 线对等。
 > ⇒ 本文所有 `astral_dice_multiloader` / `astral_dice_multiloader_fabric` 路径**一律改指开发线工作树**
-> `F:\MCProject\astral_dice_multiloader-next`；
+> `D:\MCProject\astral_dice_multiloader-next`；
 > `ref/`（10 个上游参考源克隆件，约 76 MB）**已复制到开发线树根** `astral_dice_multiloader-next/ref/`
 > （`.gitignore` 排除 `ref/`）⇒ 无需重新克隆；确需重建时按 `VERSION_PINS.md`。
 > 其余口径（版本钉值、API 对照、平台差异）**不变**；但**版本号口径已变** —— 本线不再是带 `-alpha.x` 的
@@ -18,7 +18,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 > 本次并入的侦察结论、作业清单与平台适配决策见同目录 `RECON-AND-PLAN.md`。
 
 > 执行前必读：本文是唯一执行入口。配套件（同目录）：`VERSION_PINS.md`（版本钉值，**先读**）、`API_CHEATSHEET.md`（API 对照）、`PORT_ANALYSIS.md`（分析全文）。  
-> 目标仓 worktree：`F://MCProject//astral_dice_multiloader-next`（分支 `multi-dev-next`）；库仓：`F://MCProject//starengine_lib`（分支 `next`）。  
+> 目标仓 worktree：`D://MCProject//astral_dice_multiloader-next`（分支 `multi-dev-next`）；库仓：`D://MCProject//starengine_lib`（分支 `next`）。  
 > ⚠️ 参考源在 worktree 的 `ref/`（fabric-loader / fabric-api / trinkets / cardinal-components-api / minecraftforge / yarn / patchouli），API 取证一律对照 `ref/` 源码，禁止凭记忆写 Fabric API。
 
 ## 0. 硬性约束（红线）
@@ -36,7 +36,7 @@ description: 《星之骰戏》(astral_dice) forge-1.20.1 → fabric-1.20.1 移�
 
 ### 1.0 前置：库 starengine_lib 新增 fabric 平台（先于消费方一切）
 
-库仓 `F://MCProject//starengine_lib`：建分支 `fabric-1.20.1`（基线 `main @ 1.0.5`）+ worktree（可选）。新建子项目 `fabric-1.20.1/` 共 11 文件（common 44 文件**零改动**）：
+库仓 `D://MCProject//starengine_lib`：建分支 `fabric-1.20.1`（基线 `main @ 1.0.5`）+ worktree（可选）。新建子项目 `fabric-1.20.1/` 共 11 文件（common 44 文件**零改动**）：
 
 | 文件                                   | 内容要点                                                                                                                                                                                                                                                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

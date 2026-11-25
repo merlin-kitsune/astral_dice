@@ -28,10 +28,10 @@
 
 | 用途 | Linux 路径（实读） | Windows 侧同一批文件 |
 |---|---|---|
-| **主线工作树（`multi-main`，封版线）** | `/mnt/f/MCProject/astral_dice_multiloader` | `F:\MCProject\astral_dice_multiloader` |
-| 前置库 starengine | `/mnt/f/MCProject/starengine` | `F:\MCProject\starengine` |
-| **当前开发树（`multi-dev-next`，本会话树）** | `/mnt/f/MCProject/astral_dice_multiloader-next` | 同名 |
-| 宿主互斥锁 | `/mnt/f/MCProject/.agent-locks/` | `F:\MCProject\.agent-locks\` |
+| **主线工作树（`multi-main`，封版线）** | `/mnt/d/MCProject/astral_dice_multiloader` | `D:\MCProject\astral_dice_multiloader` |
+| 前置库 starengine | `/mnt/d/MCProject/starengine` | `D:\MCProject\starengine` |
+| **当前开发树（`multi-dev-next`，本会话树）** | `/mnt/d/MCProject/astral_dice_multiloader-next` | 同名 |
+| 宿主互斥锁 | `/mnt/d/MCProject/.agent-locks/` | `D:\MCProject\.agent-locks\` |
 | **整合包根（Minecraft 实例）** | `/mnt/d/.minecraft`（`MC_HOME` 可覆盖） | `D:\.minecraft` |
 | 本机 mavenLocal | `/home/kitsune/.m2/repository/` | `%USERPROFILE%\.m2\repository`（**不是同一份**） |
 | DSH 用户级配置 | `/home/kitsune/.dsh/` | `C:\Users\<user>\.dsh\`（**不是同一份**） |
@@ -82,7 +82,7 @@
 - 构建命令（**Linux 用 `./gradlew`，没有 `gradlew.bat`**）：
 
   ```bash
-  cd /mnt/f/MCProject/astral_dice_multiloader-next   # 本会话树；要动主线树必须显式改成本仓主树路径
+  cd /mnt/d/MCProject/astral_dice_multiloader-next   # 本会话树；要动主线树必须显式改成本仓主树路径
   export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # daemon JVM，必须 ≥21；不要看到线是 17/25 就改这里
   ./gradlew :neoforge-1.21.1:classes --console=plain
   ./gradlew :neoforge-1.21.1:jar --console=plain
@@ -115,7 +115,7 @@
 - **入口按加载器分**：fabric 两线 = `runDatagen`（Loom 数据生成，工作目录 `fabric-<线>/run/datagen`，产物落 `fabric-<线>/src/generated/...`）；neo26 = **`runServerData` + `runClientData` 两个任务**（服务端产物 `neoforge-26.1.2/src/generated/resources`，客户端产物 `neoforge-26.1.2/src/generated/clientResources`）。四条任务可一条命令跑完：
 
   ```bash
-  cd /mnt/f/MCProject/astral_dice_multiloader-next
+  cd /mnt/d/MCProject/astral_dice_multiloader-next
   export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
   ./gradlew --no-daemon :fabric-1.20.1:runDatagen :fabric-1.21.1:runDatagen \
     :neoforge-26.1.2:runServerData :neoforge-26.1.2:runClientData --console=plain
@@ -140,12 +140,12 @@
 
 - 各线 `gradle.properties` 实读（2026-11-10）：`starengine_group=com.merlinkitsune.starengine`；引脚 **`neoforge-1.21.1` = `26.4-SNAPSHOT.2`**、**`forge-1.20.1` = `26.4-SNAPSHOT.2`**、**`neoforge-26.1.2` = `26.4-SNAPSHOT.2`**、**`fabric-1.20.1` = `26.4-SNAPSHOT.11`**（`starengine_version_range=>=26.4-SNAPSHOT.11 <27.0.0`）、**`fabric-1.21.1` = `26.4-SNAPSHOT.9`**（range `>=26.4-SNAPSHOT.9 <27.0.0`）。旧文档的 `1.1.0` 已过期。各线 `build.gradle` 均含 `mavenLocal()`（neo `:30` / forge `:29` / neo26 `:39` / fabric `:47`）。
 - 正确顺序：先在**库仓**发布到本机 mavenLocal，再构建本仓。缺哪条线的制品，哪条线就解析失败（`Could not resolve com.merlinkitsune.starengine:...`）。
-- **库仓要选对（2026-11-10 实读）**：本开发树对应的库仓是 **`/mnt/f/MCProject/starengine_next`**（settings.gradle 有 5 个 include，含 `fabric-1.21.1`）；旧的 `/mnt/f/MCProject/starengine` 只有 4 个 include（**无 fabric-1.21.1**）。两条都自带 gradlew（wrapper 均为 9.2.1）。
+- **库仓要选对（2026-11-10 实读）**：本开发树对应的库仓是 **`/mnt/d/MCProject/starengine_next`**（settings.gradle 有 5 个 include，含 `fabric-1.21.1`）；旧的 `/mnt/d/MCProject/starengine` 只有 4 个 include（**无 fabric-1.21.1**）。两条都自带 gradlew（wrapper 均为 9.2.1）。
 - **R1 阻塞已销账（2026-11-10 本会话实做）**：在 `starengine_next` 依次发布五平台，`:neoforge-1.21.1` 1m10s、其余四平台合计 1m36s，均 BUILD SUCCESSFUL；`~/.m2/repository/com/merlinkitsune/starengine/` 现为 **`neoforge-1.21.1` .2 / `forge-1.20.1` .2 / `neoforge-26.1.2` .2 / `fabric-1.20.1` .11 / `fabric-1.21.1` .9**（各三件齐，与五线引脚逐字符相等）。⇒ 换机/清 `~/.m2` 后重做这一批即可，**不必**再猜版本。
-- **mavenLocal 缺件史（2026-11-10 上午实读，现已销账）**：当时 `~/.m2/repository/com/merlinkitsune/starengine/` 下只有 4 个平台目录、各只含 `1.1.0` 与 `26.4-SNAPSHOT.1`，新版 `.2`/`.9`/`.11` 全缺、`starengine-fabric-1.21.1` 整件缺失 ⇒ 配成 `Could not resolve`。**当日下午已按上一条完成五平台发布，此阻塞不再存在**；换机 / 清 `~/.m2` 后会复现，届时照上面顺序重发。starengine 实件在兄弟仓 `/mnt/f/MCProject/starengine_next/build/libs/`。
+- **mavenLocal 缺件史（2026-11-10 上午实读，现已销账）**：当时 `~/.m2/repository/com/merlinkitsune/starengine/` 下只有 4 个平台目录、各只含 `1.1.0` 与 `26.4-SNAPSHOT.1`，新版 `.2`/`.9`/`.11` 全缺、`starengine-fabric-1.21.1` 整件缺失 ⇒ 配成 `Could not resolve`。**当日下午已按上一条完成五平台发布，此阻塞不再存在**；换机 / 清 `~/.m2` 后会复现，届时照上面顺序重发。starengine 实件在兄弟仓 `/mnt/d/MCProject/starengine_next/build/libs/`。
 - 发布命令（daemon JVM 必须 21）：
   ```bash
-  cd /mnt/f/MCProject/starengine_next   # 注意是本开发树对应的库仓，不是旧的 starengine
+  cd /mnt/d/MCProject/starengine_next   # 注意是本开发树对应的库仓，不是旧的 starengine
   export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
   ./gradlew :neoforge-1.21.1:publishToMavenLocal --console=plain
   ./gradlew :forge-1.20.1:publishToMavenLocal    --console=plain
@@ -238,8 +238,8 @@
 
 | 红线区原文中的 Windows 口径 | Linux 宿主替换为 |
 |---|---|
-| 工作树 `F:\MCProject\astral_dice_multiloader` | `/mnt/f/MCProject/astral_dice_multiloader`（**同一块 NTFS 盘的原生挂载**，不是副本、不是 hgfs） |
-| 前置库 `F:\MCProject\starengine` | `/mnt/f/MCProject/starengine` |
+| 工作树 `D:\MCProject\astral_dice_multiloader` | `/mnt/d/MCProject/astral_dice_multiloader`（**同一块 NTFS 盘的原生挂载**，不是副本、不是 hgfs） |
+| 前置库 `D:\MCProject\starengine` | `/mnt/d/MCProject/starengine` |
 | 「相对路径陷阱」 | **不变且更严**：双系统同盘 + 多工作树共存，任何跨仓命令都必须绝对路径 |
 | 「分支归属纪律（禁止镜像/回填）」 | **不变**（宿主无关）；`~/Project` 副本层已不存在，不要按旧文档重建 |
 | 发布投放（整合包 `versions/<实例>/mods`） | Linux 宿主**可**投放：根 = `/mnt/d/.minecraft`（`MC_HOME` 可覆盖，根 `build.gradle` 的 `mcHomePath` 统一解析：`MC_HOME` > `/mnt/d/.minecraft` > `D:/.minecraft`）；Windows 宿主同一批文件在 `D:\.minecraft`。**「默认不部署」红线不变**（仅用户明确下达时跑 `pushToGame`/`build`） |
@@ -285,7 +285,7 @@
 - **出网走 TUN 直连（2026-10-31 用户裁决）**：clash-verge-rev 以 TUN 接管全部路由（实读 `/configs`：`tun.enable=true`、`device=Meta`、`auto-route=true`、`198.18.0.1/30`，内核 mihomo `v1.19.32`）⇒ **远程 git 直接跑，不加 `-c http.proxy=…`**，也不要 export `*_proxy`。
   - 仓库 `.git/config` 仍有 `http.proxy`/`https.proxy` = `http://127.0.0.1:7897`（**Windows 共用配置，保留不动**）。**Linux 口径：远程 git 一律用 `git -c http.proxy= -c https.proxy= <子命令>` 走 TUN 直连**（2026-11-10 用户裁决：Linux 用 TUN，不套 Windows 代理）。
   - 排障：`curl -s -H 'Authorization: Bearer <secret>' http://127.0.0.1:9097/configs` 确认 `tun.enable=true`（secret 见 `~/.local/share/io.github.clash-verge-rev.clash-verge-rev/config.yaml`）；`/version` 看内核；`401` 是 secret 问题不是断网。Maven 侧 Central / aliyun / neoforged 直连 200，不需要镜像也不需要代理。
-- 一律 `git -C /mnt/f/MCProject/astral_dice_multiloader <子命令>`；**本地 commit 默认允许**（单主题、如实写改动面）；**push / tag 须用户明确要求**。
+- 一律 `git -C /mnt/d/MCProject/astral_dice_multiloader <子命令>`；**本地 commit 默认允许**（单主题、如实写改动面）；**push / tag 须用户明确要求**。
 - 提交前 `git status --short -uall` 必须只剩用户未跟踪素材（4 个文件，见〈git〉）；有他人改动 ⇒ 停手报告。
 - `git add` 只加本轮明确产物；**禁止** `git add -A`、`git stash`、`git checkout --` 清别人的改动。
 
@@ -374,7 +374,7 @@
 
 ## 互斥锁与并发
 
-- 锁目录 `/mnt/f/MCProject/.agent-locks/`；DSH 动工作树前建 `dsh.lock`，收尾必删。**锁文件为三行口径**：`PID=` / `TIME=` / `TASK=`（正本 `docs/agent/AGENT-SPLIT.md` L25），可附加 `NOTE=` 说明行。
+- 锁目录 `/mnt/d/MCProject/.agent-locks/`；DSH 动工作树前建 `dsh.lock`，收尾必删。**锁文件为三行口径**：`PID=` / `TIME=` / `TASK=`（正本 `docs/agent/AGENT-SPLIT.md` L25），可附加 `NOTE=` 说明行。
 - 2026-11-10 实读：目录里只有 `dsh.lock`（`PID` 写的是当次 `bash -c` 的 shell，命令结束即变陈旧），`kill -0 <PID>` ⇒ 已退出，`env.sh` 报 `locks_stale=WARN`。⇒ **锁的 PID 字段不要写一次性 shell 的 PID**（写长驻会话/agent 主进程），否则每次刚建锁就被判陈旧、误导后续会话。
   - **教训（本会话踩到）**：锁里的 `PID=` 若写的是「执行 `bash -c` 那条命令的 shell PID」，命令一结束就变成陈旧锁；应写**长驻进程**（会话/agent 主进程）。陈旧锁按规则**不自行删除**，报用户后接管并改写，收尾再删。
 - 动工作树或起 gradle 前：① 看锁是否存在、`kill -0 <pid>` 是否存活（`env.sh` 的 `locks_stale` 会自动报）；② 看 `build/` 最近 30 分钟有无修改；③ 存在他宿主的活跃锁（`kimi.lock` 等）⇒ 停手等待，**陈旧锁不自行删除**，报用户。

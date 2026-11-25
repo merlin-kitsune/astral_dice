@@ -1,6 +1,6 @@
 # B2-2 报告：事件常量与存储层（3 个新文件 + 1 处平台层钩子）
 
-批次 B2-2（事件体系移植第二块，紧跟 B2-1 契约层）。基线 `forge-1.20.1`（MC 1.20.1 + Forge 47.x，唯一蓝本）；目标 `fabric-1.20.1`（MC 1.20.1 + FAPI 0.92.12 + Loom，Mojang 映射，Java 17）。仓库 `F:/MCProject/astral_dice_multiloader`，分支 `multi-main`；取证时点 `2026-11-01 18:4x +08:00`。
+批次 B2-2（事件体系移植第二块，紧跟 B2-1 契约层）。基线 `forge-1.20.1`（MC 1.20.1 + Forge 47.x，唯一蓝本）；目标 `fabric-1.20.1`（MC 1.20.1 + FAPI 0.92.12 + Loom，Mojang 映射，Java 17）。仓库 `D:/MCProject/astral_dice_multiloader`，分支 `multi-main`；取证时点 `2026-11-01 18:4x +08:00`。
 本批**未跑 gradle、未启动游戏、未 commit**：整线当前编译失败，唯一根因仍是 `item/sign/LinglingSignManager` 缺失（另一批次在写，本批不碰、也不补）。设计依据 `porting/fabric-1.20.1/B2-EVENT-RECON.md` §1（A/C 阶段）、§2（映射 #6 #7）、§4、§8（R2 / R5 / R10）。
 
 ## 1 新增文件清单

@@ -3,7 +3,7 @@ import os, sys, time, shutil, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import aj
 
-ROOT = r"F:/MCProject/astral_dice_multiloader"
+ROOT = r"D:/MCProject/astral_dice_multiloader"
 OUT = os.path.join(ROOT, "work/shots/fabric-defensebar")
 SRC_DIR = os.path.join(ROOT, "fabric-1.20.1/run/client/screenshots")
 

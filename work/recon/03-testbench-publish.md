@@ -1,7 +1,7 @@
 # 03 · 实机测试取证 + 发布推送 —— 真实可用状态取证报告
 
 - 取证时间：2026-11-02 01:37–02:05 +0800（Asia/Hong_Kong）
-- 工作树：F:\MCProject\astral_dice_multiloader　分支 multi-main　HEAD fd990c15（2026-11-01 14:42:49 +0800）
+- 工作树：D:\MCProject\astral_dice_multiloader　分支 multi-main　HEAD fd990c15（2026-11-01 14:42:49 +0800）
 - 方式：**纯只读**。未运行 gradlew、未启动游戏、未杀进程、未做任何 git 写操作。唯一写入 = 本文件。
 - 纪律：每条结论带「文件:行号」或命令原文；取不到写「无法判定」。
 - 说明：取证期间实机进程状态有变化（早先快照 2 个 fabric 客户端 → 复核时 1 个），下文以 **01:4x 复核快照**为准。
@@ -62,7 +62,7 @@ preflight | build | env | launch | cases | report | stop。语义：
 
 - 通道 autojs：Invoke-MtChannelShot → run/<ver>/screenshots/<tag>.png
 - 通道 native：调 mt_capture.ps1 capture --version <v> --tag <tag> --mode <f2|window>（crop:true 追加 --crop-to-window）
-- 手工单独抓图：pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt_capture.ps1 capture -Version 1.21.1 -Tag mytag -Mode window
+- 手工单独抓图：pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt_capture.ps1 capture -Version 1.21.1 -Tag mytag -Mode window
 - 模式语义 **scripts/test/mt_capture.ps1:12-14**：f2 = 注入 F2 让游戏自己落盘；window = .NET System.Drawing 整屏抓（默认不裁剪，-CropToWindow 才裁）；DPI 必须 PER_MONITOR_AWARE_V2，否则 3840×2160 会抓成 2560×1440。
 - ⚠️ **mt_case.ps1:2099-2134** 注释明写：screenshot 步骤自身约 1.9s 前置开销，瞬态画面要 mode=window，否则「注入 F2 → 等游戏落盘」的 3×10s 重试会错过瞬态窗口。
 
@@ -87,40 +87,40 @@ preflight | build | env | launch | cases | report | stop。语义：
 
 ```powershell
 # 0) 读用法（唯一正确方式；-? 无效）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --help
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --help
 
 # 1) 前置检查（最安全、不启动游戏）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase preflight
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase preflight
 
 # 2) 构建（会跑 gradlew，属重操作）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase build
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase build
 
 # 3) 环境装配（放 jar 进 run/<ver>/mods、拉探针模组）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase env
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase env
 
 # 4) 启动（起 dev 客户端；--side 仅 fabric 有效）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase launch
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase launch
 
 # 5) 单条用例（裸名或路径均可）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase cases --case ACTIONBAR-DIAG-1.21.1
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase cases --case ACTIONBAR-DIAG-1.21.1
 
 # 6) 只做离线校验（不起游戏）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt_case.ps1 validate --case F:\MCProject\astral_dice_multiloader\scripts\test\cases\ACTIONBAR-DIAG-1.21.1.json
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt_case.ps1 validate --case D:\MCProject\astral_dice_multiloader\scripts\test\cases\ACTIONBAR-DIAG-1.21.1.json
 
 # 7) 收停（默认保留存档）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase stop
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase stop
 
 # 8) 收停 + 清旧存档 + 强杀
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase stop --purge-saves --force
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase stop --purge-saves --force
 
 # 9) 出报告的唯一途径：全流程 + 显式放行（会真跑全流程，慎用）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --allow-auto
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --allow-auto
 ```
 
 fabric-1.20.1 专线（bash 层）：
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase launch
 bash scripts/test/win/mt.sh --version fabric-1.20.1 --side client --phase launch --enable-autojs   # 显式挂 AutoJS 测试模组
 bash scripts/test/win/live.sh --batch LT0 --dry-run        # 批次只打印将执行什么
@@ -132,7 +132,7 @@ bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase stop -
 
 ## A2. 用例目录结构与三个代表用例
 
-- 位置：**F:\MCProject\astral_dice_multiloader\scripts\test\cases**
+- 位置：**D:\MCProject\astral_dice_multiloader\scripts\test\cases**
 - **280 个 JSON，平铺、不按线分目录**；线靠文件名后缀区分。
 - 命名规则 <FEATURE>-<MC 版本>.json，部分带批号（FIXBATCH-* / CC-* / CHIP-*）；fabric 线后缀 -fabric-1.20.1，26.1.2 后缀 -26.1.2。
 - 数量分布（ls | grep -c -- -<ver>.json）：1.21.1 = **121**，1.20.1 = **105**（含 22 条同时属 fabric 双计），26.1.2 = **53**，fabric-1.20.1 = **22**。
@@ -365,7 +365,7 @@ netstat -ano | findstr 25585
 ### 7.4 可直接照抄
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 
 # 1) 空跑（不写、不需要 token；先看路由与 gameVersions 对不对）
 python tools/curseforge_upload.py push --dry-run \
@@ -391,9 +391,9 @@ python tools/curseforge_upload.py push --apply --proxy http://127.0.0.1:7897 \
 ## B8. git 远端与代理
 
 ```bash
-git -C /f/MCProject/astral_dice_multiloader remote -v
-git -C /f/MCProject/astral_dice_multiloader config --get http.proxy
-git -C /f/MCProject/astral_dice_multiloader config --get https.proxy
+git -C /d/MCProject/astral_dice_multiloader remote -v
+git -C /d/MCProject/astral_dice_multiloader config --get http.proxy
+git -C /d/MCProject/astral_dice_multiloader config --get https.proxy
 ```
 
 实测输出：
@@ -464,8 +464,8 @@ CI 构建前守门（**:110-164**）：四线 check_lang_sync.ps1、python tools
 ## C1. 只读体检（随时可跑，不启动进程）
 
 ```powershell
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --help
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase preflight
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --help
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase preflight
 pwsh -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'java*' } | Select-Object ProcessId,ParentProcessId,CreationDate,CommandLine | Format-List"
 pwsh -NoProfile -Command "Test-NetConnection 127.0.0.1 -Port 25585 -InformationLevel Quiet"
 pwsh -NoProfile -Command "Test-NetConnection 127.0.0.1 -Port 7897 -InformationLevel Quiet"
@@ -474,16 +474,16 @@ pwsh -NoProfile -Command "Test-NetConnection 127.0.0.1 -Port 7897 -InformationLe
 ## C2. 实机取证（会启游戏 —— 必须用户明确下达）
 
 ```powershell
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase env
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase launch
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase cases --case ACTIONBAR-DIAG-1.21.1
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase stop
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase env
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase launch
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase cases --case ACTIONBAR-DIAG-1.21.1
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\scripts\test\mt.ps1 --version 1.21.1 --phase stop
 ```
 
 ## C3. fabric 线
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase launch
 bash scripts/test/win/mt.sh --version fabric-1.20.1 --side client --phase launch --enable-autojs
 bash scripts/test/win/live.sh --batch LT0 --dry-run
@@ -493,9 +493,9 @@ bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase stop -
 ## C4. 发布
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
-git -C /f/MCProject/astral_dice_multiloader remote -v
-git -C /f/MCProject/astral_dice_multiloader config --get http.proxy
+cd /d/MCProject/astral_dice_multiloader
+git -C /d/MCProject/astral_dice_multiloader remote -v
+git -C /d/MCProject/astral_dice_multiloader config --get http.proxy
 python tools/curseforge_upload.py push --dry-run \
   --jar neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.7+neoforge_1.21.1.jar \
   --jar forge-1.20.1/build/libs/astral_dice-1.5.0-rc.7+forge_1.20.1.jar

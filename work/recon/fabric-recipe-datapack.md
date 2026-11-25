@@ -1,7 +1,7 @@
 # Fabric 1.20.1「配置门控筹码配方」取证与方案设计报告
 
 - 日期：2026-11-02
-- 仓库：`F:/MCProject/astral_dice_multiloader`（分支 `multi-main`，HEAD `6fe38138`，本次实测确认）
+- 仓库：`D:/MCProject/astral_dice_multiloader`（分支 `multi-main`，HEAD `6fe38138`，本次实测确认）
 - 目标线：`fabric-1.20.1`（Fabric 1.20.1，Loom）
 - 对照线：`forge-1.20.1` / `neoforge-1.21.1` / `neoforge-26.1.2`
 - 工作方式：**纯只读取证**。未修改任何产品文件、未构建、未启动游戏、未执行 git 写操作。本报告是本次任务唯一新增产物。
@@ -28,7 +28,7 @@
 命令与原始输出：
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 grep -rn '"enable_chip_recipes"' fabric-1.20.1/src/main/java forge-1.20.1/src/main/java \
                                    neoforge-1.21.1/src/main/java neoforge-26.1.2/src/main/java
 ```

@@ -1,6 +1,6 @@
 # neoforge-26.1.2 事件音效声明补齐（sounds.json）
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`
+- 仓库：`D:\MCProject\astral_dice_multiloader`
 - 分支 / HEAD：`multi-main` / `fd990c15`
 - 执行时间：2026-11-02 03:51–03:56 (+08:00)
 - 唯一改动文件：`neoforge-26.1.2/src/main/resources/assets/astral_dice/sounds.json`
@@ -16,7 +16,7 @@
 ```python
 import json, os
 lines = ["neoforge-1.21.1","forge-1.20.1","fabric-1.20.1","neoforge-26.1.2"]
-base = "F:/MCProject/astral_dice_multiloader"
+base = "D:/MCProject/astral_dice_multiloader"
 sets = {}
 for l in lines:
     p = base + "/" + l + "/src/main/resources/assets/astral_dice/sounds.json"
@@ -214,8 +214,8 @@ byte-identical to fabric-1.20.1 sounds.json: False
 
 ```powershell
 $ErrorActionPreference = 'Continue'
-Set-Location -LiteralPath 'F:\MCProject\astral_dice_multiloader'
-$log = 'F:\MCProject\astral_dice_multiloader\work\_n26_build.log'
+Set-Location -LiteralPath 'D:\MCProject\astral_dice_multiloader'
+$log = 'D:\MCProject\astral_dice_multiloader\work\_n26_build.log'
 & .\gradlew.bat ':neoforge-26.1.2:build' -x ':neoforge-26.1.2:pushToGame' -x ':neoforge-26.1.2:pushToDevRun' -x ':neoforge-26.1.2:pushToRootBuild' --console=plain 2>&1 | Tee-Object -FilePath $log
 exit $LASTEXITCODE
 ```
@@ -240,7 +240,7 @@ exit $LASTEXITCODE
 > Task :neoforge-26.1.2:assemble
 > Task :neoforge-26.1.2:build
 
-[Incubating] Problems report is available at: file:///F:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///D:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
 
 Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
@@ -326,4 +326,4 @@ $ git status --porcelain=v1 -- neoforge-26.1.2/src/main/resources/assets/astral_
 - 未启动游戏、未占端口、未跑实机用例。
 - 未执行 `pushToGame` / `pushToDevRun` / `pushToRootBuild`（已 `-x` 显式排除），未写 `D:` 盘。
 - 新增的辅助/证据文件（均在 `work/`，非源码树）：`work/fix-n26-sounds.md`（本报告）、`work/_n26_build.ps1`、`work/_n26_build.log`、`work/sounds.json.bak-soundsfix-20261102T035123`（改前备份）。
-- 互斥锁：开工时 `F:/MCProject/.agent-locks/` 存在 `dsh.lock`（`PID=26899 / TIME=2026-10-31T23:19:07+08:00 / TASK=2612-live-verify`），为两日前同宿主任务留下的陈旧锁；本次未创建、未删除任何锁文件。若后续需严格互斥，请由锁属主清理该陈旧锁。
+- 互斥锁：开工时 `D:/MCProject/.agent-locks/` 存在 `dsh.lock`（`PID=26899 / TIME=2026-10-31T23:19:07+08:00 / TASK=2612-live-verify`），为两日前同宿主任务留下的陈旧锁；本次未创建、未删除任何锁文件。若后续需严格互斥，请由锁属主清理该陈旧锁。

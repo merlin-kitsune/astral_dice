@@ -20,8 +20,8 @@ def show(name, b):
         lines.append("".join(row))
     print("\n".join(lines))
     print("legend:", {v:k for k,v in cols.items()})
-for p in ["F:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/land_no_air.png",
-          "F:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/underwater_air_row.png"]:
+for p in ["D:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/land_no_air.png",
+          "D:/MCProject/astral_dice_multiloader/work/shots/fabric-attackbar/underwater_air_row.png"]:
     print("=====", p.split("/")[-1])
     b = block(p, 149, 221)
     show("gui(149,221) defense slot", b)

@@ -1,6 +1,6 @@
 # RELEASE150 / neoforge-26.1.2 复跑报告（第 3 轮：rerun2）
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`，线 `neoforge-26.1.2`，版本 1.5.0
+- 仓库：`D:/MCProject/astral_dice_multiloader`，线 `neoforge-26.1.2`，版本 1.5.0
 - 时间：2026-11-02 04:43 – 05:10（Asia/Hong_Kong）
 - 被测 jar：`run/26.1.2/prodgame/mods/astral_dice-1.5.0+neoforge_26.1.2.jar`，2,877,947 B，sha256 `B422D57D2103219522EEF792822DA1656A1F9E197F91C6B0D8E82D381EC4878D`（与任务书 b422d57d…878d 一致，起跑前复核通过）
 - 环境：`run/26.1.2/prodgame` 现成实例，**97 个 jar**（玩家实例 95 + kubejs + AutoJS + rhino + better-advanced-tooltips；mru / sounds 因需 NeoForge 26.1.2.114 仍排除在外）
@@ -21,7 +21,7 @@
 - 端口门（**不用 netstat 文本**）：`Get-NetTCPConnection -State Listen` 过滤 25565 / 25575 / 25585 → **无监听**（25585 空闲）。
 - 进程门：`Get-CimInstance Win32_Process -Filter "Name='java.exe'"` 6 个进程，命令行**均不含 `run/26.1.2`**（均为 Gradle / other line 的 dev 进程）。未对任何他人进程做操作（无 kill）。
 - 启动：`python run/26.1.2/.tmp/prodlaunch.py --quickplay testworld --log run/26.1.2/.tmp/prod-run-r2.log`
-  → `started pid 33508`（classpath 102 / missing 0 / argv 48 / mainClass `net.neoforged.fml.startup.Client` / gamedir `F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame`，pid 落 `run/26.1.2/.tmp/prod-run.pid`）。
+  → `started pid 33508`（classpath 102 / missing 0 / argv 48 / mainClass `net.neoforged.fml.startup.Client` / gamedir `D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame`，pid 落 `run/26.1.2/.tmp/prod-run.pid`）。
 - 就绪判据：`curl -s -m 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:25585/health` → **200**（不是只看端口）。
 - 起跑前轮转（stamp `20261102-0455`）：`prod-run.log`→`.prev-20261102-0455`；`prodgame/logs/latest.log`→`.prev-20261102-0455`；`prodgame/screenshots` 全部 18 张 png → 各加 `.prev-20261102-0455`；`run/26.1.2/screenshots` 同 tag 旧图同样轮转。`.mt_shots.json` 中本轮三个 tag 无历史条目（原 12 条历史条目未动）。
 
@@ -226,9 +226,9 @@ MT_CHANNEL: op=command channel=autojs status=ok detail=cmd_via=autojs_command cm
 MT_CHANNEL: op=command channel=autojs status=ok detail=cmd_via=autojs_command cmd=/give @a astral_dice:dice 1
 MT_CHANNEL: op=command channel=autojs status=ok detail=cmd_via=autojs_command cmd=/give @a astral_dice:attack_card_medium 1
 MT_CHANNEL: op=command channel=autojs status=ok detail=cmd_via=autojs_command cmd=/give @a astral_dice:jill_sign 1
-MT_CHANNEL: op=shot channel=autojs status=ok detail=file=abyss_reagent_tooltip.png mode=f2 bytes=147457 tier=T1 sig=grab(File,String,Target,int,Consumer) png_ok=1 rt=com.mojang.blaze3d.pipeline.MainTarget registered src=fallback_copy:F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame\screenshots\abyss_reagent_tooltip.png
-MT_CHANNEL: op=shot channel=autojs status=ok detail=file=chip_shop_ui.png mode=f2 bytes=129813 tier=T3 sig=grab(File,Target,Consumer) png_ok=1 rt=com.mojang.blaze3d.pipeline.MainTarget registered src=fallback_copy:F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame\screenshots\2026-11-02_04.58.29.png
-MT_CHANNEL: op=shot channel=autojs status=ok detail=file=release150_guide.png mode=f2 bytes=128679 tier=T3 sig=grab(File,Target,Consumer) png_ok=1 rt=com.mojang.blaze3d.pipeline.MainTarget registered src=fallback_copy:F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame\screenshots\2026-11-02_04.58.35.png
+MT_CHANNEL: op=shot channel=autojs status=ok detail=file=abyss_reagent_tooltip.png mode=f2 bytes=147457 tier=T1 sig=grab(File,String,Target,int,Consumer) png_ok=1 rt=com.mojang.blaze3d.pipeline.MainTarget registered src=fallback_copy:D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame\screenshots\abyss_reagent_tooltip.png
+MT_CHANNEL: op=shot channel=autojs status=ok detail=file=chip_shop_ui.png mode=f2 bytes=129813 tier=T3 sig=grab(File,Target,Consumer) png_ok=1 rt=com.mojang.blaze3d.pipeline.MainTarget registered src=fallback_copy:D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame\screenshots\2026-11-02_04.58.29.png
+MT_CHANNEL: op=shot channel=autojs status=ok detail=file=release150_guide.png mode=f2 bytes=128679 tier=T3 sig=grab(File,Target,Consumer) png_ok=1 rt=com.mojang.blaze3d.pipeline.MainTarget registered src=fallback_copy:D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame\screenshots\2026-11-02_04.58.35.png
 MT_CASE_RESULT: RELEASE150-26.1.2 = PASS
 MT_CHANNEL: delegated_count=2
 MT_CASES_SUMMARY: RELEASE150-26.1.2=PASS

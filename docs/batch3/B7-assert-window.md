@@ -2,7 +2,7 @@
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
 - 执行者：测试资产实施者（**只动 `scripts/test/**`**）
-- 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-1.20.1-1.21.1`，起始 HEAD `0f70c40`（工作树干净）
+- 仓库：`D:\MCProject\astral_dice_multiloader`，分支 `multi-1.20.1-1.21.1`，起始 HEAD `0f70c40`（工作树干净）
 - 上游依据：`docs/batch3/B6-test-perf.md（已删除 2026-11-05）`（工具链改造与三条超时）、`TESTING-SPEC.md`
 - 卡死护栏：任一步 / 任一用例 **> 6 分钟无新输出** ⇒ `scripts/test/win/mt.sh --phase stop --force`，记录进度并停下报告；
   实际使用 `scripts/test/win/mt.sh --phase stop --verify`（cases 相位用 `-Action stop`，build/env/launch 用 `-Action report` + 人工收停，

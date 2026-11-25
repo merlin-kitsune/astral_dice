@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-src = r"F:/MCProject/astral_dice_multiloader/work/fix/_report_body.md"
-dst = r"F:/MCProject/astral_dice_multiloader/work/fix-fabric-attackbar-position.md"
+src = r"D:/MCProject/astral_dice_multiloader/work/fix/_report_body.md"
+dst = r"D:/MCProject/astral_dice_multiloader/work/fix-fabric-attackbar-position.md"
 t = open(src, "r", encoding="utf-8", newline="").read()
 t = t.replace("\r\n", "\n").replace("\r", "\n")
 if not t.endswith("\n"):

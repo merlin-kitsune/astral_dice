@@ -1,6 +1,6 @@
 # CI 与文档一致性修复报告（评审跟进：P3 逻辑缺陷 + P2 口径矛盾）
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`
+- 仓库：`D:/MCProject/astral_dice_multiloader`
 - 分支 / HEAD：`multi-main` @ `2bc97366b07e22ef4d66b2f794cd3f1442fe8b48`（2026-11-02 18:57:08 +0800，`docs(agent): require user authorization before any release action`）
 - 改动文件（仅 2 个，均为本工作树**未提交**改动）：
   - `.github/workflows/build.yml`（纯 LF，691 行）
@@ -360,7 +360,7 @@ uploading missing asset: astral_dice-1.5.0+fabric_1.20.1.jar
 -- exit code: 0 (expected 0) --
 -- gh stub calls: 7 --
 gh release view 1.5.0
-gh release edit 1.5.0 --title Astral Dice 1.5.0 --notes-file /f/MCProject/astral_dice_multiloader/work/_ci_sim/sim/unified-upload/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
+gh release edit 1.5.0 --title Astral Dice 1.5.0 --notes-file /d/MCProject/astral_dice_multiloader/work/_ci_sim/sim/unified-upload/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
 gh release view 1.5.0 --json assets --jq .assets[].name
 gh release upload 1.5.0 neoforge-1.21.1/build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar
 gh release upload 1.5.0 forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar
@@ -508,7 +508,7 @@ uploading missing asset: astral_dice-1.5.0+neoforge_26.1.2.jar
 -- exit code: 0 (expected 0) --
 -- gh stub calls: 6 --
 gh release view 1.5.0
-gh release edit 1.5.0 --title Astral Dice 1.5.0 --notes-file /f/MCProject/astral_dice_multiloader/work/_ci_sim/sim/old-ref/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
+gh release edit 1.5.0 --title Astral Dice 1.5.0 --notes-file /d/MCProject/astral_dice_multiloader/work/_ci_sim/sim/old-ref/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
 gh release view 1.5.0 --json assets --jq .assets[].name
 gh release upload 1.5.0 neoforge-1.21.1/build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar
 gh release upload 1.5.0 forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar
@@ -607,7 +607,7 @@ release notes: 207 bytes
 -- exit code: 0 (expected 0) --
 -- gh stub calls: 2 --
 gh release view 1.5.0
-gh release create 1.5.0 neoforge-1.21.1/build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar neoforge-26.1.2/build/libs/astral_dice-1.5.0+neoforge_26.1.2.jar fabric-1.20.1/build/libs/astral_dice-1.5.0+fabric_1.20.1.jar --title Astral Dice 1.5.0 --notes-file /f/MCProject/astral_dice_multiloader/work/_ci_sim/sim/unified-create/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
+gh release create 1.5.0 neoforge-1.21.1/build/libs/astral_dice-1.5.0+neoforge_1.21.1.jar forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar neoforge-26.1.2/build/libs/astral_dice-1.5.0+neoforge_26.1.2.jar fabric-1.20.1/build/libs/astral_dice-1.5.0+fabric_1.20.1.jar --title Astral Dice 1.5.0 --notes-file /d/MCProject/astral_dice_multiloader/work/_ci_sim/sim/unified-create/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
 -- assertions --
    PASS  report exit code == 0
    PASS  report says unified=1
@@ -666,7 +666,7 @@ uploading asset (republish channel, --clobber): astral_dice-1.5.0+fabric_1.20.1.
 -- exit code: 0 (expected 0) --
 -- gh stub calls: 11 --
 gh release view 1.5.0
-gh release edit 1.5.0 --title Astral Dice 1.5.0 --notes-file /f/MCProject/astral_dice_multiloader/work/_ci_sim/sim/republish/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
+gh release edit 1.5.0 --title Astral Dice 1.5.0 --notes-file /d/MCProject/astral_dice_multiloader/work/_ci_sim/sim/republish/runner_temp/astral-dice-release-notes-1.5.0.md --latest --prerelease=false
 gh release view 1.5.0 --json assets --jq .assets[].name
 gh release delete-asset 1.5.0 astral_dice-1.5.0+neoforge_1.21.1.jar --yes
 gh release delete-asset 1.5.0 astral_dice-1.5.0+forge_1.20.1.jar --yes

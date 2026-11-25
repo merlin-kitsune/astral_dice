@@ -353,7 +353,7 @@ L508 [0211月2026 04:31:06.287] [modloading-worker-0/WARN] [com.merlinkitsune.as
 ```
 ===== MT_PHASE: stop =====
 MT_CLEANUP: 指定了 --version，保留 Gradle 守护进程
-MT_CLEANUP: 已按 --force 清除失败取证标记 F:\MCProject\astral_dice_multiloader\scripts\test\cases\.mt_keep_alive-26.1.2
+MT_CLEANUP: 已按 --force 清除失败取证标记 D:\MCProject\astral_dice_multiloader\scripts\test\cases\.mt_keep_alive-26.1.2
 MT_CLEANUP_SAVES: KEPT（未指定 --purge-saves）
 MT_CLEANUP: 已收停 1 个本流程进程（范围：26.1.2）
 MT_CLEANUP_RESULT: OK

@@ -2,7 +2,7 @@
 
 > 文档类型：权威 mapping（各线对照）／ 唯一产物
 > 生成日期：2026-11-02
-> 工作树：`F:/MCProject/astral_dice_multiloader`（分支 `multi-main`）
+> 工作树：`D:/MCProject/astral_dice_multiloader`（分支 `multi-main`）
 > 取证方式：**只读**工作树源码 + grep + git（未构建、未运行、未反编译、未实机）
 
 ## 0. 阅读约定
@@ -11,7 +11,7 @@
 - **行号为实读快照**（2026-11-02，分支 `multi-main`）。改代码后行号会漂移，结论以**文件 + 符号名**为准。
 - **无法判定**一律显式写「无法判定（原因）」，不用推测填补。
 - 旧报告与工作树冲突时**以工作树为准**，冲突处在 §4.3 集中登记「旧报告已过时」。
-- **工作树状态按实测时点快照登记**（订正批次实测：2026-11-02T06:20+0800，`HEAD = 33fe2f5e`，2026-11-02 06:11；`git status --porcelain=v1` 按状态列分类 = **0 D / 4 M / 279 ??**（4 个修改项 = `.github/workflows/build.yml` + 3 处 `docs/**`：`docs/agent/AGENTS-dsh-linux.md`、`docs/agent/AGENTS-full.md`、`docs/archive/card-recipes-2026-10-09/README.md`，**均非本文档改动**；279 条未跟踪含 13 条目录条目）。这批未提交改动**不是本文档产生的**，本文件是本次唯一写入。该组数字是**提交完成后的时点快照**：`fd990c15`（2026-11-01 14:42）之后已再落 9 个提交（含 `c47ad8a3` fabric 线落盘、`12de194e` n26 两张蛟龙战斗牌回补），当时的批量删除/修改已被收掉，所以「删除 / 修改 / 未跟踪」只对上述时点成立，**引用前必须重跑** `git -C F:/MCProject/astral_dice_multiloader rev-parse --short HEAD` 与 `git status --porcelain=v1`。凡涉及 `src/generated/**` 的**文件计数**，本文按同一时点快照登记（§1.5）；判定性结论（如某配方缺解锁）一律以**符号/文件名集合**为准，不以计数为准。详见 §1.5。
+- **工作树状态按实测时点快照登记**（订正批次实测：2026-11-02T06:20+0800，`HEAD = 33fe2f5e`，2026-11-02 06:11；`git status --porcelain=v1` 按状态列分类 = **0 D / 4 M / 279 ??**（4 个修改项 = `.github/workflows/build.yml` + 3 处 `docs/**`：`docs/agent/AGENTS-dsh-linux.md`、`docs/agent/AGENTS-full.md`、`docs/archive/card-recipes-2026-10-09/README.md`，**均非本文档改动**；279 条未跟踪含 13 条目录条目）。这批未提交改动**不是本文档产生的**，本文件是本次唯一写入。该组数字是**提交完成后的时点快照**：`fd990c15`（2026-11-01 14:42）之后已再落 9 个提交（含 `c47ad8a3` fabric 线落盘、`12de194e` n26 两张蛟龙战斗牌回补），当时的批量删除/修改已被收掉，所以「删除 / 修改 / 未跟踪」只对上述时点成立，**引用前必须重跑** `git -C D:/MCProject/astral_dice_multiloader rev-parse --short HEAD` 与 `git status --porcelain=v1`。凡涉及 `src/generated/**` 的**文件计数**，本文按同一时点快照登记（§1.5）；判定性结论（如某配方缺解锁）一律以**符号/文件名集合**为准，不以计数为准。详见 §1.5。
 
 ---
 

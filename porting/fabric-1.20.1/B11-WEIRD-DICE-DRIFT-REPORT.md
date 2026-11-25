@@ -1,6 +1,6 @@
 # B11 — 诡异骰子 1.5.0 三处真漂移 fabric 补齐报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`，分支 `multi-main`（工作树四条线同仓）。
+- 仓库：`D:/MCProject/astral_dice_multiloader`，分支 `multi-main`（工作树四条线同仓）。
 - 基准线：`forge-1.20.1`（只读参考，本轮未改动）；目标线：`fabric-1.20.1`（本轮唯一改动侧）。
 - 目标：把 forge 已落地的 2026-10-21「诡异骰子立牌主动冷却 -50% 已删除」三处行为漂移逐条移植到 fabric。
 - 改动文件 17 个，全部位于 `fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/`。

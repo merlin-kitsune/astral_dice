@@ -1,6 +1,6 @@
 # Agent Instructions
 
-**本仓**：`F:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/f/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（四条线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
+**本仓**：`D:\MCProject\astral_dice_multiloader`（原生 Linux 宿主为同一块 NTFS 盘的原生挂载：`/mnt/d/MCProject/astral_dice_multiloader`；无 hgfs）—— Minecraft 模组「Astral Dice」的多加载器工作树（四条线 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1`，同一工作树）。
 
 **本文件只是公共入口**：先按下面的分派认领自己的规则文件，再读共同红线，最后按需查索引。
 
@@ -25,7 +25,7 @@
 2. **默认不部署**：不复制 jar 到整合包、不上传 CurseForge、不改发布配置。
 3. **默认不 commit / push / 打 tag**：仅在用户明确要求时执行；任何远程 git 操作一律走本地代理 `http://127.0.0.1:7897`（**Linux 真机例外**：clash-verge-rev 以 TUN 全局接管路由，直连即可，见 `docs/agent/AGENTS-dsh-linux.md`）。
 4. **保护素材与他人改动**：`models/`、`images/`、`sound/` 属随时更新的素材目录；`git status` 里出现不属于自己的改动（含未跟踪文件）⇒ 立即停手并报告，不 `add` / `commit` / `stash` / `checkout`、不删文件。
-5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/f/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
+5. **互斥锁**：写文件或启动 Gradle 前检查 `D:/MCProject/.agent-locks/`（Linux：`/mnt/d/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
 6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。
 7. **没有详细测试就没有发布版本**：未完成本地详细测试与实机冒烟取证的版本一律不得作为发布版本；生产版本的 push / tag / Release / CurseForge 上传必须是整条流程的最后一步（2026-11-02 用户裁决）。
 8. **伪造红线**：用于变异测试。

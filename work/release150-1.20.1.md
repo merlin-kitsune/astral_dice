@@ -1,6 +1,6 @@
 # Release 1.5.0 — forge-1.20.1 线 实机验收报告
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`，全程只读 git）
+- 仓库：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`，全程只读 git）
 - 被测产物：`forge-1.20.1/build/libs/astral_dice-1.5.0+forge_1.20.1.jar`，2660134 B，sha256 `fd6d8d8205e290701a18af9cc489dd7efab6dc82d9a310f3079058efa4b2e9c4`（reobf，219 个 SRG 提示类；与整合包 `D:\.minecraft\versions\1.20.1-Forge 模组测试\mods` 内的同名 jar 逐字节一致）
 - 验收时间：2026-11-02 03:08–03:31（Asia/Hong_Kong）
 
@@ -27,9 +27,9 @@
 已知事实：YSM（yes_steve_model）在 dev/userdev 形态拒载原生库（`[YSM] Unsatisfied runtime environment: err: 54` → `Failed to load native lib` → Jade 拉 YSM 数据触发 `Data attachment type ... must be registered!` 客户端崩溃）。因此本次绕开 Gradle，用 production 形态启动：
 
 - 启动器：`run/1.20.1/.tmp/prodlaunch.py`（由已验证的 `run/1.21.1/.tmp/prodlaunch.py` 改写：实例名 `1.20.1-Forge 模组测试`、java `C:\Program Files\Zulu\zulu-21\bin\java.exe`、`--quickPlaySingleplayer=testworld`、重复库去重以防 BootstrapLauncher `Duplicate key`）。
-- **gameDir 采用 `F:\MCProject\astral_dice_multiloader\run\1.20.1`（即测试台自己的 run 目录），而不是独立 prodgame**：`scripts/test/lib/Mt.Paths.psm1` 把用例的日志根与截图根硬编码到 `run/<版本>\logs\latest.log` 与 `run/<版本>\screenshots`（无 env 覆盖），只有 gameDir 就是 run 目录时，`latest.log`、`.mt_shots.json`、`mt_stop` 才能原生对上；同时进程命令行含 `run\1.20.1`，命中 `Get-MtProcessMarkers`，收尾可被正确回收。
+- **gameDir 采用 `D:\MCProject\astral_dice_multiloader\run\1.20.1`（即测试台自己的 run 目录），而不是独立 prodgame**：`scripts/test/lib/Mt.Paths.psm1` 把用例的日志根与截图根硬编码到 `run/<版本>\logs\latest.log` 与 `run/<版本>\screenshots`（无 env 覆盖），只有 gameDir 就是 run 目录时，`latest.log`、`.mt_shots.json`、`mt_stop` 才能原生对上；同时进程命令行含 `run\1.20.1`，命中 `Get-MtProcessMarkers`，收尾可被正确回收。
 - 进程：PID **35632**，03:13:04 起，03:29 被 `mt.ps1 --phase stop` 收停。
-- 启动命令证据：`run/1.20.1/logs/latest.log:18` `Launching target 'forgeclient' with ... --gameDir, F:\MCProject\astral_dice_multiloader\run\1.20.1, ..., --quickPlaySingleplayer=testworld`。
+- 启动命令证据：`run/1.20.1/logs/latest.log:18` `Launching target 'forgeclient' with ... --gameDir, D:\MCProject\astral_dice_multiloader\run\1.20.1, ..., --quickPlaySingleplayer=testworld`。
 
 ## 2. A 前置
 

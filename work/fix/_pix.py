@@ -2,8 +2,8 @@
 import sys, numpy as np
 from PIL import Image
 
-MOD = "F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/"
-ICONS = "F:/MCProject/astral_dice_multiloader/work/fix/vanilla/icons.png"
+MOD = "D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui/"
+ICONS = "D:/MCProject/astral_dice_multiloader/work/fix/vanilla/icons.png"
 
 # mod textures (standalone 9x9 png)
 MOD_TEX = {

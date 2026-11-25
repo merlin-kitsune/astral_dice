@@ -4,7 +4,7 @@ def rd(p):
 def wr(p,s):
     f=io.open(p,'w',encoding='utf-8',newline='');f.write(s);f.close()
 CR=chr(13);LF=chr(10)
-p1=r'F:/MCProject/astral_dice_multiloader/docs/agent/AGENTS-dsh.md'
+p1=r'D:/MCProject/astral_dice_multiloader/docs/agent/AGENTS-dsh.md'
 s=rd(p1)
 nl = CR+LF if (CR+LF in s) else LF
 anchor='项目基线:'
@@ -20,7 +20,7 @@ block = nl.join(sec) + nl + nl
 s = s.replace(nl+anchor, nl+block+anchor, 1)
 wr(p1,s)
 print('p1 ok lines', s.count(LF))
-p2=r'F:/MCProject/astral_dice_multiloader/AGENTS.md'
+p2=r'D:/MCProject/astral_dice_multiloader/AGENTS.md'
 t=rd(p2)
 nl2 = CR+LF if (CR+LF in t) else LF
 a2='6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。'

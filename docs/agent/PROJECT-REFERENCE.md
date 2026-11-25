@@ -5,11 +5,11 @@
 
 ## 1. 仓库与分支
 
-- 工作树：`F:\MCProject\astral_dice_multiloader`（**单工作树五子项目同树**），分支 `multi-main`（HEAD 以实读为准）。
-- 前置库源码：`F:\MCProject\starengine`（独立仓，分支 `main`，产物发布到 mavenLocal 供本仓消费）。
-- 另一个常驻工作树：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，26.4 开发线；尖端 `26.4-SNAPSHOT.76`）—— **与本树互不镜像**。
-- KubeJS 附属仓：`F:\MCProject\astral_dice_kubejs`（独立 git 仓，分支 `master`，2026-11-22 实读 = `0.0.2`；只含 `neoforge-1.21.1` + `forge-1.20.1` 两线）。**零编译依赖**：运行时反射主模组 `AstralDiceApi`，元数据声明主模组下界；关联方式是文档契约 + 元数据 + 探针，不是 submodule / composite build。1.6.0-pre.2 起该 API 迁到 StarEngine 包，附属仓需重定向反射目标（见 `docs/agent/AGENTS-full.md` §8 末条）。
-- `F:\MCProject\.agent-locks\`：宿主互斥锁目录（`kimi.lock` / `dsh.lock`，内容为 `PID=` / `TIME=` / `TASK=` 三行）。
+- 工作树：`D:\MCProject\astral_dice_multiloader`（**单工作树五子项目同树**），分支 `multi-main`（HEAD 以实读为准）。
+- 前置库源码：`D:\MCProject\starengine`（独立仓，分支 `main`，产物发布到 mavenLocal 供本仓消费）。
+- 另一个常驻工作树：`D:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`，26.4 开发线；尖端 `26.4-SNAPSHOT.76`）—— **与本树互不镜像**。
+- KubeJS 附属仓：`D:\MCProject\astral_dice_kubejs`（独立 git 仓，分支 `master`，2026-11-22 实读 = `0.0.2`；只含 `neoforge-1.21.1` + `forge-1.20.1` 两线）。**零编译依赖**：运行时反射主模组 `AstralDiceApi`，元数据声明主模组下界；关联方式是文档契约 + 元数据 + 探针，不是 submodule / composite build。1.6.0-pre.2 起该 API 迁到 StarEngine 包，附属仓需重定向反射目标（见 `docs/agent/AGENTS-full.md` §8 末条）。
+- `D:\MCProject\.agent-locks\`：宿主互斥锁目录（`kimi.lock` / `dsh.lock`，内容为 `PID=` / `TIME=` / `TASK=` 三行）。
 
 ## 2. 各线基线
 
@@ -43,8 +43,8 @@
 
 ```bash
 # 状态（收尾应只剩用户素材）
-git -C F:\MCProject\astral_dice_multiloader status --short -uall
-git -C F:\MCProject\astral_dice_multiloader log --oneline -5
+git -C D:\MCProject\astral_dice_multiloader status --short -uall
+git -C D:\MCProject\astral_dice_multiloader log --oneline -5
 
 # 编译 / 产物（JAVA_HOME = C:\Program Files\Zulu\zulu-21）
 $env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'
@@ -53,9 +53,9 @@ $env:JAVA_HOME='C:\Program Files\Zulu\zulu-21'
 .\gradlew.bat :neoforge-1.21.1:runData          # datagen（改配方/物品后必须）
 
 # 测试台（唯一入口，禁 bash/.sh/PS 5.1）
-bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.21.1 --phase env
-bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase run --case <用例名>
-bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase stop --force --purge-saves
+bash D:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.21.1 --phase env
+bash D:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase run --case <用例名>
+bash D:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase stop --force --purge-saves
 ```
 
 - forge dev 必须用 `build/devlibs` 的 **named** jar（`AutoJS-forge-1.20.1-1.0.0-dev.jar` 同理），与整合包用的 reobf jar **不可同目录**。

@@ -49,7 +49,7 @@ AstralDiceMod.java / AstralDiceClient.java **未改动**（硬约束 C）。
     > Task :fabric-1.20.1:processResources
     > Task :fabric-1.20.1:compileJava
     > Task :fabric-1.20.1:classes
-    [Incubating] Problems report is available at: file:///F:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
+    [Incubating] Problems report is available at: file:///D:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
     BUILD SUCCESSFUL in 1s
     2 actionable tasks: 2 executed
     Configuration cache entry reused.

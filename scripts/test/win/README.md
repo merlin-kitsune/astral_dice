@@ -189,7 +189,7 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 | 项 | 实测 |
 |---|---|
 | `bash --version` | 5.3.15（MSYS2 UCRT64，`/usr/bin/bash`） |
-| `git rev-parse --show-toplevel` | `F:/MCProject/astral_dice_multiloader` → `cygpath` 转 `/f/...` |
+| `git rev-parse --show-toplevel` | `D:/MCProject/astral_dice_multiloader` → `cygpath` 转 `/d/...` |
 | `df -T .` | `F: ntfs … /f`（判据 `ntfs`） |
 | `JAVA_HOME` | `C:\Program Files\Zulu\zulu-21\`，`java -version` = 21.0.12；JDK 17 只有 `~/.gradle/jdks/eclipse_adoptium-17-amd64-windows.2`（Gradle 自动下载） |
 | `$TEMP` | `/tmp` = `C:\Users\xmace\AppData\Local\Temp`（`mount` 里 `usertemp`），**写入被 ACL/沙箱拒** |
@@ -197,7 +197,7 @@ bash scripts/test/win/stop.sh --version 26.1.2 --stop-daemon
 | java 进程 | `jps -lvm` 查询为空（无残留） |
 | Gradle daemon | 0 个 |
 | `git config --get core.autocrlf` | `true` |
-| 锁目录 | `/f/MCProject/.agent-locks` 存在，仅 `dsh.lock`（本宿主） |
+| 锁目录 | `/d/MCProject/.agent-locks` 存在，仅 `dsh.lock`（本宿主） |
 | `cmd //c start "" /B …` | 6s 超时未返回（阻塞）⇒ 默认 `--launch-mode bg` |
 | bash 后台存活 | 父 shell 退出后子进程继续写文件（130B → 308B），可作为 `setsid` 替代 |
 | `cat /proc/<bashpid>/winpid` | 有值（MSYS 映射），可写进 pidfile |

@@ -3,7 +3,7 @@
 # ONLY change: jar globs read from $SANDBOX/<proj>/build/libs (no Gradle, no gh, no network).
 # Required env: BASE=<version>, GITHUB_SHA=<commit>, SANDBOX=<fake build root>
 set -euo pipefail
-cd F:/MCProject/astral_dice_multiloader
+cd D:/MCProject/astral_dice_multiloader
 LINES=(
   "neoforge-1.21.1|neoforge-1.21.1|P0"
   "forge-1.20.1|forge-1.20.1|P0"

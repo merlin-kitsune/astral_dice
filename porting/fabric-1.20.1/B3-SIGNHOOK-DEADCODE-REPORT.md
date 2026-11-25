@@ -1,6 +1,6 @@
 # B3 — fabric-1.20.1 SignHook 注册式分发层死代码清理（缺陷 C-3）
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`
+- 仓库：`D:/MCProject/astral_dice_multiloader`
 - 分支 / HEAD：`multi-main` / `fd990c15`（`git rev-parse` 实读，未变更）
 - 批次时间：2026-11-01
 - 改动范围：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/item/sign/` 下 3 个文件（2 删 1 改）
@@ -233,7 +233,7 @@ cmd.exe //c "gradlew.bat :fabric-1.20.1:compileJava --console=plain"
 
 ```
 > Task :fabric-1.20.1:compileJava
-F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\java\com\merlinkitsune\astral_dice\network\ModNetwork.java:500: 错误: 找不到符号
+D:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\java\com\merlinkitsune\astral_dice\network\ModNetwork.java:500: 错误: 找不到符号
                     com.merlinkitsune.astral_dice.client.TargetSelectionClient.closeFromServer(msg.token));
                                                                               ^
   符号:   方法 closeFromServer(int)

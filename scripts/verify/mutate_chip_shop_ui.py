@@ -11,7 +11,7 @@
 
 用法（任意目录均可，仓库根按脚本位置上溯两级求）：
     python scripts/verify/mutate_chip_shop_ui.py
-    python scripts/verify/mutate_chip_shop_ui.py --root F:/MCProject/astral_dice_multiloader-next
+    python scripts/verify/mutate_chip_shop_ui.py --root D:/MCProject/astral_dice_multiloader-next
     python scripts/verify/mutate_chip_shop_ui.py --gate scripts/verify/verify_chip_shop_ui.py
 
 退出码（与 旧实现 一致）：0 = 全部变异都被抓到（守门有效）；1 = 有变异漏判（守门有洞）；

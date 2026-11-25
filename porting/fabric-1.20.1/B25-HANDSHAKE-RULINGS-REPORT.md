@@ -1,6 +1,6 @@
 # B25 · 握手三处裁决落地报告（fabric-1.20.1）
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`
+- 仓库：`D:\MCProject\astral_dice_multiloader`，分支 `multi-main`
 - 批次：B25（承接 B22 版本握手，按 B22 报告 §7「需要裁决的事项」+ 本批任务书调整**行为语义**，不重构）
 - 日期：2026-11-01
 - 纪律：未 commit / push / stash / add / checkout；未跑 gradle；未启动游戏
@@ -446,14 +446,14 @@ CRLF= 383 LF= 383 bareLF= 0 BOM= False bytes= 29988 endswith_newline= True
 2. **未做**：没新增自定义断开屏幕（要 `screen/` + lang，越界）；没改 `VersionGate` 口径；没改测试用例 `scripts/test/cases/VERSION-GATE-fabric-1.20.1.json`（旧断言串需下游同步，见 §5.1 提示）。
 3. **未做**：没碰 `ModNetwork.java`。`:117` 注释「失配即断开」在新语义下仍然准确，无需改写。
 4. **越界防护**：本批只在 `VersionHandshake.java` 与两个 `porting/fabric-1.20.1/*.md` 上落笔，`platform/network/**` 仅只读调用。
-5. **遗留临时文件（仓库外、未跟踪，不影响任何验收）**：`F:\MCProject\.b25-eolcheck.py`（字节级 CRLF/BOM 检查）、`F:\MCProject\.b25-append.py`（CRLF 归一 + 追加）、`F:\MCProject\.b25-appendix.md`（B22 §9 正文源）、`F:\MCProject\.b25-probe.py`（§6.3 静态分析脚本）。本批结束时尝试删除，**被 NTFS ACL 拒绝**（`PermissionError: [WinError 5] 拒绝访问`，与仓库根目录既有的 ACL 问题同源，仓库内另有 `acl-backup-*.txt` 记录），故如实登记；它们都在仓库 `F:\MCProject\astral_dice_multiloader` **之外**，不进 `git status`，需要清理时手工删即可。
+5. **遗留临时文件（仓库外、未跟踪，不影响任何验收）**：`D:\MCProject\.b25-eolcheck.py`（字节级 CRLF/BOM 检查）、`D:\MCProject\.b25-append.py`（CRLF 归一 + 追加）、`D:\MCProject\.b25-appendix.md`（B22 §9 正文源）、`D:\MCProject\.b25-probe.py`（§6.3 静态分析脚本）。本批结束时尝试删除，**被 NTFS ACL 拒绝**（`PermissionError: [WinError 5] 拒绝访问`，与仓库根目录既有的 ACL 问题同源，仓库内另有 `acl-backup-*.txt` 记录），故如实登记；它们都在仓库 `D:\MCProject\astral_dice_multiloader` **之外**，不进 `git status`，需要清理时手工删即可。
 
 ---
 
 ## 10. 复现命令
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 
 # a) 编译门禁（REAL errors 应为空）
 python scripts/__javac_check.py
@@ -468,5 +468,5 @@ grep -n "disconnect" fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/n
 python tools/verify_fabric_assets.py
 ```
 
-（Windows 宿主同目录下把 `cd /f/...` 换成 `cd /d F:\...` 或直接在仓库根执行即可。）
+（Windows 宿主同目录下把 `cd /d/...` 换成 `cd /d D:\...` 或直接在仓库根执行即可。）
 

@@ -4,7 +4,7 @@
 
 ## 范围
 
-审计对象是主模组 `F:/MCProject/astral_dice_multiloader` 与库 `F:/MCProject/starengine` 在 `feature/mainline-full-parity` 分支上的阶段 1–5 改动：P1 去重、A/B 内容归属、C 常量拆分、API 全量、pre.2 版本收口。基线 tag 为 `mainline-parity-baseline-2026-11-19`。
+审计对象是主模组 `D:/MCProject/astral_dice_multiloader` 与库 `D:/MCProject/starengine` 在 `feature/mainline-full-parity` 分支上的阶段 1–5 改动：P1 去重、A/B 内容归属、C 常量拆分、API 全量、pre.2 版本收口。基线 tag 为 `mainline-parity-baseline-2026-11-19`。
 
 ## 证据
 

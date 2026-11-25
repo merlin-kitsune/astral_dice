@@ -10,7 +10,7 @@
 
 | 项 | 值 | 取证方式 |
 |---|---|---|
-| 仓库 | `F:\MCProject\astral_dice_multiloader`（各线单仓） | 工作目录 |
+| 仓库 | `D:\MCProject\astral_dice_multiloader`（各线单仓） | 工作目录 |
 | 分支 | `multi-main` | `git rev-parse --abbrev-ref HEAD` |
 | HEAD | `fd990c15` | `git rev-parse --short HEAD` |
 | 各线目录 | `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` | 目录枚举 |

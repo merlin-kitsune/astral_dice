@@ -16,12 +16,12 @@
 | 项 | 值 |
 |---|---|
 | 宿主 | **Windows 原生**；命令一律 MSYS bash（**禁 PowerShell**） |
-| 仓库根 | `F:\MCProject\astral_dice_multiloader`（MSYS：`/f/MCProject/astral_dice_multiloader`） |
-| 前置库 | `F:\MCProject\starengine`（MSYS：`/f/MCProject/starengine`） |
-| 开发线工作树 | `F:/MCProject/astral_dice_multiloader-next` |
-| 库开发线工作树 | `F:/MCProject/starengine_next` |
+| 仓库根 | `D:\MCProject\astral_dice_multiloader`（MSYS：`/d/MCProject/astral_dice_multiloader`） |
+| 前置库 | `D:\MCProject\starengine`（MSYS：`/d/MCProject/starengine`） |
+| 开发线工作树 | `D:/MCProject/astral_dice_multiloader-next` |
+| 库开发线工作树 | `D:/MCProject/starengine_next` |
 | 测试台唯一入口 | `bash scripts/test/win/mt.sh` |
-| 互斥锁目录 | `F:/MCProject/.agent-locks/`（`kimi.lock` / `dsh.lock`） |
+| 互斥锁目录 | `D:/MCProject/.agent-locks/`（`kimi.lock` / `dsh.lock`） |
 | 整合包投放根 | `D:\.minecraft`（环境变量 `MC_HOME` 可覆盖） |
 
 - Linux 原生宿主口径**不在本机执行**；对应规则留在 `docs/agent/AGENTS-dsh-linux.md`（保持原样，不据其下现状结论）。
@@ -30,12 +30,12 @@
 
 | 位置 | 分支 | 尖端 | 版本 | 角色 |
 |---|---|---|---|---|
-| `F:/MCProject/astral_dice_multiloader` | `multi-main` | `01c52fd3` | `1.6.0-pre.1` | 主线（五线同树，本仓） |
+| `D:/MCProject/astral_dice_multiloader` | `multi-main` | `01c52fd3` | `1.6.0-pre.1` | 主线（五线同树，本仓） |
 | 同上（同仓分支） | `release/1.6.0-pre.1` | `fdd08f9e` | `1.6.0-pre.1` | 发布线尖端，**已并入 `multi-main`** |
-| `F:/MCProject/astral_dice_multiloader-next` | `multi-dev-next` | `5120738c` | `26.4-SNAPSHOT.76` | 开发线，与本树**互不镜像** |
-| `F:/MCProject/starengine` | `main` | `26ab1df` | `1.2.0-pre.1` | 前置库发布线（mavenLocal 供本仓消费） |
-| `F:/MCProject/starengine` | `next` | `f86b9b9` | `26.4-SNAPSHOT.13` | 前置库开发线 |
-| `F:/MCProject/starengine_next` | — | — | — | 库开发线的检出工作树 |
+| `D:/MCProject/astral_dice_multiloader-next` | `multi-dev-next` | `5120738c` | `26.4-SNAPSHOT.76` | 开发线，与本树**互不镜像** |
+| `D:/MCProject/starengine` | `main` | `26ab1df` | `1.2.0-pre.1` | 前置库发布线（mavenLocal 供本仓消费） |
+| `D:/MCProject/starengine` | `next` | `f86b9b9` | `26.4-SNAPSHOT.13` | 前置库开发线 |
+| `D:/MCProject/starengine_next` | — | — | — | 库开发线的检出工作树 |
 
 - 合并完整性（2026-11-16 体检）：`multi-main` 已含 `release/1.6.0-pre.1` 全量，`COPY-DEVNEXT=0`。
 
@@ -65,7 +65,7 @@
 |---|---|---|
 | `mod_version` | `1.6.0-pre.1+<线名>` | `26.4-SNAPSHOT.76` |
 | 线名后缀 | `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2` / `+fabric_1.20.1` / `+fabric_1.21.1` | — |
-| 前置库版本 | `starengine 1.2.0-pre.1`（`F:/MCProject/starengine` 的 `main`） | `starengine 26.4-SNAPSHOT.13`（`next`） |
+| 前置库版本 | `starengine 1.2.0-pre.1`（`D:/MCProject/starengine` 的 `main`） | `starengine 26.4-SNAPSHOT.13`（`next`） |
 
 - fabric 两线另带 `starengine_version_range = >=1.2.0-pre.1 <2.0.0`；jar 内硬前置区间同为 `[1.2.0-pre.1,2.0.0)`，`META-INF/jarjar/` 计数 0（库**不内嵌**，必须成对投放）。
 - 改产品代码并重编译后先 bump 版本、记 `CHANGELOG.md` / `CHANGELOG_ZH.md`，再开实机（口径见 `~/.dsh/AGENTS.md`〈实机改动版本纪律〉）。

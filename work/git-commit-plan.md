@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | `F:\MCProject\astral_dice_multiloader` |
+| 仓库 | `D:\MCProject\astral_dice_multiloader` |
 | 分支 / HEAD | `multi-main` / `fd990c15`（领先 `origin/multi-main` 24 个提交） |
 | 审计对象 | `git status --porcelain=v1` 全量 **724** 条 |
 | 暂存区 | **空**（724 条 X 列全为空格，无任何已暂存改动） |

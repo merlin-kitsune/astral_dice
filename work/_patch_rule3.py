@@ -1,5 +1,5 @@
 import io,re
-p=r'F:/MCProject/astral_dice_multiloader/docs/agent/AGENTS-dsh.md'
+p=r'D:/MCProject/astral_dice_multiloader/docs/agent/AGENTS-dsh.md'
 f=io.open(p,'r',encoding='utf-8',newline='');s=f.read();f.close()
 anchor='- **违规处置**：若发现已在测试结论齐全之前发布 ⇒ 立即下架/归档该件并登记在案，不得用「后续补测通过」掩盖已发生的越序发布。'
 print('anchor', s.count(anchor))

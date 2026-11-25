@@ -24,7 +24,7 @@
 5. **rc.1 产物已重建并投放**（2026-10-25 15:3x，`:neoforge-1.21.1:build :forge-1.20.1:build` 触发 `pushToDevRun/pushToGame/pushToRootBuild`）——四个目标（`run/1.21.1/mods`、`run/1.20.1/mods`=dev named、两个 P0 整合包）逐处 sha256 **MATCH**；**前置库 jar 成对换成 `1.1.0`**（四处旧 `1.1.0-pre.2` 已删），读数见 §2 与 §4.1f。
 6. 本批实机：**星光兑换 5 组 + 筹码商店刷新源 / 文案（38 tooltip + 21 手册）/ `ame_note` 染色 + 强化拒止物品形态 7 项 + owner 闸门四态，双版本全 PASS**（2026-10-25，§4.1 / §4.1b / §4.1c）。**rc.1 版本升级已双版本冒烟实机 PASS**（§4.1f-a：两线 mod/库版本号正确、`Missing or unsupported mandatory dependencies` 计数 0、1.20.1 放置强化拒止实体 hp 50）（只做构建 / 打包 / 投放 / 静态判据，§4.1f）。`scripts/test/cases/CHIP-REGEN-*.json`（等 tick 自动 +1）随 ticker 删除失效，**已按用户裁决退役（两文件删除）**（§5-3）。
 7. 规则分派已落地：根 `AGENTS.md` 为 41 行入口，Kimi → `docs/agent/AGENTS-kimi.md`，DSH → `docs/agent/AGENTS-dsh.md`，Codex → `docs/agent/AGENT-SPLIT.md`（只读）。
-8. ~~未处置：陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`~~ → **已结案（2026-10-25 用户裁决「删」）**：实测 `.agent-locks` 目录**已空**（`ls -a` 无条目），`kimi.lock`（原 `PID=26580` / `TASK=misaki-chip-shop-balance-p0`）已不存在，无需再删；该目录从此只放当轮活锁。
+8. ~~未处置：陈旧锁 `D:\MCProject\.agent-locks\kimi.lock`~~ → **已结案（2026-10-25 用户裁决「删」）**：实测 `.agent-locks` 目录**已空**（`ls -a` 无条目），`kimi.lock`（原 `PID=26580` / `TASK=misaki-chip-shop-balance-p0`）已不存在，无需再删；该目录从此只放当轮活锁。
 9. **HUD 攻击力口径已统一**（2026-10-25，§4.1g）：攻击修饰器链上 23（neo）/ 24（forge）处客户端模板守卫收敛为 `skipOnClient(ctx)` + 显示口径标记 `DiceCombatContext.displaySnapshot` ⇒ HUD 现在含全部攻击力修饰器，只排除手持武器与骰战随机点数；新增守门 `python tools/verify_hud_attack_parity.py` ⇒ `GATE: PASS (21 项全部满足)`，两线已 `:build` 并把六处产物刷到新 jar；**已双版本实机 PASS**（§4.1i：装电流剑 + 充能 8 ⇒ client 显示 3；清充能回 1；主手持剑仍 3）。
 10. **防御力折算已改为 1:1**（2026-10-25，§4.1h）：所有「防御力 +X」的站点改走单一入口 `armorValueForDefensePoints(points, side)`（= 点数 ÷ 库护甲系数，玩家 ≈3.333 护甲/点、怪物 2.5）——此前写死 `× 2.0` 只兑现 60%（玩家）/ 80%（怪物），属平衡性红线；同时把 12 份指南 lang 的基数 4 改为 2。新增守门 `python tools/verify_defense_unit_parity.py` ⇒ `GATE: PASS（42 项全部满足）`（新增 D9 取整口径），两线 `:classes` 通过、`:build` 已重建并投放四目标，**双版本实机 PASS**（§4.1i：+8 防御力 ⇒ 防御力 10；同批修掉 `getArmorValue()` 取整吞点）；玩家侧实际强度是上一版的 **×1.667**。
 11. **创造栏收尾（2026-10-25，§4.1j）**：强化拒止**物品**已从创造栏与 JEI 隐藏（JEI 物品列表直接取自创造栏，**未加任何 JEI 代码**）；筹码在组序不变前提下改为**组内稀有度升序**（67 个零增删）。守门 `tools/verify_creative_tab_chip_order.py` PASS + 变异测试证非假绿；产物已重建并投放四目标（neo `366D68C8…` / forge reobf `FD7B01D7…`），jar 内 `ModItems.REPULSION` 引用 0 处；**未实机**。
@@ -66,13 +66,13 @@
 
 ## 1 环境与路径
 
-> **2026-10-31 起宿主已从 VMware 虚拟机迁到原生 Linux 真机**：Linux 宿主读 `docs/agent/AGENTS-dsh-linux.md`，路径与命令见 `docs/handover-2026-10-31-native-linux-migration.md`（仓库在 `/mnt/f/MCProject/astral_dice_multiloader`，整合包根 `/mnt/d/.minecraft`，锁 `/mnt/f/MCProject/.agent-locks/`，`./gradlew` + JDK 21，测试台 `scripts/test/linux/{env,launch,stop}.sh`）。下面这一段 **Windows 原生口径继续对 Windows 宿主有效，不作废**。
+> **2026-10-31 起宿主已从 VMware 虚拟机迁到原生 Linux 真机**：Linux 宿主读 `docs/agent/AGENTS-dsh-linux.md`，路径与命令见 `docs/handover-2026-10-31-native-linux-migration.md`（仓库在 `/mnt/d/MCProject/astral_dice_multiloader`，整合包根 `/mnt/d/.minecraft`，锁 `/mnt/d/MCProject/.agent-locks/`，`./gradlew` + JDK 21，测试台 `scripts/test/linux/{env,launch,stop}.sh`）。下面这一段 **Windows 原生口径继续对 Windows 宿主有效，不作废**。
 
 
 路径与命令**沿用 pre.5 正本 §1**（Windows 原生：git bash 的 `git`、`JAVA_HOME=C:\Program Files\Zulu\zulu-21`、工作树直接 `gradlew.bat`、测试台 scripts/test/win/mt.sh）。两条补充：
 
 - 仓库多了一整套**规则分派**文件：根 `AGENTS.md`（入口/红线/索引）· `docs/agent/AGENTS-kimi.md` · `docs/agent/AGENTS-dsh.md`（旧根逐字节留存 + 开头 DSH 段）· `docs/agent/PROJECT-REFERENCE.md`（工程拓扑）· `docs/agent/AGENT-SPLIT.md`（Codex/DSH 分工 + §六 Kimi 兼容）· `AGENTS-full.md`（逐批历史，未变）。
-- 锁：`F:\MCProject\.agent-locks\` 现**为空**（2026-10-25 实测，`kimi.lock` 已不存在）；开工建 `dsh.lock`、收尾删除，动工作树前先看该目录。
+- 锁：`D:\MCProject\.agent-locks\` 现**为空**（2026-10-25 实测，`kimi.lock` 已不存在）；开工建 `dsh.lock`、收尾删除，动工作树前先看该目录。
 
 ## 2 版本与坐标
 
@@ -113,7 +113,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 | `669b0150` | fix(repulsion)：耐久条改原版工具口径（6 文件 +14/−10） | 两线 `item/RepulsionItem#isBarVisible`（满耐久不画条）+ CHANGELOG 双文件 + 本文件 + session-context |
 | 本文件所在提交（追加） | docs(handover)：强化拒止双版本实机 7 项判据 + 实机侧方法可见性坑 | 本文件 §4.1c / §5-8 / §0-6 |
 | 本文件所在提交 | docs：Kimi 交接单 + 工程参考 + pre.6 正本 + 新会话上下文 | `docs/handover-2026-10-24-kimi-takeover.md` · `docs/agent/PROJECT-REFERENCE.md` · 本文件 · `docs/handover-new-session-context.md` |
-| `16b48c4`（**前置库仓** `F:\MCProject\starengine`） | release(lib)：`1.1.0-pre.2` → **`1.1.0`** 正式版（8 文件 +63/−32） | 四子项目 `gradle.properties`（`lib_version` / `mod_version`）· `README.md`/`README_ZH.md`（坐标表 + 依赖示例 + 当前版本）· `CHANGELOG.md`/`CHANGELOG_ZH.md` 新增 `## 1.1.0` 小节 · 四平台 `publishToMavenLocal` |
+| `16b48c4`（**前置库仓** `D:\MCProject\starengine`） | release(lib)：`1.1.0-pre.2` → **`1.1.0`** 正式版（8 文件 +63/−32） | 四子项目 `gradle.properties`（`lib_version` / `mod_version`）· `README.md`/`README_ZH.md`（坐标表 + 依赖示例 + 当前版本）· `CHANGELOG.md`/`CHANGELOG_ZH.md` 新增 `## 1.1.0` 小节 · 四平台 `publishToMavenLocal` |
 | 本文件所在提交（追加） | release(rc.1)：`1.5.0-pre.6` → **`1.5.0-rc.1`** + 前置库坐标 `1.1.0` | 各线 `gradle.properties`（`mod_version` / `starengine_version` / fabric `starengine_version_range`）· 两线 toml 模板注释（预发布期「不要写 `[1.1.0,2.0.0)`」改成正式版口径）· `.github/workflows/build.yml:105` 库 ref SHA `6d2a96d…`→`16b48c4…` · `README*.md`（版本列 `1.5.0-pre.5`→`rc.1`、库版本 `1.1.0`）· `CHANGELOG*.md`（库版本串）· 本文件 `git mv` pre.6→rc.1 + §0/§2/§3/§4.1f · `docs/handover-new-session-context.md` · 5 处旧文件名引用 |
 | 本文件所在提交（追加） | feat(hud)：攻击力显示口径统一（4 文件 + 新增守门脚本） | 两线 `combat/DiceCombatContext`（+`displaySnapshot`）· 两线 `combat/DiceCombatModifiers`（`skipOnClient` 收敛 23/24 处模板守卫 · 攻击卡在显示口径下不掷 · `attackPowerBase` 5 参重载）· 新增 `tools/verify_hud_attack_parity.py`（H1–H6，`GATE: PASS (21 项)`） |
 | 本文件所在提交（追加） | feat(shop)：护法立牌减费卡面（8 文件 +228/−6） | 两线 `screen/CardShopScreen#cardFaceTexture`（非名刀/未佩戴/素材缺失回退原图）· 两线 `textures/gui/shop/card/attack_card_meito_discount.png`（904 B）· `tools/verify_meito_discount_face.py`（D1-D6）· CHANGELOG 双文件 · 本文件 §0-12 / §4.1k / §5-Minor 7 |
@@ -280,7 +280,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 ### 4.1f 版本升级判据（`1.5.0-rc.1` + 前置库 `1.1.0`，2026-10-25）—— 静态全绿，**未实机**
 
-**前置库侧（`F:\MCProject\starengine`，提交 `16b48c4`）**
+**前置库侧（`D:\MCProject\starengine`，提交 `16b48c4`）**
 
 - 四子项目 `gradle.properties` 由 `lib_version=1.1.0-pre.2` / `mod_version=1.1.0-pre.2+<suffix>` 升为 `1.1.0` / `1.1.0+<suffix>`；`README*.md` 坐标表、依赖示例、Fabric `depends` 串、当前版本段同步。
 - `gradlew.bat publishToMavenLocal`（四平台）+ 各线 `build`：`BUILD SUCCESSFUL`；产物 `starengine-neoforge-1.21.1-1.1.0.jar` 98,734 B / `starengine-forge-1.20.1-1.1.0.jar` 103,605 B（reobf）/ dev named 102,013 B / `starengine-neoforge-26.1.2-1.1.0.jar` 98,970 B / `starengine-fabric-1.20.1-1.1.0.jar` 112,634 B，sha256 见 §2。
@@ -386,7 +386,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 - **实现**：两线 `screen/CardShopScreen.java` 新增 `private ResourceLocation cardFaceTexture(ItemStack stack)`（插在 `drawCardFace` 之前），`drawCardFace` 改为 `ResourceLocation face = cardFaceTexture(stack);`（neo 现 `:720`）。判定链：非 `ATTACK_CARD_MEITO` ⇒ 原图；`MisakiSignItem.hasMisakiEquipped(this.minecraft.player)` 为假（含 `minecraft`/`player` 为 null）⇒ 原图；否则用 `<id>_discount.png`，`faceExists()` 为假仍回退原图。两线唯一差异：neo `ResourceLocation.fromNamespaceAndPath(...)` / forge `new ResourceLocation(...)`。
 - **客户端只读**：沿用同文件 `displayStack(ItemStack)` 的先例（怪力乱神佩戴时把路障显示成强化拒止），只读 Curios 双端同步缓存，不写状态、不伪造物品。
 - **素材**：`images/shop/card+event/嘎呜切减费.png`（904 B / 64×64）逐字节拷成两线 `src/main/resources/assets/astral_dice/textures/gui/shop/card/attack_card_meito_discount.png`。
-- **判据（实跑）**：新增 `F:\MCProject\astral_dice_multiloader\tools\verify_meito_discount_face.py`（D1 源素材 64×64 / D2 两线贴图与源素材逐字节一致 / D3 两线有 `cardFaceTexture` 且 `drawCardFace` 走它 / D4 方法体四要素 `ATTACK_CARD_MEITO`·`hasMisakiEquipped`·`_discount.png`·`faceExists(discount) ? discount : base` / D5 两线 `getMeitoCost` 语义唯一 / D6 贴图名只出现在两线 `CardShopScreen`）⇒ `GATE: PASS（D1-D6）`；**变异测试**把 `"_discount.png"` 改成 `"_discountX.png"` ⇒ `GATE: FAIL (1 项) - D4`，还原后 PASS（证非假绿）。
+- **判据（实跑）**：新增 `D:\MCProject\astral_dice_multiloader\tools\verify_meito_discount_face.py`（D1 源素材 64×64 / D2 两线贴图与源素材逐字节一致 / D3 两线有 `cardFaceTexture` 且 `drawCardFace` 走它 / D4 方法体四要素 `ATTACK_CARD_MEITO`·`hasMisakiEquipped`·`_discount.png`·`faceExists(discount) ? discount : base` / D5 两线 `getMeitoCost` 语义唯一 / D6 贴图名只出现在两线 `CardShopScreen`）⇒ `GATE: PASS（D1-D6）`；**变异测试**把 `"_discount.png"` 改成 `"_discountX.png"` ⇒ `GATE: FAIL (1 项) - D4`，还原后 PASS（证非假绿）。
 - **产物与投放（已实测）**：`:neoforge-1.21.1:build :forge-1.20.1:build` ⇒ `BUILD SUCCESSFUL in 4s`，六条 `pushTo*` 全命中；四目标 jar 内 `attack_card_meito_discount.png` 均有 1 份 —— `run/1.21.1/mods` 与「狐の航空学 Voxy Edition」同为 `2,588,804 B` sha256 `59E12108CF9681928661BE0C86FEA203A15642502095AECE1AB6BC9BD2F625D0`；`run/1.20.1/mods`（devlibs named）`2,604,380 B` `CB21FA244F7EBBE2B87A9CE269F8A7D620CE3A1AD4096A652DAEE6BA2A4A5CAB`；「1.20.1-Forge 模组测试」（reobf）`2,633,788 B` `33717FA935133587AC65711C6AC9B0BBBD6562BABE65DC18B502DE4220911702`。
 - **实机（双版本 PASS，2026-10-25 18:12–18:23）**：`--phase launch`（1.21.1 `MT_LAUNCH: OK (55s)` / 1.20.1 `MT_LAUNCH: OK (49s)`，AutoJS 端点 `http://127.0.0.1:25585/mcp` 就绪）。驱动口径：`/astralshop equip MK stand "astral_dice:misaki_sign"`（chat `AP_MK_EQUIP:slot=stand:...:err=none:got=astral_dice:misaki_sign`）+ 服务端 `CardShopShelf.store(player, 强制货架)` 把首格钉成 `astral_dice:attack_card_meito` + `/astralshop openkeep SP1|SP2|SP3` 开商店 GUI；客户端 `MisakiSignItem.hasMisakiEquipped(player)` 实测 `true`（佩戴）/`false`（卸下），`mc.screen = ...screen.CardShopScreen`。
 - **判据（像素级，不看肉眼）**：对「佩戴 vs 卸下」两张全屏截图取卡面格 82×120 区域逐像素比较 —— **1.21.1 差 347 px / 1.20.1 差 360 px**，差异 bbox 两线同为 region-local `(10,82)-(85,119)`（费用点行 + 卡名行；卡名是超宽标签的水平滚动，故卡名行也有差）；费用点行可辨 **3 点（佩戴）vs 4 点（卸下）**，放大 8× crop 见 `temp/crop_sign_yes.png` / `temp/crop_sign_no.png`（1.21.1）与 `temp/crop120_sign_yes.png` / `temp/crop120_sign_no.png`（1.20.1）；贴图本体差异 bbox（64×64 内 `(20,50)-(29,61)`、88 px，正常不透明 `(26,26,26,255)` vs 减费透明）与屏上差异位置一致 ⇒ 佩戴时确实换成 `attack_card_meito_discount.png`。
@@ -395,7 +395,7 @@ forge dev named 102,013 B / `e280aeab6c4b37c43468f7cce32a8bf64c70b6bdbcd2203f6c5
 
 ### 4.1l 交付与发布：rc.1 + 库 1.1.0 推送 + CurseForge 上传（2026-10-25 18:2x–18:5x）—— 全部成功
 
-- **提交与推送**：本体 `6ee75a34`（docs(release)：玩家更新日志，2 文件 +460）⇒ `git push origin multi-main`，远端 `origin/multi-main` = `6ee75a34b…`，`rev-list --count origin/multi-main..HEAD` = **0**（此前累计 28 个未推送提交一并推送）。前置库仓 `F:\MCProject\starengine`：`16b48c4` 推送 ⇒ `413cc39..16b48c4  main -> main`，`origin/main..HEAD` = **0**。无 tag（用户未下达打 tag）。
+- **提交与推送**：本体 `6ee75a34`（docs(release)：玩家更新日志，2 文件 +460）⇒ `git push origin multi-main`，远端 `origin/multi-main` = `6ee75a34b…`，`rev-list --count origin/multi-main..HEAD` = **0**（此前累计 28 个未推送提交一并推送）。前置库仓 `D:\MCProject\starengine`：`16b48c4` 推送 ⇒ `413cc39..16b48c4  main -> main`，`origin/main..HEAD` = **0**。无 tag（用户未下达打 tag）。
 - **玩家更新日志（1.3.7→1.5.0 全量，中英）**：`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md` **218 行 / 24,201 B** + `PLAYER_CHANGELOG.md` **242 行 / 23,492 B**（全 CRLF、裸 LF 0）。H2 顺序：安装与前置（必读）/ 新增内容（商店与村民 · 事件体系 · 立牌与效果牌 · 界面与表现）/ 战斗系统重做 / 平衡与数值调整 / BUG 修复 / 1.3.7-hotfix 的修复 / 文案与手册 / 许可变更。素材 = `CHANGELOG_ZH.md` 的 `## 1.5.0`（L7–L773）+ `## 1.3.7-hotfix`（L774–L832）+ `release/1.3.7/PLAYER_CHANGELOG_ZH.md` 的既有房格。
 - **CF 关系补登（本轮真缺口）**：`tools/curseforge.json` 的 `neoforge_1.21.1` / `forge_1.20.1` 两线在 curios（forge 另有 mixinbooster）之后追加 `{"slug":"starengine","projectID":1755415,"type":"requiredDependency"}`，并在 `_relationsNote` 追加「2026-10-25 起 P0 两线 StarEngine 独立前置、P1 两线仍内嵌」说明；`json.load` 自检通过，文件 5,233 → 5,736 B（LF）。理由：lib 自 1.1.0 起从 P0 两线 jar 内移除（`META-INF/jarjar/` 计数 0），不登记关系则 CF 玩家下载后直接 `Missing or unsupported mandatory dependencies`。
 - **CF 上传（`tools/curseforge_upload.py`，6 个文件全部 `HTTP 200`；每次均打印「Cloudflare 拦截 urllib（HTTP 403）⇒ 改用 curl」，即 curl 回退仍在生效）**：
@@ -756,7 +756,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 4. **计时器守卫 vs 烈焰之核：机制 PASS，佩戴不可构造**
    - `enigmaticlegacyplus:blazing_core`（烈焰之核；tooltip：`Any status effects applied to you tick down twice as fast, except Molten Heart`）属 **spellstone** 槽，而 `data/enigmaticlegacyplus/curios/slots/spellstone.json` 的 `size = 0`（`scroll` 同为 0；仅 `SpellstoneTableMenu$5` 里 `grow`）⇒ 裸 dev 世界无法合法佩戴，**现场不可构造**。
-   - 改用等价构造验证守卫的加速校正分支：`effect give Dev astral_dice:deepseek_fishing 20 0`（守卫记录 end = now+400）后，再以 `1 1`（20t、amp 1）覆盖 ⇒ `gt 28126 / dur 20`；1 秒后 `gt 28164 / dur 349`（预期 350）、2 秒后 `gt 28223 / dur 290`（预期 291）⇒ **守卫把被加速的剩余时长拉回 20 t/s 时间表**（`F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/event/EffectTimerGuard.java:163-168`），即烈焰之核「tick 翻倍」会被抵消。
+   - 改用等价构造验证守卫的加速校正分支：`effect give Dev astral_dice:deepseek_fishing 20 0`（守卫记录 end = now+400）后，再以 `1 1`（20t、amp 1）覆盖 ⇒ `gt 28126 / dur 20`；1 秒后 `gt 28164 / dur 349`（预期 350）、2 秒后 `gt 28223 / dur 290`（预期 291）⇒ **守卫把被加速的剩余时长拉回 20 t/s 时间表**（`D:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/event/EffectTimerGuard.java:163-168`），即烈焰之核「tick 翻倍」会被抵消。
 
 5. **F3（七咒倍率）—— UNVERIFIED-LIVE（不得当已验证）**
    - `minecraft:mob_attack by pillager` 15 次落地**恒 7**，`ModAttachments.getDiceCurseRatio(p)` 前后**恒 1**；戴/不戴 `cursed_ring` 完全一样。`EnigmaticHandler.isTheCursedOne(p)` 在**未戴戒指时也为 true**（EL+ 的「被诅咒者」是世界级状态，`isCurseBoosted=false`）。
@@ -1088,7 +1088,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 6. **2026-10-30 收尾清理（已做）**：`neoforge-1.21.1/build/libs` 与 `forge-1.20.1/build/libs` 里 **43 个历史 jar（1.2.1 … rc.5，共 92 MB）已删**，只留 `rc.6` + `rc.7` 两对（既是上一发布、也是回滚点）；`temp/tf_jar_removed_20261030/`（实机用的暮色森林 27,154,121 B 暂存副本）已删，D 盘原件仍在；`scripts/test/mt.conf`（gitignored，含 AutoJS 端点三键）保留，后续实机还要用。`temp/` 下其余历史草稿（609 MB / 1562 项，gitignored）**未清**，属跨会话累积，需另行裁决。
 ### 4.1aw Linux（VM）适配批（2026-10-31，用户 m00002 → m00797 → m00876）
 
-**背景**：用户要求把本仓从 Windows 原生开发迁到 Linux。当前是 **VMware 虚拟机里的 Kubuntu 26.04.1（KDE Wayland 会话）**，仓库挂在 hgfs 共享盘（宿主 `F:\MCProject\astral_dice_multiloader`）。用户随后（m00876）明确：**后续迁到真实 Linux**，以消除 hgfs 的性能损耗与「符号链接/硬链接不可用」，并要求交接文档用相对路径理清现状。
+**背景**：用户要求把本仓从 Windows 原生开发迁到 Linux。当前是 **VMware 虚拟机里的 Kubuntu 26.04.1（KDE Wayland 会话）**，仓库挂在 hgfs 共享盘（宿主 `D:\MCProject\astral_dice_multiloader`）。用户随后（m00876）明确：**后续迁到真实 Linux**，以消除 hgfs 的性能损耗与「符号链接/硬链接不可用」，并要求交接文档用相对路径理清现状。
 
 **本批交付**（全部相对仓库根）：
 
@@ -1218,7 +1218,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 **改动（11 改 + 1 新增，均未提交）**
 - 构建：根 `build.gradle` 的 `mcHomePath` Linux 分支 `/mnt/hgfs/.minecraft` → `/mnt/d/.minecraft`（`MC_HOME` > Linux > `D:/.minecraft` 顺序不变，Windows 行为不变）；各线 `build.gradle` 仅注释里的投放根同步改。
-- 测试台：`scripts/test/linux/env.sh`（`ntfs3|ntfs` 分支、`hgfs_writable`→`repo_writable`、新增 `locks_stale`、`conf_windows` WARN→INFO、`mc_home=/mnt/d/.minecraft`、锁目录 `/mnt/f/MCProject/.agent-locks`）、`launch.sh` 一处文案、`scripts/test/linux/README.md`（§8/§9 口径 + 新增 §9.8）。
+- 测试台：`scripts/test/linux/env.sh`（`ntfs3|ntfs` 分支、`hgfs_writable`→`repo_writable`、新增 `locks_stale`、`conf_windows` WARN→INFO、`mc_home=/mnt/d/.minecraft`、锁目录 `/mnt/d/MCProject/.agent-locks`）、`launch.sh` 一处文案、`scripts/test/linux/README.md`（§8/§9 口径 + 新增 §9.8）。
 - 工具：`scripts/dev/rsync-original.sh` 停用（默认 `exit 3`，仅 `ALLOW_LEGACY_HGFS_RSYNC=1` 可越过）；`run/start-{1.20.1,1.21.1,26.1.2}.sh` 注释改 NTFS（`run/` 被忽略，不入库）。
 - 规则/文档：`AGENTS.md`（仓路径、锁路径、索引、桌面通道）、`docs/agent/AGENTS-dsh-linux.md` **整篇重写为原生 Linux 口径**（361 行 / 45,641 B / 30,206 字符，LF；旧 376 行 / 56,608 B）、`docs/agent/PROJECT-REFERENCE.md`、`docs/handover-new-session-context.md`（整篇重写）、新增 `docs/handover-2026-10-31-native-linux-migration.md`、本节。
 
@@ -1316,7 +1316,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 8. **CF 关系口径变更（2026-10-25，§4.1l）**：`tools/curseforge.json` 的 P0 两线（`neoforge_1.21.1` / `forge_1.20.1`）新增 `starengine(1755415)=requiredDependency`（lib 自 1.1.0 起不再内嵌）；P1 两线（26.1.2 / fabric）**未加**（它们仍内嵌库 jar）—— 若日后 P1 也改为独立前置，必须同批补登，否则同样缺库起不来。
 9. **玩家版更新日志已整份重写（2026-10-25 19:4x，提交 `e185595c`）**：`release/1.5.0-rc.1/PLAYER_CHANGELOG_ZH.md`（287 行 / 30,207 B）与 `PLAYER_CHANGELOG.md`（293 行 / 30,349 B）按 `CHANGELOG_ZH.md` / `CHANGELOG.md` 的 1.5.0 段（L7–L773 / L7–L953）逐条重写，补齐卡牌商店与筹码商店全部经济参数、村民价格表、15% 伤害下限、跳字红绿口径、星币/星盘掉落、16 件配方换料、看板娘 25→100、筹码商店 5:00 冷却与空白筹码解冷却、抽奖盒 5 星币/5:00 等；删除全部 P1（26.1.2 / fabric）陈述；修正 `Bank Card-Restless` → `Bank Card-Unlimited`。重传走 CI（tag `1.5.0-rc.1` 已存在 ⇒ `gh release edit --notes-file` + `upload --clobber`）：run `40190519908` 全绿，Release `updated_at` 11:51:59Z、正文 43,140 字符、附件两份 rc.1 jar 已覆盖。
 10. **CF 项目说明草稿的事实错误已就地修正（2026-10-25）**：`tools/curseforge-description.md` 第 31 / 93 行原写「Six new signs / 六张新立牌 = KAngel + Ame + 酒保 + 多萝西 + 修女 + 大肥鱼」——经 CHANGELOG_ZH.md 全文核对，1.5.0 段**只**新增 KAngel 与 Ame（`修女`/`酒保`/`大肥鱼` 全文 0 命中），已改为「两张新立牌 / Two new signs」并注明其余角色早于本版存在；同句「一身同体」订正为「一心同体」。该文件仍为**未提交修改**（CF 描述因 403 只能由作者后台手贴，等用户粘贴后决定是否入库）。
-11. **P0 两个整合包投放核对（2026-10-25 20:0x，用户要求「确认所有最新构建版本已推到整合包中」）**：逐处核 sha256 ⇒ `run/1.21.1/mods`（astral rc.1 neo `59E12108…` + `starengine-neoforge-1.21.1-1.1.0.jar` `62C92595…`）、`run/1.20.1/mods`（astral rc.1 **devlibs named** `CB21FA24…` + `starengine-forge-1.20.1-1.1.0.jar` `E280AEAB…`）、`1.20.1-Forge 模组测试\mods`（astral rc.1 **reobf** `33717FA9…` + lib forge `73DA2E59…`）、仓库根 `build/libs`（两线 rc.1 同名同哈希）**全部一致**。但 `狐の航空学 Voxy Edition\mods` 查出**两处投放缺陷**并已就地修好：① **库 jar 缺失**（该目录无任何 `starengine*.jar` —— 1.5.0 起库不再内嵌，缺库必报 `Missing or unsupported mandatory dependencies`），已补 `starengine-neoforge-1.21.1-1.1.0.jar`（取自 `F:\MCProject\starengine\neoforge-1.21.1\build\libs`，`62C92595…`）；② **混入错误加载器的 jar** `astral_dice-1.5.0-rc.1+forge_1.20.1.jar`（1.20.1 Forge 产物躺在 1.21.1 NeoForge 整合包里），已**移入隔离区** `temp/quarantine/`（保留可回滚，未删除）。修复后该包 `mods` 内与本模组相关的文件恰为 2 个：astral rc.1 neo `59E12108…` + lib `62C92595…`。静态依赖判据：两线产物 `mods.toml` 内 `starengine` 依赖 `type=required` / `versionRange="[1.1.0,2.0.0)"`、`META-INF/jarjar/` 计数 **0**，库侧 `version=1.1.0+<加载器>` ⇒ 区间成立。本次**未启动游戏**（实机需用户放行）。
+11. **P0 两个整合包投放核对（2026-10-25 20:0x，用户要求「确认所有最新构建版本已推到整合包中」）**：逐处核 sha256 ⇒ `run/1.21.1/mods`（astral rc.1 neo `59E12108…` + `starengine-neoforge-1.21.1-1.1.0.jar` `62C92595…`）、`run/1.20.1/mods`（astral rc.1 **devlibs named** `CB21FA24…` + `starengine-forge-1.20.1-1.1.0.jar` `E280AEAB…`）、`1.20.1-Forge 模组测试\mods`（astral rc.1 **reobf** `33717FA9…` + lib forge `73DA2E59…`）、仓库根 `build/libs`（两线 rc.1 同名同哈希）**全部一致**。但 `狐の航空学 Voxy Edition\mods` 查出**两处投放缺陷**并已就地修好：① **库 jar 缺失**（该目录无任何 `starengine*.jar` —— 1.5.0 起库不再内嵌，缺库必报 `Missing or unsupported mandatory dependencies`），已补 `starengine-neoforge-1.21.1-1.1.0.jar`（取自 `D:\MCProject\starengine\neoforge-1.21.1\build\libs`，`62C92595…`）；② **混入错误加载器的 jar** `astral_dice-1.5.0-rc.1+forge_1.20.1.jar`（1.20.1 Forge 产物躺在 1.21.1 NeoForge 整合包里），已**移入隔离区** `temp/quarantine/`（保留可回滚，未删除）。修复后该包 `mods` 内与本模组相关的文件恰为 2 个：astral rc.1 neo `59E12108…` + lib `62C92595…`。静态依赖判据：两线产物 `mods.toml` 内 `starengine` 依赖 `type=required` / `versionRange="[1.1.0,2.0.0)"`、`META-INF/jarjar/` 计数 **0**，库侧 `version=1.1.0+<加载器>` ⇒ 区间成立。本次**未启动游戏**（实机需用户放行）。
 
 12. **调酒师治疗口径 = 逐张各结算 1 次 `heal(2)`**（2026-10-25 落地「按张数叠加」，2026-10-26 用户裁决**订正结算方式**，§4.1r）：`JillSignItem#resolve` 里 `for (int i = 0; i < effect; i++) target.heal(HEAL_AMOUNT);`（`HEAL_AMOUNT = 2.0F`）—— 3 张 = **3 次治疗 = 6 点**，**不是**合并成一次 `heal(6)`。因此治疗事件按张数各触发一次：多萝西「温暖」按次数叠层（3 张 = **+3 层**），「赵赐福溢出」「治疗失效事件」等下游各结算三次。同批已改：两线 `JillSignItem` 的 javadoc / 常量注释 / 行内注释、`tools/verify_sign_balance_changes.py` 的 JIL-1（require for 循环体里的 `target.heal(HEAL_AMOUNT)`、forbid `target.heal(HEAL_AMOUNT * effect)`）、六份 lang 的 `tooltip.astral_dice.sign.jill_active` + `astral_dice.guide.entry.jill_sign.1`、两份 CHANGELOG、rc.2 三份玩家日志。⚠️ **`1.5.0-rc.2` 已发布产物仍是旧的「合并一次」口径**（已 push + 自动 tag + 上传 CF），本修正只能进下一版。P1 两线（26.1.2 / fabric）**没有** `JillSignItem`，本项无需登记移植欠账。
 13. **多萝西队友加成 = 状态效果【交际花】，不再是瞬态修饰符**（2026-10-25，§4.1n）：唯一事实源改为 `DorothySocialiteEffect` 自带的 `ATTACK_DAMAGE +1` 修饰符，**固定 1:00、从获得时起算、与主动窗口解耦**；窗口结束不回收、重复获得只刷时长。旧的 `dorothy_partner_attack` 修饰符、`applyTempAttack`、`clearPartnerBuffs`、`DOROTHY_PARTNERS` 节流表均已删除（§5 里若有旧描述按本条读）。P1 两线无该立牌，无移植欠账。
@@ -1417,7 +1417,7 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 40. **dev 运行的 jar 与整合包不是同一份**（2026-10-28 复核）：`pushToDevRun` 把 `forge-1.20.1/build/devlibs` 的 **Mojmap dev named** jar 推进 `run/<线>/mods`，`pushToGame` 才把 **reobf SRG 生产** jar 推进整合包。两者大小/哈希本来就不同（`2,618,723 / 2B051830` vs `2,648,157 / 9327BDF4`），别当「产物不一致」报缺陷；改完源码要实机必须跑 `pushToDevRun`（`:build` 会带）。
 
 41. **git bash 环境下写文件 / git 写操作可能被拒**（2026-10-28 实测）：`ops_bash`（git bash）里 node 写文件报 `EPERM: operation not permitted`，`git add` 报 `fatal: Unable to create '.git/index.lock': Permission denied`（无残留 lock、无 git 进程）⇒ 写文件与 git 写操作改走 write/edit 工具（不经 bash），bash 只做只读查询。
-42. **前置库 jar 也分 dev / prod，forge 线 `run/mods` 必须放 `devlibs` 那份**（2026-10-28 实测）：`F:\MCProject\starengine\build\libs\starengine-forge-1.20.1-1.1.0.jar` 是 **reobf SRG**（103,605 B），`F:\MCProject\starengine\forge-1.20.1\build\devlibs\starengine-forge-1.20.1-1.1.0.jar` 才是 **Mojmap dev named**（102,013 B，正是 `run/1.20.1/mods` 该放的那份）。误把 libs 那份塞进 dev run ⇒ 加载世界时 KubeJS 注册命令炸：`java.lang.NoSuchMethodError: 'com.mojang.brigadier.builder.LiteralArgumentBuilder net.minecraft.commands.Commands.m_82127_(java.lang.String)'`，栈为 `WorldLoader.load` → `WorldOpenFlows.loadWorldStem` → `QuickPlay.joinSingleplayerWorld`，客户端停在主菜单、AutoJS 只剩 `client` side（报 `Side 'server' is not registered in this game instance`）⇒ 看到这两个症状就先去比 `run/<forge 线>/mods` 里库 jar 与 `devlibs` 的大小/哈希。neo 线无此差别（1.21 生产即 Mojmap，98,734 B 两份一致）。
+42. **前置库 jar 也分 dev / prod，forge 线 `run/mods` 必须放 `devlibs` 那份**（2026-10-28 实测）：`D:\MCProject\starengine\build\libs\starengine-forge-1.20.1-1.1.0.jar` 是 **reobf SRG**（103,605 B），`D:\MCProject\starengine\forge-1.20.1\build\devlibs\starengine-forge-1.20.1-1.1.0.jar` 才是 **Mojmap dev named**（102,013 B，正是 `run/1.20.1/mods` 该放的那份）。误把 libs 那份塞进 dev run ⇒ 加载世界时 KubeJS 注册命令炸：`java.lang.NoSuchMethodError: 'com.mojang.brigadier.builder.LiteralArgumentBuilder net.minecraft.commands.Commands.m_82127_(java.lang.String)'`，栈为 `WorldLoader.load` → `WorldOpenFlows.loadWorldStem` → `QuickPlay.joinSingleplayerWorld`，客户端停在主菜单、AutoJS 只剩 `client` side（报 `Side 'server' is not registered in this game instance`）⇒ 看到这两个症状就先去比 `run/<forge 线>/mods` 里库 jar 与 `devlibs` 的大小/哈希。neo 线无此差别（1.21 生产即 Mojmap，98,734 B 两份一致）。
 43. **AutoJS 探针里构造 Java 记录/组件对象 ⇒ JSON 化阶段直接抛错**（2026-10-28 实测）：为给骰子栈写星级而构造 `WeaponEnhancement` 后，AutoJS 收尾抛 `WrappedException: Wrapped Unsure how to convert 'WeaponEnhancement[usedCost=0, maxCost=3, usedDefenseCost=0, maxDefenseCost=3, starLevel=0, appliedStones=[]]' to JSON! (autojs-eval#40)`（栈落在 `NativeJavaMethod.call`），即使返回值里已不含该对象 ⇒ 探针载荷只放 int / string / boolean；「星级不变」这类判据改用源码判据或命令路径，别在探针里构造组件记录。
 
 44. **AutoJS / Rhino 在 1.21.1 的 API 事实（2026-10-28 实测，探针必用）**：`InteractionHand` 字段是 `MAIN_HAND`/**`OFF_HAND`**（写 `OFFHAND` 报 `has no public instance field or method named "OFFHAND"`）；**`mob.hurt(DamageSource,float)` 调用不到**（`TypeError: Cannot find function hurt in object Pillager`）⇒ 伤害一律走 `/damage @e[type=…,tag=…,limit=1] <n> <dmgType> by Dev`，`DamageSource` 也没有 `getMsgId()`（要看源就把 ds 转成字符串）；未声明变量赋值报 `EvaluatorException: Assignment to undeclared variable p` ⇒ 必须 `var p=…`；给 `Item.of(...)` 传不存在的 id 抛 `KubeRuntimeException` 且**会穿透 JS try/catch 终止整次 eval** ⇒ 探测 id 先迭代 `BuiltInRegistries.ITEM.keySet()`；1.21.1 没有 `astral_dice:basic_dice`（用 `golden_dice` / `glass_dice` 等）；1.21.1 的 `/astralprobe …` 探针命令**不出任何读数**（`logs/kubejs/server.log` 无 AP_ 行）⇒ 直接写 curio 槽。
@@ -1444,14 +1444,14 @@ pre.5 及更早全部实机读数见 `docs/handover-1.5.0-pre.5-main.md（已删
 
 ```bash
 # 状态 / 版本
-git -C F:\MCProject\astral_dice_multiloader log -1 --oneline
-git -C F:\MCProject\astral_dice_multiloader status --short -uall
-git -C F:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..HEAD
-grep -H -E '^mod_version|^starengine_version' F:/MCProject/astral_dice_multiloader/*-1.*/gradle.properties
+git -C D:\MCProject\astral_dice_multiloader log -1 --oneline
+git -C D:\MCProject\astral_dice_multiloader status --short -uall
+git -C D:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..HEAD
+grep -H -E '^mod_version|^starengine_version' D:/MCProject/astral_dice_multiloader/*-1.*/gradle.properties
 
 # 编译 / 产物
 export JAVA_HOME='C:/Program Files/Zulu/zulu-21'
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 ./gradlew.bat :neoforge-1.21.1:classes :forge-1.20.1:classes --console=plain
 ./gradlew.bat :neoforge-1.21.1:jar :forge-1.20.1:jar --console=plain
 
@@ -1467,16 +1467,16 @@ python tools\verify_member_recommendation_hand_gate.py
 python tools\verify_hud_attack_parity.py
 
 # 测试台（实机须用户下达）
-bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase env
-bash F:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase stop --force --purge-saves
+bash D:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase env
+bash D:\MCProject\astral_dice_multiloader\scripts/test/win/mt.sh --version 1.20.1 --phase stop --force --purge-saves
 
 # 长驻相位：分离启动（scripts/test/TESTING-SPEC.md:121-124；不跑 --phase env，避免重写 run/<线>/mods）
-bash F:\MCProject\astral_dice_multiloader\scripts\devtools\start_mt_detached.py -Script scripts/test/win/mt.sh -Out temp\mt_detached\tester1211_launch_<yyyyMMdd-HHmm>.log -ScriptArgs --phase launch --version 1.21.1
+bash D:\MCProject\astral_dice_multiloader\scripts\devtools\start_mt_detached.py -Script scripts/test/win/mt.sh -Out temp\mt_detached\tester1211_launch_<yyyyMMdd-HHmm>.log -ScriptArgs --phase launch --version 1.21.1
 
 # 临时产物（temp/ 不入库）
-F:\MCProject\astral_dice_multiloader\temp\mt_detached\            # 分离启动日志 + .err（本批 tester1211_launch_20261028-1355.log 778 B / .err 0 B）
-F:\MCProject\astral_dice_multiloader\temp\cf_neo.jar              # CF 回读校验下载件（files/9349/843；2,599,540 B / 949560A7…）
-F:\MCProject\astral_dice_multiloader\temp\cf_forge.jar            # CF 回读校验下载件（files/9349/844；2,648,370 B / B54CE7F5…）
+D:\MCProject\astral_dice_multiloader\temp\mt_detached\            # 分离启动日志 + .err（本批 tester1211_launch_20261028-1355.log 778 B / .err 0 B）
+D:\MCProject\astral_dice_multiloader\temp\cf_neo.jar              # CF 回读校验下载件（files/9349/843；2,599,540 B / 949560A7…）
+D:\MCProject\astral_dice_multiloader\temp\cf_forge.jar            # CF 回读校验下载件（files/9349/844；2,648,370 B / B54CE7F5…）
 ```
 
 ### 7.1 Linux 期命令（相对仓库根，2026-10-31 起）

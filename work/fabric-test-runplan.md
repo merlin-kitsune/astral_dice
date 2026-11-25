@@ -1,6 +1,6 @@
 # fabric-1.20.1 开跑命令序列（AutoJS 通道）
 
-> 生成时间 2026-11-02T03:3x +08:00 · 仓库 `F:\MCProject\astral_dice_multiloader` · 全部命令都在仓库根执行（bash = Git Bash / MSYS，PowerShell = pwsh 7.6.9）
+> 生成时间 2026-11-02T03:3x +08:00 · 仓库 `D:\MCProject\astral_dice_multiloader` · 全部命令都在仓库根执行（bash = Git Bash / MSYS，PowerShell = pwsh 7.6.9）
 > 配套证据文档：`work/fabric-channel-fix.md`（部署证据 / 判据行号 / 27 项断言审计）
 
 ## 0. 前置事实（开跑前先知道）

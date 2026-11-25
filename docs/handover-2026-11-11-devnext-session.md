@@ -8,13 +8,13 @@
 1. 根 `AGENTS.md` 认领宿主：本机 = 原生 Linux 真机 ⇒ 规则正本 `docs/agent/AGENTS-dsh-linux.md`（388 行左右；`docs/agent/AGENTS-dsh.md` 是 Windows 历史正本，只对照）。
 2. 加载技能 `using-superpowers`（规则正本硬要求）。
 3. 读规则正本全文 + 本文 + `docs/handover-1.5.0-main.md` 的 `## 5 遗留与欠账`（历史欠账清单，仍有效）。
-4. 动手前跑 `bash scripts/test/linux/env.sh` 与 `git status --short -uall` 核对现状；实机前查 `ss -ltnp | grep -E ':(25585|25565|25575)'` 与 `/mnt/f/MCProject/.agent-locks/`。
+4. 动手前跑 `bash scripts/test/linux/env.sh` 与 `git status --short -uall` 核对现状；实机前查 `ss -ltnp | grep -E ':(25585|25565|25575)'` 与 `/mnt/d/MCProject/.agent-locks/`。
 
 ## §1 实读现状（2026-11-11 14:2x 快照）
 
 | 项 | 值 |
 |---|---|
-| 工作树 | `/mnt/f/MCProject/astral_dice_multiloader-next`（git worktree，`.git` 是文件，指向主树 `.git/worktrees/astral_dice_multiloader-next`） |
+| 工作树 | `/mnt/d/MCProject/astral_dice_multiloader-next`（git worktree，`.git` 是文件，指向主树 `.git/worktrees/astral_dice_multiloader-next`） |
 | 分支 / HEAD | `multi-dev-next` / `e1d1e922`（本批最后一条代码提交；文档提交在其后） |
 | 与远端 | 本轮最后一次 push 是 `bd721cc0..c02c6b57`；其后 28+ 个提交在本次会话末已 push（见 §6） |
 | 版本 | 五线 `mod_version = 26.4-SNAPSHOT.11+<加载器后缀>` |
@@ -97,7 +97,7 @@
 
 - 本次会话最后一次 push：把 `bd721cc0..` 之后的本批提交推到 `origin/multi-dev-next`（含 .11 升版、金鲤/少主/小猎手五线实现、跨区块修复、规则与文档）。
 - 提交风格：一个可独立验证的单元一条（红线 8），信息用 `git commit -F`；**默认不 push**，本轮按用户明确指令推送。
-- 收尾清单（每轮实机后）：`bash scripts/test/linux/stop.sh --version <线>`、端口三查、`parked` jar 归位、`systemd-inhibit` kill + `UnInhibit`、删 `/mnt/f/MCProject/.agent-locks/dsh.lock`、`gradlew --stop`。
+- 收尾清单（每轮实机后）：`bash scripts/test/linux/stop.sh --version <线>`、端口三查、`parked` jar 归位、`systemd-inhibit` kill + `UnInhibit`、删 `/mnt/d/MCProject/.agent-locks/dsh.lock`、`gradlew --stop`。
 
 ## §7 下一步候选（按优先序）
 

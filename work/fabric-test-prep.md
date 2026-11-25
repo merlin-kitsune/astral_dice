@@ -1,6 +1,6 @@
 # fabric-1.20.1 · 1.5.0 发布验收 · 静态准备报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`（git 只读：全程未 add/commit/tag/checkout/stash）
+- 仓库：`D:/MCProject/astral_dice_multiloader`（git 只读：全程未 add/commit/tag/checkout/stash）
 - 时间：2026-11-02（静态作业，未启动游戏、未跑 Gradle、未占用 25565/25575/25585）
 - 配套文档：`work/fabric-bash-harness-usage.md`（命令序列 / 参数表 / 已知坑全文）
 - 证据脚本：`work/_rcon_probe.py`、`work/_probe_cl.ps1`、`work/_probe_level.py`、`work/_probe_case.py`、`work/_probe_jar2.py`、`work/_probe_jar3.py`、`work/_probe_risk.py`
@@ -38,7 +38,7 @@
 ## 2. 一次完整 fabric 发布验收的命令序列（摘要）
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 
 # 0 环境自检（只读）
 bash scripts/test/win/env.sh --version fabric-1.20.1

@@ -1,7 +1,7 @@
 # fabric-1.20.1 1.5.0-hotfix 版本落定报告
 
 - 时间：2026-11-02
-- 仓库：F:/MCProject/astral_dice_multiloader（分支 multi-main，HEAD 6fe38138 docs(changelog): record the fabric sign tooltip fix in 1.5.0 [republish-assets]）
+- 仓库：D:/MCProject/astral_dice_multiloader（分支 multi-main，HEAD 6fe38138 docs(changelog): record the fabric sign tooltip fix in 1.5.0 [republish-assets]）
 - 范围：只动 fabric-1.20.1 线的版本号与配套文档；未碰 astral_dice_multiloader-next，未碰 docs/agent、models 等他人未提交改动。
 - 结论：版本号已定 1.5.0-hotfix；构建 BUILD SUCCESSFUL；产物 2,944,301 B / SHA256 8a7edad09cf77059dde32b91fd585b4a402265c59832415ee827935d2108d6f2；
   中英 CHANGELOG 对称、两份玩家更新日志已建、两个守门脚本全绿。1 项任务项在本线不成立（类路径版本资源），见 §4.2 —— 非本次改动引入。
@@ -25,7 +25,7 @@
 
 ### 2.1 命令
 
-    git -C F:/MCProject/astral_dice_multiloader diff -U2 -- fabric-1.20.1/gradle.properties
+    git -C D:/MCProject/astral_dice_multiloader diff -U2 -- fabric-1.20.1/gradle.properties
 
 ### 2.2 原始输出
 
@@ -107,12 +107,12 @@
     > Task :fabric-1.20.1:build
     
     > Task :fabric-1.20.1:pushToRootBuild
-    pushToRootBuild: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\build\libs
+    pushToRootBuild: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\build\libs
     
     > Task :fabric-1.20.1:pushToDevRun
-    pushToDevRun: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
+    pushToDevRun: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
     
-    [Incubating] Problems report is available at: file:///F:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
+    [Incubating] Problems report is available at: file:///D:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
     
     Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
     

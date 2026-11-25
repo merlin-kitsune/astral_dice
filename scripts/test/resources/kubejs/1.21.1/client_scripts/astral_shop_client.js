@@ -87,7 +87,7 @@ var NativeImage_CLASS = null;
 try { Screenshot_CLASS = Java.loadClass("net.minecraft.client.Screenshot"); } catch (eSc) { }
 try { NativeImage_CLASS = Java.loadClass("com.mojang.blaze3d.platform.NativeImage"); } catch (eNi) { }
 // 任务L 自截图落盘目录（验收要求 temp/t87/shots/*.png）
-var CS_SHOTS = "F:\\MCProject\\astral_dice_multiloader-next\\temp\\t87\\shots";   // 归档目录（收尾时从 run/<版本>/screenshots 拷过来；java.io 被类过滤器拒绝，探针无法直接写这里）
+var CS_SHOTS = "D:\\MCProject\\astral_dice_multiloader-next\\temp\\t87\\shots";   // 归档目录（收尾时从 run/<版本>/screenshots 拷过来；java.io 被类过滤器拒绝，探针无法直接写这里）
 // ⚠️ KubeJS 客户端脚本里**没有** `java` 全局：`new java.io.File(...)` 会抛 ReferenceError
 //    ⇒ 必须先 Java.loadClass 拿到 class 再 new（否则 csShot 在 takeScreenshot 之前就中断，实测 err=shot:ReferenceError）
 var File_CLASS = null;

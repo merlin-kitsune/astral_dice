@@ -1,7 +1,7 @@
 
 from PIL import Image
 import collections
-im = Image.open(r"F:/MCProject/astral_dice_multiloader/work/recon/user_screenshot.png").convert("RGB")
+im = Image.open(r"D:/MCProject/astral_dice_multiloader/work/recon/user_screenshot.png").convert("RGB")
 W,H = im.size
 px = im.load()
 print("size", W, H)

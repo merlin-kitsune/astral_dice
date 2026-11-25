@@ -4,7 +4,7 @@ def rd(p):
 def wr(p,s):
     f=io.open(p,'w',encoding='utf-8',newline='');f.write(s);f.close()
 CR=chr(13);LF=chr(10)
-p1=r'F:/MCProject/astral_dice_multiloader/docs/agent/AGENTS-dsh.md'
+p1=r'D:/MCProject/astral_dice_multiloader/docs/agent/AGENTS-dsh.md'
 s=rd(p1)
 print('dsh crlf', CR+LF in s, 'lines', s.count(LF))
 anchor='带 `-rc` / `-pre` / `-alpha` / `-beta` 的版本一律标 prerelease、不占 latest。'

@@ -1,7 +1,7 @@
 # neoforge-26.1.2 · 1.5.0 发布实机测试 —— 静态准备报告
 
 - 生成时间：2026-11-02（Asia/Hong_Kong）。本报告只做**静态准备**：全程未启动 Minecraft、未跑 Gradle、未占用 25565/25585/25575。
-- 仓库 `F:/MCProject/astral_dice_multiloader`；branch `multi-main`；HEAD `fd990c15`；git 只读（未做 add/commit/push/tag/checkout/stash；`run/` 被 .gitignore:61 忽略，改动不进版本库）。
+- 仓库 `D:/MCProject/astral_dice_multiloader`；branch `multi-main`；HEAD `fd990c15`；git 只读（未做 add/commit/push/tag/checkout/stash；`run/` 被 .gitignore:61 忽略，改动不进版本库）。
 - 工具链：pwsh 7.6.9；python `C:/Users/xmace/.local/bin/python.exe`（3.12.16）；java `C:/Program Files/Zulu/zulu-25/bin/java.exe`。
 - 参考手册：`work/release150-test-runbook.md`（本报告 §7.2 B3 修正了其中 26.1.2 的 env/launch/stop 口径）。
 
@@ -103,7 +103,7 @@
 23  --version
 24  26.1.2-NeoForge
 25  --gameDir
-26  F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame
+26  D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame
 27  --assetsDir
 28  D:/.minecraft/assets
 29  --assetIndex
@@ -332,12 +332,12 @@ pwsh -NoProfile -File scripts/test/mt_case.ps1 validate --case scripts/test/case
 
 ```powershell
 # 1) 桥接 harness 路径（B1）—— 幂等，可重复执行
-pwsh -NoProfile -File F:/MCProject/astral_dice_multiloader/run/26.1.2/.tmp/prep-harness-paths.ps1 -Apply
+pwsh -NoProfile -File D:/MCProject/astral_dice_multiloader/run/26.1.2/.tmp/prep-harness-paths.ps1 -Apply
 
 # 2) 把 prodgame 的 astral_dice 换成 1.5.0（B2）；rc.7 改名保留，不删
-$m = 'F:/MCProject/astral_dice_multiloader/run/26.1.2/prodgame/mods'
+$m = 'D:/MCProject/astral_dice_multiloader/run/26.1.2/prodgame/mods'
 Rename-Item -LiteralPath (Join-Path $m 'astral_dice-1.5.0-rc.7+neoforge_26.1.2.jar') -NewName ('astral_dice-1.5.0-rc.7+neoforge_26.1.2.jar.bak-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-Copy-Item -LiteralPath 'F:/MCProject/astral_dice_multiloader/neoforge-26.1.2/build/libs/astral_dice-1.5.0+neoforge_26.1.2.jar' -Destination $m
+Copy-Item -LiteralPath 'D:/MCProject/astral_dice_multiloader/neoforge-26.1.2/build/libs/astral_dice-1.5.0+neoforge_26.1.2.jar' -Destination $m
 (Get-FileHash -LiteralPath (Join-Path $m 'astral_dice-1.5.0+neoforge_26.1.2.jar') -Algorithm SHA256).Hash
 #   期望 dd22295c7c4036ae0cb95a2cc5b861de30f5cbbf4e7a8859211830874dac53a1
 
@@ -381,7 +381,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 26.1.2 --phase stop --force
 | NeoForge | `--fml.neoForgeVersion 26.1.2.109`、`--fml.neoFormVersion 1` |
 | 实例 jar | `…/26.1.2-NeoForge 模组测试.jar`（38,113,927 B） |
 | natives | `…/26.1.2-NeoForge 模组测试-natives`（存在） |
-| gameDir | `F:/MCProject/astral_dice_multiloader/run/26.1.2/prodgame` |
+| gameDir | `D:/MCProject/astral_dice_multiloader/run/26.1.2/prodgame` |
 | AutoJS 端点 | `http://127.0.0.1:25585/mcp`（`prodgame/config/autojs.json`：port 25585 / 双侧 enable / token `""` / evalTimeoutMs 5000 / logEval true） |
 | 整合包 mods | `D:/.minecraft/versions/26.1.2-NeoForge 模组测试/mods`（95 jar） |
 | 报告落点 | `scripts/test/reports/<run_id>/26.1.2/` |

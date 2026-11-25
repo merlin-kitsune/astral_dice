@@ -1,4 +1,4 @@
-cd F:/MCProject/astral_dice_multiloader/work/recon
+cd D:/MCProject/astral_dice_multiloader/work/recon
 now=$(date +%s); target=1793617820
 if [ "$now" -lt "$target" ]; then echo "sleeping $((target-now))s until quota reset"; sleep $((target-now)); fi
 echo "=== jobs list for run 41392445400 ==="

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, sys, json, hashlib, zipfile
-os.chdir(r'F:/MCProject/astral_dice_multiloader')
+os.chdir(r'D:/MCProject/astral_dice_multiloader')
 libs = 'fabric-1.20.1/build/libs'
 print('=== libs listing ===')
 for f in sorted(os.listdir(libs)):

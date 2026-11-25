@@ -2,7 +2,7 @@
 
 ## 0. 结论先行
 
-把 GeckoLib 的动画/渲染核心（除 example 包、网络层、mixin 外）源码级【包名重定位】后搬进 F:/MCProject/starengine_next，由 starengine 的四个平台子项目各自编译进 starengine-*.jar；消费方 astral_dice_multiloader-next 的各线全部卸掉 GeckoLib 依赖与硬前置声明，改用 starengine 提供的同名 API（命名空间已重定位），并保留 triggerAnim 的服务端→追踪客户端同步语义（由 starengine 自己实现的网络 SPI 承担）。
+把 GeckoLib 的动画/渲染核心（除 example 包、网络层、mixin 外）源码级【包名重定位】后搬进 D:/MCProject/starengine_next，由 starengine 的四个平台子项目各自编译进 starengine-*.jar；消费方 astral_dice_multiloader-next 的各线全部卸掉 GeckoLib 依赖与硬前置声明，改用 starengine 提供的同名 API（命名空间已重定位），并保留 triggerAnim 的服务端→追踪客户端同步语义（由 starengine 自己实现的网络 SPI 承担）。
 
 为什么必须重定位包名（而不是原包名塞进 starengine）：原包名（v4 software.bernie.geckolib、v5 com.geckolib）与玩家自装的真 GeckoLib FQN 相同，同 classpath 下会【同名类先到先得 + 两份 mixin config 同名被静默跳过】，版本错位时还会 NoSuchMethodError / VerifyError。重定位后二者是两套互不干扰的类，玩家装不装 GeckoLib 都不影响本模组，其他模组想用 GeckoLib 也能照装 —— 这是最大兼容性的唯一安全形态。
 
@@ -48,7 +48,7 @@
 
 ## 4. 目录与构建接线（starengine 侧）
 
-F:/MCProject/starengine_next/
+D:/MCProject/starengine_next/
   vendored/SOURCE.md                 # 每线：上游 repo / 分支 / commit SHA / 发布 jar sha1 / 许可
   vendored/1.20.1/common/java/...    # v4 loader-agnostic 主体（重定位后）
   vendored/1.20.1/forge/java/...     # v4 forge 平台层（我们改写的 adapter）
@@ -186,7 +186,7 @@ Phase 0 → 1 → 2(仅 neoforge-1.21.1 单线跑通) → 用户验收 → 2(其
 | fabric-1.20.1 | `starengine-fabric-1.20.1-…` 595,011 B / 380 class | geckolib 222 + mclib 69 | `geckolib.aw`（intermediary）+ fabric.mod.json `accessWidener` | 渲染 + 攻击动画全绿（依赖 jar 的 AW 在 dev 也被应用） |
 | neoforge-26.1.2 | `starengine-neoforge-26.1.2-…` 758,700 B / 568 条目 | geckolib 385（v5） | AT 43 行 + interface_injections.json + 21 个 mixin | 渲染 + 攻击动画 + 与真 GeckoLib 5.5.2 共存全绿 |
 
-生成器：`F:/MCProject/starengine_next/tools/vendor_geckolib.py`（`--check` 恒定 `VENDOR_CHECK: OK problems=0`），vendored 树在 `starengine_next/vendored/{1.20.1,mclib,26.1.2}`。
+生成器：`D:/MCProject/starengine_next/tools/vendor_geckolib.py`（`--check` 恒定 `VENDOR_CHECK: OK problems=0`），vendored 树在 `starengine_next/vendored/{1.20.1,mclib,26.1.2}`。
 
 ### 13.2 v5（26.1.2）的三处硬差异（计划里没写、实测才暴露）
 

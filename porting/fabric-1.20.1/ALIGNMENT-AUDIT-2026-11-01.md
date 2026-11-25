@@ -1,7 +1,7 @@
 # Astral Dice 1.5.0 四线对齐审计报告（fabric-1.20.1 移植线）
 
 - 审计日期：2026-11-01
-- 审计对象：`F:/MCProject/astral_dice_multiloader`（git-bash 路径 `/f/MCProject/astral_dice_multiloader`）
+- 审计对象：`D:/MCProject/astral_dice_multiloader`（git-bash 路径 `/d/MCProject/astral_dice_multiloader`）
 - 分支 / HEAD：`multi-main` / `fd990c15`（实读 git）
 - 审计性质：**只读**。不修改源码/资源/脚本，不 commit / push / stash，不跑 gradle，不启动游戏。
 - 唯一写入产物：`porting/fabric-1.20.1/ALIGNMENT-AUDIT-2026-11-01.md`（本文件）。
@@ -22,7 +22,7 @@
 四条线的 Java 根包一致：`com/merlinkitsune/astral_dice/`。计数器：
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 for L in neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2 fabric-1.20.1; do
   printf '%-20s %s\n' "$L" "$(find $L/src/main/java -name '*.java' | wc -l)"
 done
@@ -44,7 +44,7 @@ fabric-1.20.1        526
 ### 0.3 工作树状态（实读，非本次改动）
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader && git status --porcelain | head -30
+cd /d/MCProject/astral_dice_multiloader && git status --porcelain | head -30
 ```
 ```
 ```text
@@ -59,7 +59,7 @@ cd /f/MCProject/astral_dice_multiloader && git status --porcelain | head -30
 
 ### 0.4 方法
 
-- 环境：Windows git-bash + Windows CPython（`python3`）。**关键坑**：CPython 是 Windows 侧二进制，脚本里的路径必须写 `F:/MCProject/...`；bash 只用 `/f/MCProject/...`。
+- 环境：Windows git-bash + Windows CPython（`python3`）。**关键坑**：CPython 是 Windows 侧二进制，脚本里的路径必须写 `D:/MCProject/...`；bash 只用 `/d/MCProject/...`。
 - 全部结论由**文本级静态取证**得出：`grep -rn` / `sed -n` / 自写 python 正则扫描（先剥离 `/* */` 与 `//` 注释，再计数与做集合比对）。
 - 本次**没有** `javap` 字节码级取证，也**没有**构建与实机。涉及运行时语义的结论一律下沉到 §4「无法判定」。
 - 跨线正文比对方法：剥离注释 / import / 空行后按行归一化再 diff，用于判断「逻辑是否同源」而不是「文本是否逐字节相同」。
@@ -78,10 +78,10 @@ cd /f/MCProject/astral_dice_multiloader && git status --porcelain | head -30
 ### 0.6 复跑模板
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 cat <<'PYEOF' | PYTHONIOENCODING=utf-8 python3 -
 import os, re
-ROOT = 'F:/MCProject/astral_dice_multiloader'
+ROOT = 'D:/MCProject/astral_dice_multiloader'
 LINES = {'n121':'neoforge-1.21.1','fg':'forge-1.20.1','n26':'neoforge-26.1.2','fb':'fabric-1.20.1'}
 def strip(t):
     t = re.sub(r'/\*.*?\*/', '', t, flags=re.S)
@@ -127,7 +127,7 @@ PYEOF
 判据命令：
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 for L in neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2 fabric-1.20.1; do
   echo "=== $L"
   grep -n 'sendBeamFx\|new BeamFxPayload' $L/src/main/java/com/merlinkitsune/astral_dice/combat/DamageCardFxScheduler.java
@@ -314,7 +314,7 @@ n26   :134  public static void onSubmitCustomGeometry(SubmitCustomGeometryEvent 
 #### 2.3.3 `trade/EmeraldDiceTrade.java`（绿宝石骰子商店折扣 → 1:1）
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 grep -n 'Math.max(1' neoforge-1.21.1/src/main/java/com/merlinkitsune/astral_dice/trade/EmeraldDiceTrade.java \
     forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/trade/EmeraldDiceTrade.java \
     fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/trade/EmeraldDiceTrade.java
@@ -465,7 +465,7 @@ fabric-1.20.1/…/BankCardUnlimitedChipItem.java:30:      public static final do
 ```bash
 cat <<'PYEOF' | PYTHONIOENCODING=utf-8 python3 -
 import os, re
-ROOT='F:/MCProject/astral_dice_multiloader'
+ROOT='D:/MCProject/astral_dice_multiloader'
 L={'n121':'neoforge-1.21.1','fg':'forge-1.20.1','n26':'neoforge-26.1.2','fb':'fabric-1.20.1'}
 def strip(t):
     t=re.sub(r'/\*.*?\*/','',t,flags=re.S)
@@ -573,7 +573,7 @@ fb:274  handler.update();
 ```bash
 cat <<'PYEOF' | PYTHONIOENCODING=utf-8 python3 -
 import os, re
-ROOT='F:/MCProject/astral_dice_multiloader'
+ROOT='D:/MCProject/astral_dice_multiloader'
 def strip(t):
     t=re.sub(r'/\*.*?\*/','',t,flags=re.S); return re.sub(r'//[^\n]*','',t)
 def scan(line):

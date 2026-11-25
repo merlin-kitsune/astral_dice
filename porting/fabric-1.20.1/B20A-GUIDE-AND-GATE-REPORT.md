@@ -1,7 +1,7 @@
 # B20a 交付报告：Fabric 帕秋莉手册补齐 + 资源守门脚本数据源分档
 
 - 生成时间：2026-11-01
-- 仓库：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，未 commit / push / stash / add）
+- 仓库：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，未 commit / push / stash / add）
 - 改动面：27 个新增 patchouli 资源文件 + `tools/verify_fabric_assets.py`
 
 ---

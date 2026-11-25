@@ -1,7 +1,7 @@
 # 主线全量对齐计划（2026-11-19）
 
 > 状态：阶段 0–3 已完成；阶段 3 已本地提交（库 `447ba39` / 主模组 `ed82ca32`，未 push），阶段 4 待开始。
-> 仓库：`F:/MCProject/astral_dice_multiloader`（`feature/mainline-full-parity`）与 `F:/MCProject/starengine`（`feature/mainline-full-parity`）。
+> 仓库：`D:/MCProject/astral_dice_multiloader`（`feature/mainline-full-parity`）与 `D:/MCProject/starengine`（`feature/mainline-full-parity`）。
 > 基线 tag：两仓均为 `mainline-parity-baseline-2026-11-19`。
 
 ## 1. 目标与边界

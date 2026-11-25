@@ -1,6 +1,6 @@
 # B35 — 筹码 / 星光功能代码对齐报告（fabric-1.20.1 ⟸ forge-1.20.1 主线）
 
-- 工作树：`F:\MCProject\astral_dice_multiloader`
+- 工作树：`D:\MCProject\astral_dice_multiloader`
 - 蓝本：**forge-1.20.1**（主基准），**neoforge-1.21.1**（次基准，逐项交叉核对）
 - 目标线：`fabric-1.20.1`
 - 批次范围：安全气囊 / 会员推荐 / 鹰眼镜 / 银行卡三档 + 星光锤 / ATM 五个筹码缺口；**本批不改任何 lang json**
@@ -249,7 +249,7 @@ jar = fabric-1.20.1\build\libs\astral_dice-1.5.0-rc.7+fabric_1.20.1.jar
 ## 9. 复现命令
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 cmd.exe //c "gradlew.bat :fabric-1.20.1:classes --console=plain"
 cmd.exe //c "gradlew.bat :fabric-1.20.1:remapJar --console=plain"
 ls -l fabric-1.20.1/build/libs/

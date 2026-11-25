@@ -1,5 +1,5 @@
 import os
-REPO = r"F:/MCProject/astral_dice_multiloader"
+REPO = r"D:/MCProject/astral_dice_multiloader"
 p = os.path.join(REPO, ".github/workflows/build.yml")
 wf = open(p, encoding="utf-8").read().splitlines(True)
 start = next(i for i,l in enumerate(wf) if l.strip() == "LINES=(")

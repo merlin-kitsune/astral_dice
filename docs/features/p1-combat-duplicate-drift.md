@@ -37,7 +37,7 @@
 ## 4. 漂移检测程序（可复制）
 
 ```bash
-cd F:/MCProject/astral_dice_multiloader-next
+cd D:/MCProject/astral_dice_multiloader-next
 
 # ① 谁绑本地副本（同包裸名）／谁绑库（import 或 FQN）
 python temp/p0/dupdrift.py

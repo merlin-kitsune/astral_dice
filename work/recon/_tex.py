@@ -1,7 +1,7 @@
 
 from PIL import Image
 import os
-base = r"F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui"
+base = r"D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/resources/assets/astral_dice/textures/gui"
 names = ["attack_full","attack_half","defense_full","defense_half","defense_empty","attack_dot","defense_dot"]
 imgs=[]
 for n in names:
@@ -24,5 +24,5 @@ for n,i in imgs:
     s=i.resize((i.width*SC,i.height*SC), Image.NEAREST)
     canvas.alpha_composite(s,(x,PAD))
     x+=s.width+PAD
-canvas.save(r"F:/MCProject/astral_dice_multiloader/work/recon/textures_montage.png")
+canvas.save(r"D:/MCProject/astral_dice_multiloader/work/recon/textures_montage.png")
 print("saved")

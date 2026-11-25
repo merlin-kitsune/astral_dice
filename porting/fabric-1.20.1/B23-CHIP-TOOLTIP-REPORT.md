@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | F:\MCProject\astral_dice_multiloader |
+| 仓库 | D:\MCProject\astral_dice_multiloader |
 | 分支 | multi-main（未 commit / 未 push / 未 stash / 未 add / 未 checkout） |
 | 上游依据 | porting/fabric-1.20.1/B12-DRIFT-AUDIT-REPORT.md:109-114（D-11） |
 | 日期 | 2026-11-01 |

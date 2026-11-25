@@ -10,7 +10,7 @@
 
 ## 1. 必读顺序（实读，不凭记忆）
 
-1. `git -C F:\MCProject\astral_dice_multiloader log -1 --oneline` + `git status --short -uall`（当前应只剩 `?? models/astral_anvil.bbmodel` 这条用户素材）。
+1. `git -C D:\MCProject\astral_dice_multiloader log -1 --oneline` + `git status --short -uall`（当前应只剩 `?? models/astral_anvil.bbmodel` 这条用户素材）。
 2. `docs/agent/AGENTS-kimi.md`（你的规则正本：Git Bash 优先 / 长上下文全委派 / 版本迭代必建新交接）。
 3. `docs/agent/AGENTS-dsh.md`（DSH 侧的规则与红线；**不是**你的，但冲突时以用户裁决为准）。
 4. 本文件 §2–§5 → `docs/agent/PROJECT-REFERENCE.md`（拓扑与命令）→ `docs/handover-1.5.0-main.md`（滚动正本；pre.5 及更早历史在同目录 `docs/handover-1.5.0-pre.5-main.md（已删除 2026-11-05）`）。
@@ -59,7 +59,7 @@
 4. **8 条「代码与新旧文案都不符」**（已报用户，**未改 tooltip**）：bite 觉醒按撕咬张数非 1 层 / huo_card 选择器 = `CREATURE_OR_RIVAL`（含未驯服可驯服生物）/ magic_quiver 无敌对判据（真闸门 = 目标已有标记 + 先用过伤害效果牌）/ railgun 真伤只 `bypasses_armor` / 三张卡 `berserk`·`express_delivery`·`luxury_feast` 选择器是 `NON_HOSTILE` / member_recommendation 只数主背包+副手 / repulsion 单次结算最多扣 5 点耐久 / airbag 掉虚空救不了（guide 已补注）。
 5. **P1 两线欠账**（`1.5.0` 正式版前不验证不移植，仅登记）：JEI 筹码 / `BeamFx` / `GlobalEventGate` / `RepulsionEntity` / `CardShopMenu#planPlacement` / `EventDrawBlock`；另 misaki 在 P1 仍 `legendary()` + 黄金星盘配方 + 死亡清零剑气。
 6. **push / tag**：本批**未推送**（用户明确「暂不推送」），无 tag。
-7. **陈旧锁 `F:\MCProject\.agent-locks\kimi.lock`**（`PID=26580` / `TIME=2026-10-24T12:07:28+08:00` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）。按规则**不自行删除**，交用户裁决 —— 你接手后请先问用户，或直接以本轮自己的 `kimi.lock` 覆盖并说明。
+7. **陈旧锁 `D:\MCProject\.agent-locks\kimi.lock`**（`PID=26580` / `TIME=2026-10-24T12:07:28+08:00` / `TASK=misaki-chip-shop-balance-p0`，进程已不存在）。按规则**不自行删除**，交用户裁决 —— 你接手后请先问用户，或直接以本轮自己的 `kimi.lock` 覆盖并说明。
 8. **Kimi 原计划 Task 2/3/4 状态**：Task 1（根 AGENTS.md 收口 + 两宿主规则文件 + AGENT-SPLIT §六）已完成并提交；verify-split.py 已重写通过；`docs/agent/PROJECT-REFERENCE.md` 与 `docs/handover-2026-10-24-kimi-takeover.md`（本文件）由 DSH 于本轮补齐，`docs/agent/README.md` 已同步一行 → **原计划实际已闭环**，无需重做。
 
 ## 5. 踩过的坑（避免重复）

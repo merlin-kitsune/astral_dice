@@ -1,4 +1,4 @@
-cd F:/MCProject/astral_dice_multiloader/work/recon
+cd D:/MCProject/astral_dice_multiloader/work/recon
 echo "--- attempt job log (anon) ---"
 curl -sS -i --max-time 60 -x http://127.0.0.1:7897 -H "User-Agent: Mozilla/5.0" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/merlin-kitsune/astral_dice/actions/jobs/125106569899/logs" | head -25
 echo

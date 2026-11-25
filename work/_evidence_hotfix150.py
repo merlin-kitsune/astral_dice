@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, subprocess, sys
-os.chdir(r'F:/MCProject/astral_dice_multiloader')
+os.chdir(r'D:/MCProject/astral_dice_multiloader')
 def run(cmd):
     p = subprocess.run(cmd, shell=True, capture_output=True)
     return p.returncode, p.stdout.decode('utf-8', 'replace'), p.stderr.decode('utf-8', 'replace')
@@ -18,13 +18,13 @@ for p in ['fabric-1.20.1/gradle.properties','CHANGELOG.md','CHANGELOG_ZH.md','re
     crlf = b.count(bytes([13,10])); lf = b.count(bytes([10])); crcrlf = b.count(bytes([13,13,10]))
     print('  %-52s bytes=%7d LF=%5d CRLF=%5d bareLF=%5d CRCRLF=%d' % (p, len(b), lf, crlf, lf-crlf, crcrlf))
 print('=== git status (my files) ===')
-rc, out, err = run('git -C F:\\MCProject\\astral_dice_multiloader status --porcelain -- fabric-1.20.1/gradle.properties CHANGELOG.md CHANGELOG_ZH.md release/1.5.0-hotfix work')
+rc, out, err = run('git -C D:\\MCProject\\astral_dice_multiloader status --porcelain -- fabric-1.20.1/gradle.properties CHANGELOG.md CHANGELOG_ZH.md release/1.5.0-hotfix work')
 print(out or '(clean)')
 print('=== git diff --stat (mine) ===')
-rc, out, err = run('git -C F:\\MCProject\\astral_dice_multiloader diff --stat -- fabric-1.20.1/gradle.properties CHANGELOG.md CHANGELOG_ZH.md')
+rc, out, err = run('git -C D:\\MCProject\\astral_dice_multiloader diff --stat -- fabric-1.20.1/gradle.properties CHANGELOG.md CHANGELOG_ZH.md')
 print(out)
 print('=== git diff gradle.properties ===')
-rc, out, err = run('git -C F:\\MCProject\\astral_dice_multiloader diff -U2 -- fabric-1.20.1/gradle.properties')
+rc, out, err = run('git -C D:\\MCProject\\astral_dice_multiloader diff -U2 -- fabric-1.20.1/gradle.properties')
 print(out)
 print('=== other three lines versions ===')
 for p in ['forge-1.20.1/gradle.properties','neoforge-1.21.1/gradle.properties','neoforge-26.1.2/gradle.properties']:

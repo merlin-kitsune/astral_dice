@@ -11,7 +11,7 @@
 |---|---|---|
 | **取数通道** | 未决：AutoJS 无 fabric-1.21.1 产物，CraftTweaker 待评（v1 §10 待拍板 1） | **已定**：AutoJS 自带 **Rhino 内核**为唯一主通道；CraftTweaker **否决**（§8.3）。风险 R1/R2 **关闭** |
 | **AutoJS 产物** | 仓内 vendor 只有 forge-1.20.1 / fabric-1.20.1 / neoforge-1.21.1 / neoforge-26.1 | 已有 `scripts/test/resources/mods/autojs/AutoJS-fabric-1.21.1-1.0.0.jar`（sha256 `f498cf4a9d8df3a26554d09b09ce615eb2badba08120964460703677c4822fa3`），PROVENANCE 有登记 |
-| **上游 target** | 「需要新克隆 + 新 target，约 1 个工作包」 | 上游 `F:/MCProject/AutoJS/targets/fabric-1.21.1` **已存在并构建成功**，其钉版可作本仓的对照证据（§6.2） |
+| **上游 target** | 「需要新克隆 + 新 target，约 1 个工作包」 | 上游 `D:/MCProject/AutoJS/targets/fabric-1.21.1` **已存在并构建成功**，其钉版可作本仓的对照证据（§6.2） |
 | **版本线** | 假设 `26.4-SNAPSHOT.5` | 各线现行 **`26.4-SNAPSHOT.6+<line>`**（n21 `gradle.properties:38`、fabric `gradle.properties:29`，v2 实读） |
 | **测试台** | 按 旧 shell 口径列改造点 | 旧 shell **已废弃**，口径 = `scripts/test/win/*.sh` + `scripts/test/mt_*.py`（§9 按此重列） |
 | **依赖钉版** | 2026-11-03 Modrinth 实查 | **2026-11-04 19:2x 代理恢复后已逐项复验**（25 个 slug 全通过，见 §6.4）：除 **Collective 8.75 → 8.77**（`JsrQpNp7` → `qSQaLB3S`）外，其余与 11-03 快照完全一致 |
@@ -124,7 +124,7 @@ fabric-1.21.1/
 
 ### 6.1 已由上游产物**实证**的三条（可当硬事实用）
 
-`F:/MCProject/AutoJS/targets/fabric-1.21.1/gradle.properties`（v2 实读）：
+`D:/MCProject/AutoJS/targets/fabric-1.21.1/gradle.properties`（v2 实读）：
 
 ```
 fabric_minecraft_version=1.21.1
@@ -230,7 +230,7 @@ PY
 
 | 项 | 证据 |
 |---|---|
-| 上游 target | `F:/MCProject/AutoJS/targets/fabric-1.21.1/`（Loom 1.10.5 / Gradle 8.14.4 / toolchain 21 / loader 0.20.1 / FAPI 0.116.17+1.21.1） |
+| 上游 target | `D:/MCProject/AutoJS/targets/fabric-1.21.1/`（Loom 1.10.5 / Gradle 8.14.4 / toolchain 21 / loader 0.20.1 / FAPI 0.116.17+1.21.1） |
 | 产物 | `scripts/test/resources/mods/autojs/AutoJS-fabric-1.21.1-1.0.0.jar`，sha256 `f498cf4a9d8df3a26554d09b09ce615eb2badba08120964460703677c4822fa3` |
 | mavenLocal 坐标 | `cc.sighs.autojs:AutoJS-fabric-1.21.1:1.0.0`（**groupId 仍写 `cc.sighs.autojs`**，只内容重编；PROVENANCE 已登记） |
 | 装载方式 | Loom `modRuntimeOnly` 解析期 intermediary→named（与 fabric-1.20.1 同路） |

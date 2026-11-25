@@ -2,7 +2,7 @@
 
 > 状态：本地预发布候选，未 push、未发布、未跑实机。本文记录 2026-11-19 主线与 dev 线 API 全量对齐后的最终形态、接线方式与验收读数。
 >
-> 仓库：`F:/MCProject/astral_dice_multiloader`（主模组，分支 `feature/mainline-full-parity`）与 `F:/MCProject/starengine`（库，同名分支）。
+> 仓库：`D:/MCProject/astral_dice_multiloader`（主模组，分支 `feature/mainline-full-parity`）与 `D:/MCProject/starengine`（库，同名分支）。
 >
 > 基线 tag：`mainline-parity-baseline-2026-11-19`。主模组基线 `ce6e85f4`（1.6.0-pre.1），库基线 `26ab1df`（1.2.0-pre.1）。
 

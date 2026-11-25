@@ -1,6 +1,6 @@
 
 import io
-p = r"F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/platform/client/gui/overlay/ForgeGui.java"
+p = r"D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/platform/client/gui/overlay/ForgeGui.java"
 raw = open(p, 'r', encoding='utf-8', newline='').read()
 t = raw.replace('\r\n', '\n')
 old = '''     * {@code net/minecraft/client/gui/Gui.java};括号内是 fabric 线**实际运行**映射

@@ -102,8 +102,8 @@ MT_VALIDATE_ALL: total=266 ok=257 fail=9 parse_error=0
 
 ```
 legacy field diffs (self-root normalized) = 0
-baseline root = F:\MCProject\astral_dice_multiloader\scripts\test\win   # 副本所在位置（归一化用）
-final    root = F:\MCProject\astral_dice_multiloader
+baseline root = D:\MCProject\astral_dice_multiloader\scripts\test\win   # 副本所在位置（归一化用）
+final    root = D:\MCProject\astral_dice_multiloader
 ```
 
 比对范围：`loader / subproject / root / run_dir / mods_dir / saves_dir / logs_dir / latest_log / debug_log / kubejs_log / kubejs_client_log / probe_log / crash_dir / shot_dir / client_world / server_world / task_build / task_client / task_server / task_gametest / pack_mods_dir / markers`（1.21.1 / 1.20.1 / 26.1.2 各一遍）。
@@ -288,7 +288,7 @@ rm: cannot remove 'fabric-1.20.1/__dsh_probe.txt': Permission denied      # exit
 ### 8.1 pwsh 组
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 
 # ① 三个改动文件的 CRLF / 裸 LF / BOM / 语法解析（期望：bare_lf=0 bare_cr=0 bom=False parse_errors=0）
 pwsh -NoProfile -NonInteractive -Command '
@@ -320,7 +320,7 @@ pwsh -NoProfile -NonInteractive -File scripts/test/mt.ps1 --side                
 ### 8.2 bash 组
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 
 # ① fabric 用例清单解析（期望：条目 16 个，side=server，EXIT=0，不启动游戏）
 bash scripts/test/win/mt.sh --version fabric-1.20.1 --side server --phase cases --allow-auto --dry-run

@@ -1,6 +1,6 @@
 # CurseForge 上传链路：发布前 dry-run 体检（1.5.0）
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`（本机 shell 实为 MSYS bash；pwsh 7 位于 `C:\Program Files\PowerShell\7\pwsh`）
+- 仓库：`D:\MCProject\astral_dice_multiloader`（本机 shell 实为 MSYS bash；pwsh 7 位于 `C:\Program Files\PowerShell\7\pwsh`）
 - 对象：`tools/curseforge_upload.py`（1446 行）+ `tools/curseforge.json`
 - 本次**没有**：跑 Gradle、启动 Minecraft、占用 25565/25585/25575、删除或移动任何文件、修改任何配置、发任何 CurseForge 写请求、访问网络。
 - dry-run 的离线性是脚本自述并已实测的：`PUSH_EPILOG` 写「dry-run 完全离线：只读 .curseforge/versions.json 缓存，不发任何请求」，实测输出头也印 `版本表 = 离线缓存 .curseforge\versions.json（4.6 天前；dry-run 不联网）`。
@@ -236,7 +236,7 @@ pick_changelog(ver, explicit)          # :630
 
 ### 7.4 命令模板（**未执行**；用移动而非删除，保留回滚）
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 mkdir -p .archive/1.5.0-prerelease
 # A 级
 mv "neoforge-1.21.1/build/libs/astral_dice-1.5.0-rc.6+neoforge_1.21.1.jar"  .archive/1.5.0-prerelease/
@@ -269,7 +269,7 @@ ls -1 neoforge-1.21.1/build/libs/*.jar forge-1.20.1/build/libs/*.jar \
 
 ### 8.1 dry-run（可随意重跑，零副作用）
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 
 # P0 两线（无需 --allow-p1）
 python tools/curseforge_upload.py push --dry-run \
@@ -346,7 +346,7 @@ python tools/curseforge_upload.py push --apply --allow-p1 \
 ## 10. 复现命令（本次实跑的全部动作）
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 # 盘点
 ls -l --time-style=long-iso neoforge-1.21.1/build/libs/ forge-1.20.1/build/libs/ \
                              neoforge-26.1.2/build/libs/ fabric-1.20.1/build/libs/

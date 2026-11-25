@@ -1,7 +1,7 @@
 # B28 · fabric-1.20.1 筹码/立牌常量与 forge 数值一致性对齐报告
 
 - 批次：**B28**（承接 B24，`porting/fabric-1.20.1/B24-LANG-DEDUP-DRIFT-REPORT.md` §2.3 D-N 14 条）
-- 日期：2026-11-01；仓库 `F:\MCProject\astral_dice_multiloader`；分支 `multi-main`
+- 日期：2026-11-01；仓库 `D:\MCProject\astral_dice_multiloader`；分支 `multi-main`
 - 权威基线：`forge-1.20.1`（P0 次基准）+ `neoforge-1.21.1`（P0 主基准）；`fabric-1.20.1` 为被对齐的移植线
 - 本批范围：**只改 fabric-1.20.1 的 java**；lang / recipes / patchouli / `tools/**` / `platform/**` / `mixin/**` / build 文件 / `fabric.mod.json` / `astral_dice.mixins.json` 全部未触碰
 - 纪律：未执行 commit / push / stash / add / checkout；未跑 Gradle；未启动游戏；改后逐文件 `bareLF = 0`、UTF-8 无 BOM

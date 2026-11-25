@@ -1,6 +1,6 @@
 # CurseForge 确定性 400 修复 + fabric hotfix 上传报告
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`，分支 `multi-main`，HEAD `9adfd9f3`
+- 仓库：`D:/MCProject/astral_dice_multiloader`，分支 `multi-main`，HEAD `9adfd9f3`
 - 时间：2026-11-02（本地 Asia/Hong_Kong）
 - 本轮**未提交任何东西**；他人未提交改动（`docs/agent/AGENTS-dsh-linux.md`、`docs/agent/AGENTS-full.md`、`docs/archive/card-recipes-2026-10-09/README.md`）未触碰。
 - 唯一被修改的受版本管理文件：`tools/curseforge_upload.py`（`git status --porcelain tools/` 只有这一行 ` M`）

@@ -65,7 +65,7 @@
 -Xms1G -Xmx4G … -Djava.net.preferIPv6Addresses=system -DlibraryDirectory=D:\.minecraft\libraries
 --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-exports jdk.naming.dns/com.sun.jndi.dns=java.naming
 net.neoforged.fml.startup.Client --username DevTester --version 26.1.2-NeoForge
---gameDir F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame --assetsDir D:\.minecraft\assets --assetIndex 30
+--gameDir D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame --assetsDir D:\.minecraft\assets --assetIndex 30
 --uuid 00000000000000000000000000000001 --accessToken 0 --clientId 0 --xuid 0 --versionType release
 --quickPlaySingleplayer=testworld --fml.neoForgeVersion 26.1.2.109 --fml.mcVersion 26.1.2 --fml.neoFormVersion 1
 ```

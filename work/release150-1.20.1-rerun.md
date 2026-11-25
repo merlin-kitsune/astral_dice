@@ -195,7 +195,7 @@ MT_CHANNEL: delegated_count=2
 | 23 | absent | 命令/选择器错误话术 0 命中 | PASS | 未出现（`win=case`） | 无变化 |
 | 24 | jar | models≥120 / recipes≥100 / entries≥1700 / signs≥25 | PASS | `models=158 recipes=125 entries=2032 signs=32` | **recipes=125**（新判据把 `recipe`/`recipes` 两个目录都数；上一轮未单列此值） |
 | 25 | crash | 无新增崩溃报告 | PASS | 基线 **6 个**（含 A1 崩溃 `crash-2026-11-02_04.06.40-fml.txt`） | **基线 +1**（A1 dev 形态崩溃进基线）；判定口径无变化 |
-| 26 | vision | `image=abyss_reagent_tooltip` | **DELEGATED** | 四道硬门全过（见 §9）：`VISION_PATH=F:\MCProject\astral_dice_multiloader\run\1.20.1\screenshots\abyss_reagent_tooltip.png` | **上一轮是「DELEGATED 通过」但其实无本轮证据**（图 mtime 03:24 < 窗口 03:28 且当轮截图 op 全失败）；本轮图 mtime 04:14:22.991 ≥ 04:14:20.057 |
+| 26 | vision | `image=abyss_reagent_tooltip` | **DELEGATED** | 四道硬门全过（见 §9）：`VISION_PATH=D:\MCProject\astral_dice_multiloader\run\1.20.1\screenshots\abyss_reagent_tooltip.png` | **上一轮是「DELEGATED 通过」但其实无本轮证据**（图 mtime 03:24 < 窗口 03:28 且当轮截图 op 全失败）；本轮图 mtime 04:14:22.991 ≥ 04:14:20.057 |
 | 27 | vision | `image=chip_shop_ui` | **DELEGATED** | 同上：`…\screenshots\chip_shop_ui.png` | 同上（上一轮 03:22:17.571 < 03:28；本轮 04:14:24.726 ≥ 04:14:20.057） |
 
 **合计：25 PASS + 2 DELEGATED**。两条 vision 的最终裁决权在 lead：

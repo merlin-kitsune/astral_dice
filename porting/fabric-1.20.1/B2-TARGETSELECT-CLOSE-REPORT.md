@@ -1,6 +1,6 @@
 # B2 缺陷 C-2 报告：fabric-1.20.1 补齐 TargetSelectClose 关闭包
 
-- 仓库：`F:/MCProject/astral_dice_multiloader`（Windows 原生 / Git Bash），分支 `multi-main`，HEAD `fd990c15`
+- 仓库：`D:/MCProject/astral_dice_multiloader`（Windows 原生 / Git Bash），分支 `multi-main`，HEAD `fd990c15`
 - 批次：B2 / 缺陷 C-2（服务端强拆选择会话时缺关闭包）
 - 日期：2026-11-01
 - 结论：**4 处源码改动全部落地，`:fabric-1.20.1:compileJava` 通过（含一次 `--rerun-tasks` 全量重编）；剩余仅「客户端是否真的退出选择模式」需实机确认。**
@@ -245,7 +245,7 @@ Reusing configuration cache.
 注: 某些输入文件使用了未经检查或不安全的操作。
 注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
 
-[Incubating] Problems report is available at: file:///F:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///D:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
 
 BUILD SUCCESSFUL in 4s
 1 actionable task: 1 executed

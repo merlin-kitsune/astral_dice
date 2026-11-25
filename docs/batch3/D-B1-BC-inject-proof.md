@@ -1,7 +1,7 @@
 # D-B1 — 方案 B（DynamicStackHandler#extractItem）与方案 C（CurioSlot#set）取证报告
 <!-- 历史记录：文中旧 shell 命令已于 2026-11-09 全部废弃，现用 bash 测试台（scripts/test/win/mt.sh）与 windows MCP，仅作溯源。 -->
 
-- 仓库:`F:\MCProject\astral_dice_multiloader`,分支 `multi-1.20.1-1.21.1`,HEAD `027e1e990ebfcaf8648553e6fd649381d7c7adc2`
+- 仓库:`D:\MCProject\astral_dice_multiloader`,分支 `multi-1.20.1-1.21.1`,HEAD `027e1e990ebfcaf8648553e6fd649381d7c7adc2`
 - 取证手段:Curios 缓存 jar 的 `javap -c -p`(两名:同名类在两版 jar 内**同构**)、MC/加载器反编译源码 jar 的 `Sources` 阅读(带行号)、本仓已构建产物 jar 的注解常量池核对。
 - 证据来源 jar:
   - `N`(1.21.1 NeoForge)= `C:\Users\xmace\.gradle\caches\modules-2\files-2.1\maven.modrinth\curios\yohfFbgD\418fcd42e3a7844c9bdc71c9b6401fdb3894e0c4\curios-yohfFbgD.jar`(Curios 5.x,NeoForge 变体)

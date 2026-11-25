@@ -166,7 +166,7 @@ $ ... gradlew.bat :fabric-1.20.1:compileJava --rerun-tasks --console=plain ... |
 注: 某些输入文件使用了未经检查或不安全的操作。
 注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
 
-[Incubating] Problems report is available at: file:///F:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///D:/MCProject/astral_dice_multiloader/build/reports/problems/problems-report.html
 
 BUILD SUCCESSFUL in 5s
 1 actionable task: 1 executed

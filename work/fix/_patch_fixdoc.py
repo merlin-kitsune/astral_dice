@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import io, sys
-P = r"F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/client/CombatPowerHud.java"
+P = r"D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/client/CombatPowerHud.java"
 old = """     * <p>气泡行的 y 也一并核过：{@code l2 = (height - 39) - 10}（offset 313-317），饱食度行被画时
      * {@code l2 -= 10}（offset 752 {@code iinc 18, -10}），随后
      * {@code l2 -= (getVisibleVehicleHeartRows(k5) - 1) * 10}（offset 804-822）。无载具血量时

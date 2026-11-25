@@ -1,7 +1,7 @@
 
 import re, os
 BT = chr(96)
-base = "F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice"
+base = "D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice"
 src = open(base + "/datagen/ModRecipeProvider.java", encoding="utf-8").read().splitlines()
 items = open(base + "/item/ModItems.java", encoding="utf-8").read()
 const2id = {}

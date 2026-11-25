@@ -1,6 +1,6 @@
 # B2-1 报告：事件契约层（6 个纯数据类型）
 
-批次 B2-1（事件体系移植第一块）。基线 `forge-1.20.1`（MC 1.20.1 + Forge 47.x，唯一蓝本）；目标 `fabric-1.20.1`（MC 1.20.1 + FAPI 0.92.12 + Loom，Mojang 映射，Java 17，`build.gradle:25` `JavaLanguageVersion.of(17)`）。仓库 `F:/MCProject/astral_dice_multiloader`，分支 `multi-main`；取证时点 `2026-11-01 18:1x +08:00`。
+批次 B2-1（事件体系移植第一块）。基线 `forge-1.20.1`（MC 1.20.1 + Forge 47.x，唯一蓝本）；目标 `fabric-1.20.1`（MC 1.20.1 + FAPI 0.92.12 + Loom，Mojang 映射，Java 17，`build.gradle:25` `JavaLanguageVersion.of(17)`）。仓库 `D:/MCProject/astral_dice_multiloader`，分支 `multi-main`；取证时点 `2026-11-01 18:1x +08:00`。
 本批**未跑 gradle、未启动游戏、未 commit**（整线当前因 `item/sign/LinglingSignManager` 缺失而编译失败，不属本批）；设计依据 `porting/fabric-1.20.1/B2-EVENT-RECON.md` §1（阶段 A）、§2（本批 0 条适用）、§8（R5 `ResourceLocation` 工厂）。
 
 ## 1 新增文件清单
@@ -92,7 +92,7 @@ public static final ResourceLocation RED_HEAT_WARNING, SWIFT_STRIDE, STORM_APPRO
 
 ## 6 复跑命令（只读）
 ```bash
-cd "F:/MCProject/astral_dice_multiloader"
+cd "D:/MCProject/astral_dice_multiloader"
 # 1) 逐字节等价（期望 6 行 IDENTICAL）
 for f in event/api/AstralEvent.java event/api/AstralEventEffect.java event/api/AstralEventPolarity.java \
          event/api/AstralEventTier.java event/api/AstralEventTrigger.java event/AstralEventIds.java; do

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, json, zipfile, re
-os.chdir(r'F:/MCProject/astral_dice_multiloader')
+os.chdir(r'D:/MCProject/astral_dice_multiloader')
 jar = 'fabric-1.20.1/build/libs/astral_dice-1.5.0-hotfix+fabric_1.20.1.jar'
 z = zipfile.ZipFile(jar)
 names = z.namelist()

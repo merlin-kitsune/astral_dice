@@ -1,7 +1,7 @@
 # B20B — 骰战吸收/黄心重对齐(D-10)与 /astralparty 实体清理命令(D-12)移植报告
 
 - 批次：B20B（B12 语义漂移审计 D-10 / D-12）
-- 分支：multi-main（工作树 `F:\MCProject\astral_dice_multiloader`）
+- 分支：multi-main（工作树 `D:\MCProject\astral_dice_multiloader`）
 - 蓝本：`forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/`
 - 目标：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/`
 - 审计原文：`porting/fabric-1.20.1/B12-DRIFT-AUDIT-REPORT.md`（D-10 :102-108、D-12 :115-120）
@@ -235,7 +235,7 @@ JAVAC_EXIT=0
 **那 1 条 REAL 的归因（不是本批）**：
 
 ```
-F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\java\com\merlinkitsune\astral_dice\network\VersionHandshake.java:259: error: cannot find symbol
+D:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\java\com\merlinkitsune\astral_dice\network\VersionHandshake.java:259: error: cannot find symbol
                 connection.disconnect(Component.literal(text));
                           ^
   symbol:   method disconnect(MutableComponent)
@@ -338,7 +338,7 @@ protected float actuallyHurt(float, DamageSource)              // 回写修改�
 ## 10. 复现本批结论的最小命令集
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 # 1) D-10 符号是否落地
 grep -n "PRE_HURT_ABSORPTION\|settleDiceDamage(target\|applyAlanaBigHit(LivingEntity\|compensateAbsorption\|onServerTickReconcilePhantoms" \
      fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/combat/DiceCombatEvents.java

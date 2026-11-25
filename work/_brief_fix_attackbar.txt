@@ -3,7 +3,7 @@
 不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出。
 动手前先加载 using-superpowers。
 
-仓库 `F:/MCProject/astral_dice_multiloader`，目标子项目 `fabric-1.20.1`。**只改 fabric 线**。先读定位报告 `work/recon/attack-icon-position.md`（已完成根因定位，含 `文件:行号` 证据）。
+仓库 `D:/MCProject/astral_dice_multiloader`，目标子项目 `fabric-1.20.1`。**只改 fabric 线**。先读定位报告 `work/recon/attack-icon-position.md`（已完成根因定位，含 `文件:行号` 证据）。
 
 ## 已确证的根因（直接用，不必重新论证）
 - 攻击条：`fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/client/CombatPowerHud.java:115` `int y = height - gui.rightHeight;`
@@ -34,4 +34,4 @@
 5. 收尾：按 PID 精确停掉本次启动的客户端与 wrapper（不要杀早于本次启动的 GradleDaemon），确认 25565/25585 释放。
 
 ## 输出
-报告 `F:/MCProject/astral_dice_multiloader/work/fix-fabric-attackbar-position.md`（中文）：改动摘要（`文件:行号`）、原版条件取证原文、构建结果、AutoJS 读数、截图与像素核验表、未确证项。最后一句话说清「陆地 / 水下两种状态的 y 是否都正确」。
+报告 `D:/MCProject/astral_dice_multiloader/work/fix-fabric-attackbar-position.md`（中文）：改动摘要（`文件:行号`）、原版条件取证原文、构建结果、AutoJS 读数、截图与像素核验表、未确证项。最后一句话说清「陆地 / 水下两种状态的 y 是否都正确」。

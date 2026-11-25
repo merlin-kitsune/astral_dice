@@ -13,11 +13,11 @@
 
 1. **一台机器、一种工作流**：DSH 直接在本机 Windows 工作树上动手 —— 没有第二个运行环境，也没有路径转译层。
 2. **测试台唯一口径 = bash + python**：Windows 宿主上的 bash 由 **MSYS2 / git bash** 提供（不要求 WSL），Linux 宿主用原生 bash；测试入口一律 `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`），静态守门一律 `python scripts/verify/*.py` / `python tools/*.py`。**不再新增任何独立的原生 shell 脚本资产**：旧的原生脚本测试台已于 2026-11-04 起作废（退役登记见 `docs/features/` 下的历史登记文件），文档与脚本里的旧脚本引用只作溯源、不作执行口径。
-3. **编译**：在**当前工作树根**执行 `./gradlew :<线>:classes|jar`（本分支工作树 = `F:\MCProject\astral_dice_multiloader-next`；主线工作树 = `F:\MCProject\astral_dice_multiloader`，两者不要混用）。
+3. **编译**：在**当前工作树根**执行 `./gradlew :<线>:classes|jar`（本分支工作树 = `D:\MCProject\astral_dice_multiloader-next`；主线工作树 = `D:\MCProject\astral_dice_multiloader`，两者不要混用）。
 4. **实机**：`bash scripts/test/win/mt.sh --version <线> --phase <env|launch|stop>`（在工作树根执行；Windows 宿主经 MSYS2 / git bash，Linux 宿主见 `docs/agent/AGENTS-dsh-linux.md`〈测试台现状（Linux）〉）。
 5. **产物投放**：以工作树 `build/libs` 为唯一来源，按线复制到 `run/<子项目名>/mods`，或**成对**投放两个 P0 整合包（`astral_dice-*.jar` + `starengine-*-<库版本>.jar`）；投完必须核 `sha256sum`（bash），别把同名当新构建。
    - **run 目录名 = 子项目名**（2026-11-12 用户改名）：`run/neoforge-1.21.1`、`run/forge-1.20.1`、`run/neoforge-26.1.2`、`run/fabric-1.20.1`、`run/fabric-1.21.1`；**不再有** `run/1.21.1` / `run/1.20.1` / `run/26.1.2` 这类裸版本号目录。fabric 两线实际运行目录仍是其子项目内的 `run/{client,server}`。产物投放、判线、停进程、日志读取一律按这个口径。
-6. **git**：一律用 git bash 的 `git`，命令写全 `git -C F:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
+6. **git**：一律用 git bash 的 `git`，命令写全 `git -C D:\MCProject\<工作树> <子命令>`，或先 `cd` 进工作树。
 7. **JDK**：`JAVA_HOME=C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改。
 8. **测试收尾必须关闭游戏进程（2026-10-18 用户裁决；2026-11-09 起终止动作由 Agent 执行）**：任何测试轮次（单条 / 全量 / 中断 / 失败）结束后，收尾分两步 —— ① `bash scripts/test/win/mt.sh --version <线> --phase stop` 只**发现并打印** `MT_STOP: PENDING pid=…`（脚本不终止任何进程）；② Agent 用 `ops_bash` 执行 `taskkill /F /PID <pid>` 终止这些 PID（用 `tasklist` / `jps -lvm` 核对 java 数量），随后**再跑一次** `bash scripts/test/win/mt.sh --version <线> --phase stop` 复核：必须输出 `MT_STOP: OK — 未发现本 repo 的 Minecraft 客户端`（25585/25565/25575 无 LISTENING 且无匹配 `jps -lvm` 行）。2026-11-12 实测 `mt.sh` **不接受** `--verify`（会 `MT_ERROR: 未知参数`），复核口径 = 再跑一次 stop。交付报告贴 `MT_STOP: OK` 原文 + `tasklist` / `jps -lvm` 的 `java` 数量核对。**禁止**让 Minecraft 客户端无人观察地驻留 —— 它持续占用 CPU/GPU 并污染下一轮冷启动的前置状态。唯一例外：用例 `on_fail=keep_game_running` 落了 `.mt_keep_alive-<版本>` 的取证现场，此时在报告里说明保留原因与路径，取证完成后立即按上述两步收停。
 9. **命令通道 = `ops_bash` + 裸解释器名（2026-11-07 用户裁决）**：一切命令在 `run_code` 里用 `tools.ops_bash(...)` 执行，命令体里的 `bash` / `python` 一律写**裸名**，由 `ops_bash` 自行解析（Windows = PATH 上的 MSYS2 / git-bash；python = PATH 上的 **3.12.16**；Linux = 系统 bash / python3）。⛔ **禁止**写解释器绝对路径（`C:/msys64/usr/bin/bash`、`~/.dsh/dsh-runtimes/**/python.exe` 等）—— `ops_bash` 无法指定解释器，绝对路径只会让命令落到别的运行时。python 脚本**只依赖标准库**，缺库改实现，不得改指别的解释器。
@@ -177,8 +177,8 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.265 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.1.47 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- P0 线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.126 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,五子项目同树)。
-- P1 线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），各线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
+- P0 线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.126 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `D:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,五子项目同树)。
+- P1 线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `D:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），各线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `python tools/loom_embedded_jars.py --apply`（把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
@@ -194,11 +194,11 @@ When extending this workspace:
 本仓存在**同级的多个 git worktree**，它们的磁盘路径与「会话工作目录」经常不一致，踩过一次真实事故（改动被写到另一个工作树），故固化两条硬规则：
 
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
-   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**各线**（P0 三线 + P1 两线），属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
+   - 当前两个常驻工作树：**主线** `D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**各线**（P0 三线 + P1 两线），属**封包**状态）与 **2.0.0 开发线** `D:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `D:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
-   - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
+   - 核验方式（收尾必做）：`git -C D:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C D:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
-   - 规则：跨工作树的任务**写文件一律用绝对路径**（`F:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
+   - 规则：跨工作树的任务**写文件一律用绝对路径**（`D:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
    - 自查：改动后对**另一个**工作树跑一次 `git status --short`，确认没有意外文件。
 
 ## 二次验证规范（Independent Second-Pass Verification）— 必须遵守（2026-10-01 用户裁决）
@@ -271,7 +271,7 @@ When extending this workspace:
 
 - **背景（实测）**：本代理的命令通道是 `run_code` → `tools.ops_bash(...)`；Windows 宿主的 bash 由 **MSYS2 / git bash** 提供，原生 Linux 宿主用系统 bash。旧口径「一律使用平台原生 shell 执行脚本」是 2026-09-19 的临时裁决，现已废止。
 - **规则**：
-  1. 命令一律写成 **bash 形态**：`./gradlew :<线>:<task>`、`bash scripts/test/win/mt.sh …`、`python tools/xxx.py`、`git -C <工作树> …`；路径用 POSIX 形态（`/f/MCProject/...`），不要写 `F:` 反斜杠路径。
+  1. 命令一律写成 **bash 形态**：`./gradlew :<线>:<task>`、`bash scripts/test/win/mt.sh …`、`python tools/xxx.py`、`git -C <工作树> …`；路径用 POSIX 形态（`/d/MCProject/...`），不要写 `D:` 反斜杠路径。
   2. 多行 / 含引号 / 含 `$` 的命令**先落盘成脚本再跑**：`bash temp/xxx.sh`、`python temp/xxx.py`（脚本放 `temp/`，见「工作树与路径纪律」）；`ops_bash` 会拒掉不可解析的内联串（`analysis.strict-unparseable`）。
   3. 本仓既有独立原生 shell 脚本 **一律作废**：不执行、不新增、不据此改写文档；退役登记见 `docs/features/` 下的历史登记文件，文档里残留的旧脚本引用只作历史溯源。
   4. 测试台唯一入口 = `bash scripts/test/win/mt.sh --version <线> --phase <env|build|launch|cases|report|stop>`（Linux：`bash scripts/test/linux/{env,launch,stop}.sh`）；守门脚本 = `python tools/*.py` / `bash scripts/verify/*.sh`。

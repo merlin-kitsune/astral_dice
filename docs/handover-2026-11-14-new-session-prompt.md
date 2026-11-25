@@ -4,7 +4,7 @@
 
 ## 一、当前事实（2026-11-14 01:30 快照，接手后必须实读复核）
 
-- 工作树：F:/MCProject/astral_dice_multiloader-next
+- 工作树：D:/MCProject/astral_dice_multiloader-next
 - 分支：multi-dev-next
 - HEAD：43f821adf0779320e2efe752aefa76cfd5711eb7
 - origin/multi-dev-next：同哈希（未 push 新提交）
@@ -16,7 +16,7 @@
   - 1.20.1 astral_dice-26.4-SNAPSHOT.32+forge_1.20.1.jar，SHA-256 9aa7b89dc525ce2b33c58ce411344afcfec469ba04f3271b46ec669e34818cfc
   - 26.1.2 astral_dice-26.4-SNAPSHOT.32+neoforge_26.1.2.jar，SHA-256 b1646981ca216380104ef0bbc048dcba8996708f3b3fbe49ecc1439380fee28a
 - Fabric 两线没有 .32 产物（build/libs 最后 .30）；P0 .32 没有 .sha256；根 build/libs 混有 .24 / .30 / .32，不是发布集。
-- 运行态：25565 / 25575 / 25585 无 LISTENING；F:/MCProject/.agent-locks/ 不存在；只剩 3 个 Gradle daemon java（22368 / 22392 / 31780）。没有实机在跑。
+- 运行态：25565 / 25575 / 25585 无 LISTENING；D:/MCProject/.agent-locks/ 不存在；只剩 3 个 Gradle daemon java（22368 / 22392 / 31780）。没有实机在跑。
 
 ## 二、先读什么
 
@@ -35,7 +35,7 @@ git rev-parse HEAD
 git status --short
 grep -H '^mod_version' */gradle.properties
 netstat -ano | grep -E ':(25565|25575|25585) .*LISTENING'
-ls -la F:/MCProject/.agent-locks 2>&1
+ls -la D:/MCProject/.agent-locks 2>&1
 ~~~
 
 然后用一段话回报：

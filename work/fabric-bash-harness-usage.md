@@ -1,7 +1,7 @@
 # fabric-1.20.1 发布验收 · bash 编排层用法（静态准备版，2026-11-02）
 
 > 事实源：`scripts/test/win/` 下的 `README.md` / `mt.sh` / `env.sh` / `launch.sh` / `stop.sh` / `live.sh` / `lib/common.sh` / `lib/fabric.sh` / `lib/phases.sh`，
-> 以及 `scripts/test/mt_case.ps1`。本文的命令均以仓库根 `F:/MCProject/astral_dice_multiloader`（git bash 视角 `/f/...`）为 cwd。
+> 以及 `scripts/test/mt_case.ps1`。本文的命令均以仓库根 `D:/MCProject/astral_dice_multiloader`（git bash 视角 `/d/...`）为 cwd。
 > 本文为**静态核实**（读脚本 + dry-run + 只读探测）；除 dry-run 外未启动任何游戏、未跑 Gradle。
 
 ---
@@ -39,7 +39,7 @@
 ### Step 0 · 环境自检（只读，可随时跑）
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 bash scripts/test/win/env.sh --version fabric-1.20.1
 ```
 

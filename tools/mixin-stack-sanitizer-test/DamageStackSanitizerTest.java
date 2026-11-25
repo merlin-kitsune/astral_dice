@@ -9,7 +9,7 @@ import com.merlinkitsune.astral_dice.fixes.DamageStackSanitizer;
  *
  * <p>本测试直接编译真实的 {@code DamageStackSanitizer.java}（它只依赖 JDK）并调用它，不复制任何逻辑。
  *
- * <p>独立可复现的运行命令（在仓库根 F:\MCProject\astral_dice_multiloader 执行）：
+ * <p>独立可复现的运行命令（在仓库根 D:\MCProject\astral_dice_multiloader 执行）：
  * <pre>
  * 旧调用：tools\run_mixin_stack_sanitizer_test.py
  * </pre>

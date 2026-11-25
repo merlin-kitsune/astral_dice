@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | `F:/MCProject/astral_dice_multiloader`（远端 `https://github.com/merlin-kitsune/astral_dice`） |
+| 仓库 | `D:/MCProject/astral_dice_multiloader`（远端 `https://github.com/merlin-kitsune/astral_dice`） |
 | 唯一工作流 | `.github/workflows/build.yml`（437 行，1 job `build`，21 step） |
 | 调查方式 | 只读取证；未改任何文件、未 commit/push、未建或移 tag、未触碰 Release / CurseForge、未启动游戏、未跑 Gradle |
 | 取证时间 | 2026-11-02 18:57–19:10（Asia/Hong_Kong） |

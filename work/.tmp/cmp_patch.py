@@ -1,6 +1,6 @@
 
 import os, subprocess, hashlib, shutil, glob
-root = r"F:/MCProject/astral_dice_multiloader"
+root = r"D:/MCProject/astral_dice_multiloader"
 src = os.path.join(root, "fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/platform/client/gui/overlay/ForgeGui.java")
 raw = open(src, encoding="utf-8", newline="").read()
 t = raw.replace("\r\n", "\n")

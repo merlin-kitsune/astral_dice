@@ -101,7 +101,7 @@ function b3TokenFromLog() {
     try {
         if (FBX3_Files == null || FBX3_Paths == null) return -1;
         var cands = ['logs/latest.log', 'run/1.21.1/logs/latest.log',
-            'F:/MCProject/astral_dice_multiloader/run/1.21.1/logs/latest.log'];
+            'D:/MCProject/astral_dice_multiloader/run/1.21.1/logs/latest.log'];
         for (var i = 0; i < cands.length; i++) {
             var fp = FBX3_Paths.get(cands[i]);
             if (!FBX3_Files.exists(fp)) continue;

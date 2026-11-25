@@ -4,7 +4,7 @@
 > 生成时间：2026-11-01，来自 Linux 真机会话
 
 ```text
-你是 DSH，宿主是 Windows 原生（git bash + PowerShell 7）。仓库在 F:\MCProject\astral_dice_multiloader（同一块 NTFS 盘的 Linux 侧是 /mnt/f/MCProject/astral_dice_multiloader，两边是同一份文件）。
+你是 DSH，宿主是 Windows 原生（git bash + PowerShell 7）。仓库在 D:\MCProject\astral_dice_multiloader（同一块 NTFS 盘的 Linux 侧是 /mnt/d/MCProject/astral_dice_multiloader，两边是同一份文件）。
 
 先做三件事，再动手：
 1) 读 docs/agent/AGENTS-dsh.md（Windows 规则正本）与 AGENTS.md 的共同红线。核心口径：测试台唯一口径是 PowerShell 7（pwsh -NoProfile -File <绝对路径>），不用 Windows PowerShell 5.1、不写 .sh；编译用 gradlew.bat :<线>:classes|jar；实机用 pwsh -NoProfile -File scripts\test\mt.ps1 --version <线> --phase <env|run|stop>；每轮测试收尾必须 --phase stop --force，并在报告里贴 MT_STOP: OK 与 Get-Process java 计数。

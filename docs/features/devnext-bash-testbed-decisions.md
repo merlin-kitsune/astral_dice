@@ -286,12 +286,12 @@ Indium（用户点名要求的 Sodium ↔ Fabric Rendering API 兼容层）**本
 
 ### 12.2 AutoJS：从新上游重编 + 保持 groupId
 
-- 上游 `F:/MCProject/AutoJS`（分支 `fabric-1.21.1` @ `67b585e`）已把包根 `cc.sighs.autojs` → `com.sighs.autojs`；
+- 上游 `D:/MCProject/AutoJS`（分支 `fabric-1.21.1` @ `67b585e`）已把包根 `cc.sighs.autojs` → `com.sighs.autojs`；
  本仓沿用既定口径「**Maven groupId 仍写 `cc.sighs.autojs`**，只重编内容」，artifact version 仍 `1.0.0`。
 - target 引脚：neoforge-1.21.1 kubejs 379→**381**、rhino `2101.2.7-build.81` → **`2101.2.8-build.91`**；
  neoforge-26.1 kubejs 8.0.6→**8.0.8**；forge/fabric-1.20.1 rhino `2001.2.2-build.17` → **`2001.2.3-build.10`**。
 - 构建（targets **不是** Gradle 子项目，必须 `-p`）：
- `cd /f/MCProject/AutoJS && sh ./gradlew -p targets/<t> build -x test -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897`
+ `cd /d/MCProject/AutoJS && sh ./gradlew -p targets/<t> build -x test -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897`
  ⇒ 四个 target 全 BUILD SUCCESSFUL。
 - 发布：`PYTHONIOENCODING=utf-8 python scripts/test/tools/publish_autojs_maven.py --force`
  ⇒ `MT_AUTOJS_MAVEN_RESULT: OK published=2 skipped=1 failed=0`；

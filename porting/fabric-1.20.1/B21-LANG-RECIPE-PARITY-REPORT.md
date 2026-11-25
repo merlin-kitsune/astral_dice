@@ -1,6 +1,6 @@
 # B21 — fabric-1.20.1 语言缺口 + 掉落/合成配方缺口 对齐报告
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`
+- 仓库：`D:\MCProject\astral_dice_multiloader`，分支 `multi-main`
 - 基准（蓝本）：`forge-1.20.1`
 - 目标：`fabric-1.20.1`
 - 批次纪律：只改 3 个 lang 文件 + 新增 9 个配方文件；未动任何 .java、未动 `tools/**`、未动 `patchouli_books/**`；未 commit / push / stash / add / checkout；未跑 gradle、未启动游戏。

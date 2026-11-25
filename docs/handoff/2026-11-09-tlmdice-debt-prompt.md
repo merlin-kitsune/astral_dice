@@ -1,6 +1,6 @@
 # 交给 TLMDice 会话的欠账处理 prompt（2026-11-09）
 
-> 复制下面整段即可。上游仓库：`F:/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`）；
+> 复制下面整段即可。上游仓库：`D:/MCProject/astral_dice_multiloader-next`（分支 `multi-dev-next`）；
 > 本 prompt 依据上游 `26.4-SNAPSHOT.7`（含 `83e601ce` / `ed46bf8b` / `047cfce4` 之后的 HEAD）。
 
 ---

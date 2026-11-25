@@ -1,6 +1,6 @@
 # Waystone 联动结论修正：6 份发布文档修订记录（1.5.0）
 
-日期：2026-11-02　工作树：`F:/MCProject/astral_dice_multiloader`（Windows）
+日期：2026-11-02　工作树：`D:/MCProject/astral_dice_multiloader`（Windows）
 范围：把上一批（`work/release-docs-waystone-update.md` 记录的 6 个文件）里「NeoForge 26.1.2 上「跃迁引擎 × Waystone（传送石碑）」联动注册失败 / 功能缺席」的结论，改为**已通过 Balm 事件通道注册成功、功能与 1.21.1 一致**，并保留「为什么不能走 NeoForge 总线」作为实现差异记录。
 
 ## 0. 结论一句话

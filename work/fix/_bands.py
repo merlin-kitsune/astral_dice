@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, os
-sys.path.insert(0, r"F:/MCProject/astral_dice_multiloader/work/fix")
+sys.path.insert(0, r"D:/MCProject/astral_dice_multiloader/work/fix")
 import numpy as np
 from PIL import Image
 import _pix

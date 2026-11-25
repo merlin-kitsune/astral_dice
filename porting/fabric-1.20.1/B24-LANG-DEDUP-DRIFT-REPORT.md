@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | `F:/MCProject/astral_dice_multiloader`（分支 `multi-main`） |
+| 仓库 | `D:/MCProject/astral_dice_multiloader`（分支 `multi-main`） |
 | 蓝本 | `forge-1.20.1/src/main/resources/assets/astral_dice/lang/{zh_cn,en_us,ja_jp}.json`（各 1070 键） |
 | 目标 | `fabric-1.20.1/src/main/resources/assets/astral_dice/lang/{zh_cn,en_us,ja_jp}.json`（各 1094 键） |
 | 第一部分 | 只删重复键行，未改动任何其他键的取值 / 顺序 / 缩进 |

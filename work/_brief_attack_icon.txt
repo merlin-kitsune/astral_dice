@@ -3,7 +3,7 @@
 不要使用任何人设 / 角色扮演 / 语气修饰 / 昵称自称，按你的职业身份以中性技术口吻输出。
 动手前先加载 using-superpowers，并按 systematic-debugging 的四阶段走（本任务只到 Phase 1–2：根因 + 差异对比 + 候选修复方案，**不要动代码**）。
 
-仓库 `F:/MCProject/astral_dice_multiloader`（四线同树：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1）。
+仓库 `D:/MCProject/astral_dice_multiloader`（四线同树：neoforge-1.21.1 / forge-1.20.1 / neoforge-26.1.2 / fabric-1.20.1）。
 
 ## 现象（用户截图，fabric-1.20.1 实机）
 血条那一行：左侧是原版爱心（10 颗），右侧紧跟着一排**剑图标**（约 10 个，红色小剑），它们**位置不对**——那排剑画在了本该属于饥饿条/右侧区域的位置，与血条同一行且整体偏下/偏右，视觉上像是「贴错锚点」。血条正下方还有一条暗色空条。
@@ -22,4 +22,4 @@
 - 别碰 `astral_dice_multiloader-next`。
 
 ## 输出
-报告写到 `F:/MCProject/astral_dice_multiloader/work/recon/attack-icon-position.md`（中文，含代码原文片段与 `文件:行号`、四线差异表、判定分级、候选方案）。最后一句话给出你认为最可能的单一根因。
+报告写到 `D:/MCProject/astral_dice_multiloader/work/recon/attack-icon-position.md`（中文，含代码原文片段与 `文件:行号`、四线差异表、判定分级、候选方案）。最后一句话给出你认为最可能的单一根因。

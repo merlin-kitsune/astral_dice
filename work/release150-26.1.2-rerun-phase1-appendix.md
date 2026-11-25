@@ -87,7 +87,7 @@ lead 的修复（主报告 §3.1/§3.2）：补回 `rhino` 与 `better-advanced-
 `dry-run`（`python run/26.1.2/.tmp/prodlaunch.py --quickplay testworld --log run/26.1.2/.tmp/prod-run.log --dry-run`，exit 0）关键行：
 
 ```
-gamedir   : F:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame
+gamedir   : D:\MCProject\astral_dice_multiloader\run\26.1.2\prodgame
 classpath entries: 102 missing: 0
 unresolved placeholders: none
 argv entries: 48 cmd head: C:\Program Files\Zulu\zulu-25\bin\java.exe -Xms1G -Xmx4G …

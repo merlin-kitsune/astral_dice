@@ -1,13 +1,13 @@
 {
   "case_id": "EFFECT-APPLY-fabric-1.21.1",
-  "title": "自定义效果可从运行期读到：/effect give @a astral_dice:king_power 600 1 之后，遍历 player.getActiveEffects() 用 BuiltInRegistries.MOB_EFFECT.getKey(holder.value()) 取注册名 == astral_dice:king_power、amplifier == 1、duration ∈ [590,600]，且该实例的 MobEffect 就是 ModEffects.KING_POWER 注册对象；AutoJS.state() 的 JSON 里同样出现该 id 与 amplifier。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/ModEffects.java:34（king_power 注册）；F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/KingPowerEffect.java（纯 MobEffect 子类，无 tick/无属性修饰，施加即稳定）。",
+  "title": "自定义效果可从运行期读到：/effect give @a astral_dice:king_power 600 1 之后，遍历 player.getActiveEffects() 用 BuiltInRegistries.MOB_EFFECT.getKey(holder.value()) 取注册名 == astral_dice:king_power、amplifier == 1、duration ∈ [590,600]，且该实例的 MobEffect 就是 ModEffects.KING_POWER 注册对象；AutoJS.state() 的 JSON 里同样出现该 id 与 amplifier。证据：fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/effect/ModEffects.java:34（king_power 注册）；D:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/KingPowerEffect.java（纯 MobEffect 子类，无 tick/无属性修饰，施加即稳定）。",
   "version": "fabric-1.21.1",
   "channel": "autojs",
   "on_fail": "continue",
   "steps": [
     {
       "op": "note",
-      "text": "取值方式：不用 Holder 查找，直接遍历 getActiveEffects() 再对照注册表键（1.21 的 MobEffectInstance#getEffect() 返回 Holder<MobEffect>，故取 .value() 再喂 BuiltInRegistries.MOB_EFFECT.getKey）。AutoJS.state() 的 effects[].id 来自 McApi.vanilla().effectId，也是同一注册名（temp/AutoJS-src/common/src/main/java/com/sighs/autojs/neoforge/script/PlayerOps.java:118-129），所以两路交叉印证。king_power 是 starengine 里的纯 MobEffect 子类（F:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/KingPowerEffect.java 全文仅构造器 super(BENEFICIAL, color)），因此 amplifier/duration 会原样保留、不被 tick 逻辑改写。自恢复：effect clear @a + clear @a。"
+      "text": "取值方式：不用 Holder 查找，直接遍历 getActiveEffects() 再对照注册表键（1.21 的 MobEffectInstance#getEffect() 返回 Holder<MobEffect>，故取 .value() 再喂 BuiltInRegistries.MOB_EFFECT.getKey）。AutoJS.state() 的 effects[].id 来自 McApi.vanilla().effectId，也是同一注册名（temp/AutoJS-src/common/src/main/java/com/sighs/autojs/neoforge/script/PlayerOps.java:118-129），所以两路交叉印证。king_power 是 starengine 里的纯 MobEffect 子类（D:/MCProject/starengine_next/common/src/main/java/com/merlinkitsune/starengine/effect/KingPowerEffect.java 全文仅构造器 super(BENEFICIAL, color)），因此 amplifier/duration 会原样保留、不被 tick 逻辑改写。自恢复：effect clear @a + clear @a。"
     },
     {
       "op": "eval_js",

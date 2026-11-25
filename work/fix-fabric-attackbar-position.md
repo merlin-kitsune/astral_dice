@@ -1,6 +1,6 @@
 # fabric-1.20.1 攻击力条 y 坐标缺陷修复报告
 
-- 仓库：F:/MCProject/astral_dice_multiloader（分支 multi-main）
+- 仓库：D:/MCProject/astral_dice_multiloader（分支 multi-main）
 - 目标子项目：fabric-1.20.1（**只改本线**）
 - 缺陷：攻击力条比另三线（forge-1.20.1 / neoforge-1.21.1 / neoforge-26.1.2）**高出一整行（10 GUI px）**
 - 修复方案：**方案 C** —— 攻击条基准按「原版这一帧是否画气泡行」动态取 59 / 49
@@ -211,7 +211,7 @@ var FT  = Java.loadClass("net.minecraft.tags.FluidTags");
    - 未动 `neoforge-26.1.2` / `neoforge-1.21.1` / `forge-1.20.1`、`docs/agent/*`、`models/*`。
    - 未 commit / push / tag，未发 CurseForge。
    - 期间仓库 HEAD 由他人推进（`be6bc10e` → `2bc97366`；工作树本就含大量他人在改的文件），本任务只碰上述 3 个 fabric 源码文件。
-   - `F:/MCProject/.agent-locks/dsh.lock` 为本会话写入，收尾删除。
+   - `D:/MCProject/.agent-locks/dsh.lock` 为本会话写入，收尾删除。
 
 ---
 

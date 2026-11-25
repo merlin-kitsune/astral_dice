@@ -1,7 +1,7 @@
 # B1-SCREEN-CARD 移植报告（基线 forge-1.20.1 → 目标 fabric-1.20.1）
 
 批次：B1-SCREEN-CARD（卡牌商店 GUI + 客户端状态，本仓最大单个 UI 文件 2151 行）。
-仓库：`F:/MCProject/astral_dice_multiloader`，目标线 `fabric-1.20.1`（MC 1.20.1 + Fabric API 0.92.12 + Loom，官方 Mojang 映射，Java 17）。
+仓库：`D:/MCProject/astral_dice_multiloader`，目标线 `fabric-1.20.1`（MC 1.20.1 + Fabric API 0.92.12 + Loom，官方 Mojang 映射，Java 17）。
 
 ## 0. 结论
 

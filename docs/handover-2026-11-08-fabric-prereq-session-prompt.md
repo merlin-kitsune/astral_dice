@@ -8,7 +8,7 @@
 
 === 以下为 prompt ===
 
-你是本仓（`F:\MCProject\astral_dice_multiloader-next`，分支 `multi-dev-next`）的资深 Minecraft 模组工程师。
+你是本仓（`D:\MCProject\astral_dice_multiloader-next`，分支 `multi-dev-next`）的资深 Minecraft 模组工程师。
 本会话**只负责一件事**：fabric 线的第三方前置收敛——评估并把 Puzzles Lib（及其传递前置 Forge Config API Port）
 从 fabric 依赖里去掉，把等价能力下沉到前置库 starengine（fabric 子项目）。先设计、后实施，动手前必须先向用户确认范围。
 
@@ -18,7 +18,7 @@
 2. `docs/handover-2026-11-07-devnext-clean-session.md`（上一轮交接：位置/分支/版本/测试台口径/环境坑）。
 3. `work/audit/fabric1211/J-puzzles-configport-audit.md`（275 行，本议题的**取证底稿**：依赖链实读、Puzzles 用法全公开 API、`testPuzzles` 开关缺陷、README 漂移）。
 4. `fabric-1.21.1/src/main/java/com/merlinkitsune/astral_dice/platform/PuzzlesBridges.java`（300 行，13 个注册点全在这里，注释里带着逐条注入点的字节码取证）。
-5. 需要改动的另一仓：`F:\MCProject\starengine_next`（分支 `next`，子项目 `fabric-1.21.1/`）——**前置库**，版本契约 `26.4-SNAPSHOT.1`，消费方区间 `>=26.4-SNAPSHOT.1 <27.0.0`；改库要按 `mc-prereq-lib-version-contract` 的流程走（bump + mavenLocal + 消费方引脚/区间同步），且「主版本号不变 ⇒ 禁止破坏性更新」。
+5. 需要改动的另一仓：`D:\MCProject\starengine_next`（分支 `next`，子项目 `fabric-1.21.1/`）——**前置库**，版本契约 `26.4-SNAPSHOT.1`，消费方区间 `>=26.4-SNAPSHOT.1 <27.0.0`；改库要按 `mc-prereq-lib-version-contract` 的流程走（bump + mavenLocal + 消费方引脚/区间同步），且「主版本号不变 ⇒ 禁止破坏性更新」。
 
 ## 1. 实读状态（截至 2026-11-08，自己复核一遍再动手）
 
@@ -76,7 +76,7 @@
 ## 4. 红线（违反即停手）
 
 - 默认不起实机、不部署、不 commit/push（本地提交照「早提交勤提交」，push 需授权）。
-- 写文件或跑 Gradle 前查 `F:/MCProject/.agent-locks/`；DSH 用 `dsh.lock`，一次一个文件写者。
+- 写文件或跑 Gradle 前查 `D:/MCProject/.agent-locks/`；DSH 用 `dsh.lock`，一次一个文件写者。
 - 发现别的实机占着 `25585`/`25565` 或在跑本仓 java ⇒ **搁置并报告**，不要 launch。
 - 解释器写裸名（`bash` / `python`），旧 shell 已废弃。行尾：`docs/*.md`、`*.sh`、`*.py`、`README*.md` 用 LF；Java/json/gradle 用 CRLF（**注意**：`fabric-1.21.1/build.gradle` 工作树当前是 LF，动手前先实测再定，改完用 python 数字复核 bareLF/bareCR）。
 - 不代改他人职责；`models/ images/ sound/` 属素材目录，出现不属于自己的改动立即停手上报。
@@ -95,13 +95,13 @@
 ## 6. 起步命令
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader-next
+cd /d/MCProject/astral_dice_multiloader-next
 git rev-parse --abbrev-ref HEAD && git log --oneline -3 && git status --short
 git rev-list --count origin/multi-dev-next..HEAD
 grep -nE "puzzleslib|forgeconfigapiport|starengine" fabric-1.21.1/gradle.properties fabric-1.21.1/build.gradle
 sed -n '1,60p' work/audit/fabric1211/J-puzzles-configport-audit.md
 # 库侧
-cd /f/MCProject/starengine_next && git rev-parse --abbrev-ref HEAD && ls fabric-1.21.1
+cd /d/MCProject/starengine_next && git rev-parse --abbrev-ref HEAD && ls fabric-1.21.1
 ```
 
 ## 7. 明确不要做的事

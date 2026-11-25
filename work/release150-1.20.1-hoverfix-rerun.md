@@ -1,6 +1,6 @@
 # RELEASE150 · forge-1.20.1 · 1.5.0 实机复跑与 hover 判据修复报告
 
-- 仓库：F:/MCProject/astral_dice_multiloader（forge-1.20.1 线）
+- 仓库：D:/MCProject/astral_dice_multiloader（forge-1.20.1 线）
 - 复跑时段：2026-11-02 05:03:48 启动 → 05:05:30 拍完第三张图（Asia/Hong_Kong）
 - 本轮判定：**MT_CASE_RESULT: RELEASE150-1.20.1 = PASS**
   - 27 个执行步（step 5–31）全部 PASS

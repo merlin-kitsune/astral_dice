@@ -2,7 +2,7 @@
 
 - 验收对象：`neoforge-26.1.2/build/libs/astral_dice-1.5.0+neoforge_26.1.2.jar`
   （2,875,237 B，sha256 `DD22295C7C4036AE0CB95A2CC5B861DE30F5CBBF4E7A8859211830874DAC53A1`）
-- 工作树：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`，验收期间未提交任何改动）
+- 工作树：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`，验收期间未提交任何改动）
 - 运行实例：`run/26.1.2/prodgame`（生产形态：raw java 启动，非 Gradle run）
 - 用例：`scripts/test/cases/RELEASE150-26.1.2.json`（31 steps / 27 asserts）
 - 验收窗口：2026-11-02 03:33（启动）→ 03:45:19（用例决定性运行结束）→ 03:52 前置收停
@@ -42,11 +42,11 @@
 netstat -ano | findstr LISTENING
 
 # 1) harness 路径接线（先看计划，再 -Apply；幂等）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\run\26.1.2\.tmp\prep-harness-paths.ps1
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\run\26.1.2\.tmp\prep-harness-paths.ps1 -Apply
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\run\26.1.2\.tmp\prep-harness-paths.ps1
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\run\26.1.2\.tmp\prep-harness-paths.ps1 -Apply
 
 # 2) 产物换入（rc.7 → 1.5.0 GA；换完核 sha256）
-pwsh -NoProfile -File F:\MCProject\astral_dice_multiloader\run\26.1.2\.tmp\_probe_swap_jar.ps1
+pwsh -NoProfile -File D:\MCProject\astral_dice_multiloader\run\26.1.2\.tmp\_probe_swap_jar.ps1
 
 # 3) 生产形态启动（先 dry-run 看 ARG|，再实启动）
 python run/26.1.2/.tmp/prodlaunch.py --dry-run
@@ -217,14 +217,14 @@ MT_VALIDATE: OK — RELEASE150-26.1.2      (exit 0，改动前后各跑一次均
 
 ## 5. 截图清单（本次运行新生成）
 
-目录：`F:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\`（`Mt.Paths.psm1` 固定截图根）。
+目录：`D:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\`（`Mt.Paths.psm1` 固定截图根）。
 目录文件数：跑前 1,186 → 现 1,190（新增 = 3 张 PNG ＋ 1 个 `.mt_shots.json.bak-before-release150-run`；无删除）。
 
 | tag | 绝对路径 | 字节 | mtime (UTC) | sha256（前 16 位） |
 |---|---|---|---|---|
-| abyss_reagent_tooltip | `F:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\abyss_reagent_tooltip.png` | 157,975 | 2026-11-01T19:45:03.242Z | `300581BFDDE6714E` |
-| chip_shop_ui | `F:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\chip_shop_ui.png` | 131,150 | 2026-11-01T19:45:04.875Z | `DE0EBCDB578910C8` |
-| release150_guide | `F:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\release150_guide.png` | 109,430 | 2026-11-01T19:45:06.474Z | `124882558347864D` |
+| abyss_reagent_tooltip | `D:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\abyss_reagent_tooltip.png` | 157,975 | 2026-11-01T19:45:03.242Z | `300581BFDDE6714E` |
+| chip_shop_ui | `D:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\chip_shop_ui.png` | 131,150 | 2026-11-01T19:45:04.875Z | `DE0EBCDB578910C8` |
+| release150_guide | `D:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\release150_guide.png` | 109,430 | 2026-11-01T19:45:06.474Z | `124882558347864D` |
 
 三张 PNG 的 mtime 均落在决定性运行窗口（03:45:02–03:45:06 本地 = 19:45:02–19:45:06 UTC）内，且与用例三步截图 op 的顺序一致。
 
@@ -241,8 +241,8 @@ MT_VALIDATE: OK — RELEASE150-26.1.2      (exit 0，改动前后各跑一次均
 **关于 vision：本报告不判定画面内容。** 两条 vision 断言由 harness 判 DELEGATED 并输出：
 
 ```text
-VISION_PATH=F:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\abyss_reagent_tooltip.png | 画面里是否看得到物品提示框（tooltip）或背包界面？只回答「看到了」或「没看到」，并用一句话说明画面主体。
-VISION_PATH=F:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\chip_shop_ui.png | 画面是否是筹码商店/容器界面（而不是普通世界画面）？只回答「是商店」或「不是商店」。
+VISION_PATH=D:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\abyss_reagent_tooltip.png | 画面里是否看得到物品提示框（tooltip）或背包界面？只回答「看到了」或「没看到」，并用一句话说明画面主体。
+VISION_PATH=D:\MCProject\astral_dice_multiloader\run\26.1.2\screenshots\chip_shop_ui.png | 画面是否是筹码商店/容器界面（而不是普通世界画面）？只回答「是商店」或「不是商店」。
 ```
 
 补充（供 lead 判图时的上下文，非视觉结论）：本轮为 tooltip 截图专门解决了「26.1.2 手感坐标只受 OS 前台窗口驱动」的问题（§7.2 F3），探针脚本在设置光标后重开背包并抓图，同一次运行中 `inventory open=1 hover=133,172 creative=1 glfw=1` 记录到光标已落在创造背包 hotbar 第 1 格的芯片上；提示框文本本身已由 `tip i=0..5` 与 `guide key=…` 两族日志独立证明。

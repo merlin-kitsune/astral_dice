@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 / 分支 | F:/MCProject/astral_dice_multiloader · multi-main |
+| 仓库 / 分支 | D:/MCProject/astral_dice_multiloader · multi-main |
 | 范围 | fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice/ 下 4 个文件的注释文本 |
 | 性质 | 注释 only（不改 if、返回值、方法签名、数值） |
 | 取证日期 | 2026-11-01 |

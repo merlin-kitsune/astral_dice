@@ -1,6 +1,6 @@
 # 26.1.2：Waystone 软兼容修复 + 帕秋莉手册用例修复
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`）
+- 仓库：`D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，HEAD `fd990c15`）
 - 日期：2026-11-02
 - 改动范围：仅 `neoforge-26.1.2` 源码 1 个类 + `scripts/test/cases/RELEASE150-26.1.2.json` 1 行；未触碰 `run/**`、未触碰其它三条线的源码/资源/用例。
 - 未执行任何 git add / commit / push / tag。

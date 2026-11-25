@@ -78,7 +78,7 @@ _astral_heal_stdio()
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 2026-10-19：PartyRelations 已下沉到前置库 StarEngine（包 com.merlinkitsune.starengine.combat），
 # 主模组不再有该源文件 ⇒ 闸门改读库工作树（可用 STARENGINE_LIB_ROOT 覆盖）。
-STARENGINE_LIB_ROOT = os.environ.get("STARENGINE_LIB_ROOT", "/mnt/f/mcproject/starengine_lib_next")
+STARENGINE_LIB_ROOT = os.environ.get("STARENGINE_LIB_ROOT", "/mnt/d/mcproject/starengine_lib_next")
 PARTY_REL = os.path.join(
     "common", "src", "main", "java",
     "com", "merlinkitsune", "starengine", "combat", "PartyRelations.java",

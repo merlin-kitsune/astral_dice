@@ -14,8 +14,8 @@
 项目基线:
 - 主线子项目 `neoforge-1.21.1`:MC 1.21.1 / NeoForge 21.1.235 / Java 21 / ModDevGradle(`net.neoforged.moddev` 2.0.141)
 - 移植子项目 `forge-1.20.1`:MC 1.20.1 / Forge 1.20.1-47.4.10 / Java 17 / ModDevGradle LegacyForge(`net.neoforged.moddev.legacyforge` 2.0.144)
-- 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
-- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both --install-embedded`（= `python tools/loom_embedded_jars.py --apply`，把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
+- 第三条线 `neoforge-26.1.2`:MC 26.1.2 / NeoForge 26.1.2.109 / Java 25 / ModDevGradle 2.0.147;由 1.21.1 源码整体迁移,差异见 `docs/compat-26.1.2-neoforge.md`。**2026-09-17 起已并入主线目录**(原独立 worktree `D:\MCProject\astral_dice_multiloader-26.1.2` / 分支 `multi-26.1.2-neoforge` 已合并进 `multi-1.20.1-1.21.1`,现行工作目录即主线根目录,四子项目同树)。
+- 第四条线 `fabric-1.20.1`:MC 1.20.1 / Fabric Loader 0.19.5 + Fabric API 0.92.12 / Java 17 / Fabric Loom(`fabric-loom`);由 `forge-1.20.1` 的 1.3.2-hotfix 源码整体移植(**加载器层整体替换**:Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`),裁剪项与平台差异见 `porting/fabric-1.20.1/VERSION_PINS.md`、`KNOWN-ISSUES.md` §9。**2026-10-01 已并入主线目录**(原独立 worktree `D:\MCProject\astral_dice_multiloader_fabric` / 分支 `1.20.1-fabric` 已合并进 `multi-main` 并**已删除本地 worktree 与分支**（⚠️ **远端分支 `origin/1.20.1-fabric` 的删除需 push，尚未执行**，待用户放行；删除本地分支前已取证其 tip `a89487ac` 是 `multi-main` 的祖先、独有提交 0 个），四条线同一工作树)。⚠️ **本线 dev 环境有一个必须先做的前置**：Loom 重映射第三方 mod 时会剥离产物的 `fabric.mod.json` 的 `jars` 声明 ⇒ 自带内嵌库的 mod（Puzzles Lib / Accessories / Patchouli / Cloth Config / KubeJS）在 dev 里**全部起不来**（`HARD_DEP_NO_CANDIDATE` / `NoClassDefFoundError`）。跑任何 fabric dev 运行前先执行 `pwsh -NoProfile -File scripts/test/fabric/ft_env.ps1 --side both --install-embedded`（= `python tools/loom_embedded_jars.py --apply`，把内嵌库按 id 去重投放到 `run/<side>/mods/`，靠 Loom 的 `fabric.remapClasspathFile` 运行时重映射生效）；**换 `-PtestTrinkets` / `-PtestAccessories` 后必须重跑**。详见 `KNOWN-ISSUES.md` §9 **KI-F23**。
 - Base package/group: com.merlinkitsune.astral_dice;各子项目产物名均为 `astral_dice-<版本>.jar`,版本号自带加载器后缀(1.21.1 带 `+neoforge_1.21.1`,1.20.1 带 `+forge_1.20.1`,26.1.2 带 `+neoforge_26.1.2`,fabric 1.20.1 带 `+fabric_1.20.1`,下划线分隔)。
 
 When extending this workspace:
@@ -31,11 +31,11 @@ When extending this workspace:
 本仓存在**同级的多个 git worktree**，它们的磁盘路径与「会话工作目录」经常不一致，踩过一次真实事故（改动被写到另一个工作树），故固化两条硬规则：
 
 1. **分支归属纪律（禁止镜像/回填）**：任务只属于哪个分支，就**只在那个工作树的磁盘路径**上处理，**禁止**把改动「镜像/回填/同步」到另一个工作树。
-   - 当前两个常驻工作树：**主线** `F:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**四条线** —— 三条生产线 + `fabric-1.20.1` 移植线，属**封包**状态）与 **2.0.0 开发线** `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `F:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
+   - 当前两个常驻工作树：**主线** `D:\MCProject\astral_dice_multiloader`（分支 `multi-main`，含**四条线** —— 三条生产线 + `fabric-1.20.1` 移植线，属**封包**状态）与 **2.0.0 开发线** `D:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。**fabric 的原独立工作树 `D:\MCProject\astral_dice_multiloader_fabric` 已于 2026-10-01 移除**（分支并入 `multi-main`，故本仓现只余上述两棵常驻树）。
    - dev 分支的任务（如目标选择器改造与其工具链改动）**只能**在 `-next` 工作树落地；主线的 `scripts/test/**` 等文件**必须保持封包版本**（改动若必须进主线，须由用户在主线工作树内单独裁决，不由 dev 任务顺带推送）。
-   - 核验方式（收尾必做）：`git -C F:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C F:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
+   - 核验方式（收尾必做）：`git -C D:\MCProject\astral_dice_multiloader status --short --untracked-files=all` 除 `?? .agent-teams/**` 与 `models/` / `images/` / `sound/` 三处素材目录下的未跟踪 / 改动文件（2026-10-22 用户裁决：随时更新，见 `AGENTS-full.md` 第 50 条）外**必须无输出**；`git -C D:\MCProject\astral_dice_multiloader rev-parse --short HEAD` 必须仍是收尾前的封包提交。**所有 git 命令一律带 `-C <工作树绝对路径>`**，不要依赖 cwd。
 2. **相对路径陷阱（必须用绝对路径）**：.NET / `System.IO` / 多数文件 API 的**相对路径按进程 cwd 解析**，而本会话的进程 cwd 往往是**主线工作树** —— 于是「写一个 `scripts/test/cases/xxx.json`」会静默落到**主线**（实测事故：一条 0 字节用例文件落在主线，事后删除复原）。
-   - 规则：跨工作树的任务**写文件一律用绝对路径**（`F:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
+   - 规则：跨工作树的任务**写文件一律用绝对路径**（`D:\MCProject\astral_dice_multiloader-next\...`），或先 `Set-Location` 到目标工作树再操作；`git` 命令用 `-C` 显式指定工作树；脚本内的输出路径同理（相对路径只在「已知 cwd 就是目标工作树」时可用）。
    - 自查：改动后对**另一个**工作树跑一次 `git status --short`，确认没有意外文件。
 
 ## 二次验证规范（Independent Second-Pass Verification）— 必须遵守（2026-10-01 用户裁决）
@@ -174,13 +174,13 @@ When extending this workspace:
 核验任何**第三方模组**（Curios / KubeJS / Sodium / Iris / ModernFix / Patchouli 等）的**行为**时，必须以**该模组自己的 GitHub 源码**为准。⚠️ **取源顺序**：先按上方《第三方联动取源与反射纪律》**向用户索取 jar / 源码**；用户无法提供时才走本流程（**自行**前往其官方 GitHub 页面查找）。两条路径共同的红线：**不得凭记忆、不得凭缓存产物、不得凭「反编译看懂了」下结论**（`javap` 只确认**签名与常量**，不推断逻辑）：
 
 1. **取源**：先在该模组的 GitHub 仓库按版本定位 tag / commit（版本号取自本仓 `gradle.properties`、或目标 jar 内 `META-INF/mods.toml` / `neoforge.mods.toml` / `MANIFEST.MF`），再经上方 Git 代理克隆到**本模组仓库之外**，例如：
-   `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 clone https://github.com/TheIllusiveC4/Curios F:\MCProject\temp_curios\v9`
+   `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 clone https://github.com/TheIllusiveC4/Curios D:\MCProject\temp_curios\v9`
    克隆目录**不得**放进模组仓库（避免污染/误提交），也**不得** `git push`。
 2. **不得替代**：Gradle 缓存里的编译产物（`javap` 反汇编）、**旧版本或其它 MC 版本的源码副本**都不能代替目标版本的源码。`javap` 只可用于确认方法签名/常量，**不得**据此推断逻辑。
 3. **取不到就说取不到**：仓库不可达或没有对应 tag 时，取最近 tag 并**显式写出偏差**，把「未能验证」的部分标出来，不得用推测填空。
 4. **结论形式**：每条结论附 `文件:行号 + 原文片段`，并写明**精确版本号**（如 `Curios 5.14.1+1.20.1` / `9.5.1+1.21.1`），使他人可独立复算。
-5. **现有克隆（只读，可直接复用）**：`F:\MCProject\temp_curios\v5` = Curios **1.20.1 线**（`origin/1.20.x` @ `a91da6ba`，提交主题 `5.14.1`，`gradle.properties: version_mc=1.20.1`）；`F:\MCProject\temp_curios\v9` = Curios **1.21.1 线**（`origin/1.21.1` @ `6b122c8a`，提交主题 `9.5.1`，`gradle.properties: version=9.5.1+1.21.1`）；`F:\MCProject\astral_dice_multiloader\temp\curios_src` = Curios **26.1.2 分支**（另含本仓提交的上游补丁分支 `fix/26.1.2-loadinv-size`）。⚠️ 实测该仓库这些版本**没有打 tag**，克隆点落在**分支尖端**上 —— 引用时必须写成「分支 + commit + 提交主题/版本号」三者，不能只说 tag。Curios 仓库地址：<https://github.com/TheIllusiveC4/Curios>。
-6. **现有克隆（只读，可直接复用）— 优化/渲染类**：Iris 仓库 <https://github.com/IrisShaders/Iris> ⇒ 克隆点 `F:\MCProject\temp_iris\26.1`（**目标版本 = 本仓 `run\26.1.2\mods` 内 `iris-neoforge-1.11.4+mc26.1.2.jar`**）；ImmediatelyFast 仓库 <https://github.com/RaphiMC/ImmediatelyFast> ⇒ 克隆点 `F:\MCProject\temp_immediatelyfast\26.1`（**已钉 tag `v1.15.3` / commit `c010c5d5`**，对应 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`）。引用时一律写「分支/tag + commit + 二进制版本」。这两处是为定位 **KNOWN-ISSUES §7 KI-D1**（26.1.2 + 光影的 `Missing sampler Sampler1` 崩溃）而取源，规则同第 1–4 条（克隆在仓库之外、经代理、按版本、结论带 `文件:行号 + 原文片段`）。⚠️ **主体已由 A/B 实测锁定为 Iris**（2026-09-19：IF 关 + 光影开仍崩且该组日志内 `ImmediatelyFast`/`BatchableBufferSource` 命中为 0；IF 关 + 光影关不崩）⇒ **IF 侧分析已降级为附录，不得作为崩溃成因引用**；克隆该仓库只用于「A 组栈里为何多一层批处理帧」这类旁证。
+5. **现有克隆（只读，可直接复用）**：`D:\MCProject\temp_curios\v5` = Curios **1.20.1 线**（`origin/1.20.x` @ `a91da6ba`，提交主题 `5.14.1`，`gradle.properties: version_mc=1.20.1`）；`D:\MCProject\temp_curios\v9` = Curios **1.21.1 线**（`origin/1.21.1` @ `6b122c8a`，提交主题 `9.5.1`，`gradle.properties: version=9.5.1+1.21.1`）；`D:\MCProject\astral_dice_multiloader\temp\curios_src` = Curios **26.1.2 分支**（另含本仓提交的上游补丁分支 `fix/26.1.2-loadinv-size`）。⚠️ 实测该仓库这些版本**没有打 tag**，克隆点落在**分支尖端**上 —— 引用时必须写成「分支 + commit + 提交主题/版本号」三者，不能只说 tag。Curios 仓库地址：<https://github.com/TheIllusiveC4/Curios>。
+6. **现有克隆（只读，可直接复用）— 优化/渲染类**：Iris 仓库 <https://github.com/IrisShaders/Iris> ⇒ 克隆点 `D:\MCProject\temp_iris\26.1`（**目标版本 = 本仓 `run\26.1.2\mods` 内 `iris-neoforge-1.11.4+mc26.1.2.jar`**）；ImmediatelyFast 仓库 <https://github.com/RaphiMC/ImmediatelyFast> ⇒ 克隆点 `D:\MCProject\temp_immediatelyfast\26.1`（**已钉 tag `v1.15.3` / commit `c010c5d5`**，对应 `ImmediatelyFast-NeoForge-1.15.3+26.1.jar`）。引用时一律写「分支/tag + commit + 二进制版本」。这两处是为定位 **KNOWN-ISSUES §7 KI-D1**（26.1.2 + 光影的 `Missing sampler Sampler1` 崩溃）而取源，规则同第 1–4 条（克隆在仓库之外、经代理、按版本、结论带 `文件:行号 + 原文片段`）。⚠️ **主体已由 A/B 实测锁定为 Iris**（2026-09-19：IF 关 + 光影开仍崩且该组日志内 `ImmediatelyFast`/`BatchableBufferSource` 命中为 0；IF 关 + 光影关不崩）⇒ **IF 侧分析已降级为附录，不得作为崩溃成因引用**；克隆该仓库只用于「A 组栈里为何多一层批处理帧」这类旁证。
 
 ## 嵌套松散引用“消失”（Loose Ref Disappearance）— 结论已修订，见下
 
@@ -253,7 +253,7 @@ When extending this workspace:
 | `neoforge-1.21.1` | `1.21.1-main` | 1.21.1 | NeoForge | 21 | `1.3.7-hotfix+neoforge_1.21.1` | `x.y.z[-rcN|hotfix]+neoforge_1.21.1` |
 | `forge-1.20.1` | `1.20.1-forge` | 1.20.1 | Forge | 17 | `1.3.7-hotfix+forge_1.20.1` | `x.y.z[-rcN|preN|hotfix]+forge_1.20.1` |
 | `neoforge-26.1.2` | 本仓 `multi-26.1.2-neoforge` 分支新增（基线 = 主线 `1.2.1`/`fda8ca9` 的 `neoforge-1.21.1` 源码）；**2026-09-17 已合并进当时的主线 `multi-1.20.1-1.21.1`（该分支已于 2026-09-22 改名为 `multi-main`）**（与主线同目录同树，原独立 worktree 已移除）；**2026-09-22 完整移植后版本号与另两线同批升版**（26.1.2 取 `-beta.x` 后缀；现为 `1.3.7-beta.2`）** | 26.1.2 | NeoForge | 25 | `1.3.7-beta.2+neoforge_26.1.2` | `x.y.z[-rcN|-beta.N]+neoforge_26.1.2` |
-| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。**2026-10-01 已并入 `multi-main` 成为第四条线**（同树同仓；原独立 worktree `F:\MCProject\astral_dice_multiloader_fabric` 与分支 `1.20.1-fabric` 均已移除）| 1.20.1 | Fabric | 17 | `1.3.7-alpha.2+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
+| `fabric-1.20.1` | **本仓 `1.20.1-fabric` 分支新增**（2026-09-29 接入；基准 = `forge-1.20.1` 的 `1.3.2-hotfix` 源码，**加载器层整体替换**：Curios→Trinkets(+Accessories 软依赖) · Capability→Fabric API 附件 · Forge EventBus→自建 `LoaderBus`+Puzzles Lib/FAPI 回调/mixin · GLM→`LootTableEvents.MODIFY`）。**2026-10-01 已并入 `multi-main` 成为第四条线**（同树同仓；原独立 worktree `D:\MCProject\astral_dice_multiloader_fabric` 与分支 `1.20.1-fabric` 均已移除）| 1.20.1 | Fabric | 17 | `1.3.7-alpha.2+fabric_1.20.1` | `x.y.z[-alpha.N|rcN|hotfix]+fabric_1.20.1` |
 
 > ⚠️ **第四条线（`fabric-1.20.1`）的规则边界（2026-09-29 用户裁决；2026-10-01 并入 `multi-main` 后本条**全九项仍适用**，必须遵守）**：
 > 2026-10-01 的状态变化只有「树与仓」：该线由**独立分支 + 独立 worktree** 变为**与前三线同树同仓（同在 `multi-main`）**；
@@ -295,7 +295,7 @@ When extending this workspace:
 >    可把它升级为**致命错误**。② 调用 `LoaderBus#dispatchReport()` 核对**没有**关键事件的派发次数为 0
 >    （判据：`ServerTickEvent` 必须为正数）。⚠️ 审计若报「未生效（没扫到任何类）」，**不得**当成通过。见 **KI-F6**。
 
-> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**、2026-10-05 起为 **`1.3.7-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.114`**（2026-10-13；工作树 `F:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
+> 版本号各 git 分支独立（AGENTS.md 自 2026-09-15 起**已纳入版本库**，各分支各自维护一份）：**发布线 `multi-main`**（2026-09-22 由 `multi-1.20.1-1.21.1` 改名；连带项已同批处理：三线 `build.gradle` 的 `packPushBranches → ['multi-main']`、`.github/workflows/build.yml` 的 5 处分支名与触发条件，以及 `.github/workflows/build.yml` 里 checkout 前置库的 `ref:` 钉值）**当前 = `1.3.7-hotfix`**（2026-10-01：承接 1.3.5 的补丁发布——FTB 队友判定后端修复；见下方「发布规范」对 `-hotfix` 打 tag 的说明）（2026-09-22 那次收编后统一升版为 `1.3.0` —— 1.21.1 / 1.20.1 = `1.3.0`，26.1.2 = `1.3.0-beta.1`，按发布规范 tag 解析为裸版本 `1.3.0`；此后逐版递增至 **1.3.5**；2026-10-01 起为 `1.3.5-hotfix`、2026-10-04 起为 **`1.3.7`**、2026-10-05 起为 **`1.3.7-hotfix`**，以矩阵表「当前版本」列与各线 `gradle.properties` 为准。⚠️ 本处曾长期停留在 `1.3.0`、与矩阵表自相矛盾，2026-10-01 二次验证时一并更正）；`multi-dev-next` 当前 = **`2.0.0-SNAPSHOT.114`**（2026-10-13；工作树 `D:\MCProject\astral_dice_multiloader-next`。⚠️ **该线并未停止演进** —— 2026-09-22 曾整体并入发布线 `multi-main`（`7b726617`，收编 160 个提交），但此后 `multi-dev-next` **继续独立开发**（目标选择器改造、四张伤害效果牌重做、fabric 第四条线并入等）；现行口径见下方「## 版本号递增约定（每提交一版）」与「## 版本优先级与跨线移植纪律」）；`neoforge-26.1.2` 子项目当前 = **`1.3.0-beta.1`**（2026-09-17 用户裁决 + **2026-09-19 修订：26.1.2 已纳入主线、三线同步（不再是低优先级线）**；**2026-09-22 用户裁决：三线同批升版，26.1.2 取 `1.3.0-beta.1`** —— 此前 `.13` 时代「与另两线版本号对齐、不再单独加 `-beta`」的口径随之作废；`multi-26.1.2-neoforge` 分支自此只作为合并前历史，不再单独开发）。上表「当前版本」以发布线工作分支 `multi-main` 为准。
 > ⚠️ 历史上另有一条 dev 分支 **`wt/2.0.0-vnext`**（连带独立 worktree `C:/Users/xmace/.dsh/worktrees/astral_dice_multiloader-a03b2df2/2.0.0-vnext`）——2026-09-17 用户裁决「移除 wt/2.0.0-vnext 分支，仅保留当前分支」后**已删除**：worktree 与分支一并移除，`git branch -d` 成功即证明其 tip **`d7e4ac8f4f1c31484bf4366caa4e144aec45979f`** 的全部提交都已被 `multi-dev-next` 包含（`multi-dev-next..wt/2.0.0-vnext` 为空）⇒ **未丢失任何提交**；该分支从未推到远端（`origin` 只有 `multi-1.20.1-1.21.1` 与 `multi-dev-next`），故无需远端清理。`multi-26.1.2-neoforge` 作为合并前历史分支**保留**（未在本次裁决范围内）。
 
 > **第三条线(26.1.2)的规则边界(2026-09-19 用户裁决修订 —— 26.1.2 已纳入主线,必须遵守)**:⛔ **2026-10-04 更新:本条「26.1.2 纳入三线同批实施」的口径已作废** —— 现行 **P1 次要优先级**（见下方「## 版本优先级与跨线移植纪律」）;本段其余平台差异说明仍有效。自本裁决起「同步修改」约束**三个版本**(`neoforge-1.21.1` + `forge-1.20.1` + `neoforge-26.1.2`):任何功能/修复/平衡/文案改动按现行 **P0/P1 两级模型**落地（P0 两线同批 + P1 待移植；⛔ 2026-10-12 起原「一律三线同批实施」口径与实施方式均已作废，实施方式以〈子代理与测试环境硬规则〉第 7 条为准）,26.1.2 **不再**是「发布线完成后再迁移」的低优先级移植线。三条线各自按 `docs/compat-26.1.2-neoforge.md`(26.1.2 相对 1.21.1)、`docs/compat-1.20.1-forge.md`(1.20.1 相对 1.21.1)的差异映射实现,**平台差异必须逐条登记**;三线落地后按 `scripts/test/TESTING-SPEC.md` §13.2 做一致性测试。三子项目的 `mod_version`/`mods.toml` 门槛仍各自独立。⚠️ **第四条线 `fabric-1.20.1` 不参与本条的「三线同批实施」约束** —— 其边界见上一条 ①（由用户按批次单独下达移植任务）。
@@ -402,10 +402,10 @@ When extending this workspace:
 >
 ### 前置库 starengine_lib 的版本与兼容性契约（全局，2026-09-22 用户裁决）
 
-> 本契约**跨两个仓库生效**（库仓开发线工作树 `F:\MCProject\starengine_lib_next`（分支 `next`）↔ 本仓四条线），是库的**公开兼容性承诺**。
-> ⚠️ **库仓工作树布局（2026-10-02 用户裁决）**：`F:\MCProject\starengine_lib` 常驻 **`main`**（发布线）；
-> `F:\MCProject\starengine_lib_next` = 分支 **`next`** 的独立工作树，**本仓四线的一切库改动 / 构建 / `publishToMavenLocal` 只在该工作树进行**（消费方侧默认路径已同步：见 `scripts/devtools/Start-SelfTest.ps1` 的 `$LibRepoPath` 缺省值）。
-> 原独立 worktree `F:\MCProject\starengine_lib_fabric`（分支 `fabric-1.20.1`）已于 2026-10-02 删除 —— 该平台的 `common` 与 9 个平台接线类**早已并入 `next`**，其分支上唯一未并入的实质改动（`component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 16 → 32）已收编进 `next`。
+> 本契约**跨两个仓库生效**（库仓开发线工作树 `D:\MCProject\starengine_lib_next`（分支 `next`）↔ 本仓四条线），是库的**公开兼容性承诺**。
+> ⚠️ **库仓工作树布局（2026-10-02 用户裁决）**：`D:\MCProject\starengine_lib` 常驻 **`main`**（发布线）；
+> `D:\MCProject\starengine_lib_next` = 分支 **`next`** 的独立工作树，**本仓四线的一切库改动 / 构建 / `publishToMavenLocal` 只在该工作树进行**（消费方侧默认路径已同步：见 `scripts/devtools/Start-SelfTest.ps1` 的 `$LibRepoPath` 缺省值）。
+> 原独立 worktree `D:\MCProject\starengine_lib_fabric`（分支 `fabric-1.20.1`）已于 2026-10-02 删除 —— 该平台的 `common` 与 9 个平台接线类**早已并入 `next`**，其分支上唯一未并入的实质改动（`component/GameplayConstants#CURSED_SWORD_BONUS_MAX` 16 → 32）已收编进 `next`。
 > 库侧原文见其 `README_ZH.md` §6「版本与兼容」（英文版为 `README.md` §6 "Versions and compatibility"）、双 `CHANGELOG`、以及三处 `gradle.properties` 的 `1.0.0` 条目。
 > ⚠️ **2026-10-01 起**:fabric 平台子项目已并入库的 `next` 分支(库侧 `settings.gradle` 现含 `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2` / `fabric-1.20.1` 四个平台子项目),库侧 artifactId = `starengine_lib-fabric-1.20.1`,与本仓四线同号。
 
@@ -782,7 +782,7 @@ When extending this workspace:
 
 25. **卡牌商店 UI v4 定稿 + 拖拽购买（2026-10-08；P0 两线同批）**：① **设计定稿** = `temp/t80/UI-DESIGN.md`（420+ 行）—— 全部坐标由「样张 `images/shop/card_shop_inventory.png`(284×183) → 背景 `card_shop_inventory_bg.png`(288×187) 偏移 **(+2,+2)**」逐像素实测：6 卡框 `shop_card(.select/.soldout).png` 44×61 @ **(7+46i, 28)**、卡面 **38×38 @ 框内 (+3,+3)**、名称框内区 **40×17 @ x∈[2,41]/y∈[42,58]**、左/中按钮 32×32 @ (11,109)/(48,109)、沙漏 20×32 @ (86,109)、余额条 96×24 @ (11,145)（**从样张新切** `shop_wallet.png` + `shop_coin_icon.png`；与既有 `star_coin_wallet_bar.png` 93.6% 同源但**含金框 ⇒ 不复用**）、物品栏底图 166×80 @ (114,99)（内格 x=117+18j、快捷键行 y=160）。② **交互**：购买 = **拖拽成交** —— 客户端 `dragIndex`/幽灵 + C2S（1.21.1 `CardShopBuyPayload`；1.20.1 `ModNetwork.CardShopBuyMessage` = **末尾追加 id 14**）+ 服务端 `CardShopMenu#handleBuy(ServerPlayer,int,int)`（六步校验 → 扣款 → 直接写目标玩家槽 → `sold[]=true`）；`ShelfSlot.mayPickup=false` **恒成立** ⇒ 卡牌永不经原版光标携带，关界面/丢出界面都拿不到白卡；旧 `BUTTON_BUY_BASE`/`tryBuy` 已删除（无双购买路径）。③ **状态与文本口径**：中按钮 **5 态**（`starlight_exchange_push_2` = **佩戴经商立牌者按下**）、沙漏 `frame = clamp(floor((1-剩余/60)*5), 0, 4)` 且 `_5` = 可用、大酬宾布尔走**第 8 个 DataSlot** 且标题带 **8 tick/帧**流光、卡名**禁止截断**（`scale = min(1, 40/文本宽)` + 居中 + 白字无阴影；可选短名键 `item.<ns>.<id>.short` 有键才用）、余额数字与玩家物品栏余额栏**同锚点**（+88/+7、白字、无阴影）。④ **复核**：DSH `code_review` run `939f0e02-956a-4c2d-89e0-8543f4a573ce` 判 **无 findings**（R1–R7 成立、R4 十二条逐条一致）。⑤ **1.20.1 镜像** = 同一语义（平台改写：`new ResourceLocation` / `ModNetwork` id 14 / `mouseScrolled` 三参 / `CuriosCompat` ×2 / `PacketDistributor`→`ModNetwork`），行级 LCS 对等（屏幕 16 行、菜单 16 行差异全为平台项）。⑥ **素材源**：22 张卡面逐字节等于 `images/card+event/**`，工程内按**物品注册名**取图；`shop_transfer_button.png` 与 `starlight_exchange.png` 目前仍**逐字节相同**（用户 21:17 替换后实测未变）。
 
-26. **「卡牌商店」方块美术改由 Blockbench MCP 导入（2026-10-08；P0 两线同批）**：用户**废弃** Hilo 版设计（`Astral Dice/astral dice 商店方块设计/**` 不再使用），改以 **`models/cardshop.bbmodel`** 为唯一美术源，并要求**经 Blockbench MCP 导入**。① **导入链（headless 形态 = 23 个 `bbmodel_*` 工具；`bun run F:\MCProject\blockbench-mcp-plugin\headless\index.ts --root <仓库根>`，MCP over stdio）**：`bbmodel_info`（`java_block` 5.0 / 32×32 / **6 cubes** / 包围盒 **[0,0,0]-[16,14.5,16]**）→ `bbmodel_validate`（通过；2 条 warning = `table` 与 `cube` 两 group **互穿 0.75**，属美术取舍，未改模型）→ `bbmodel_edit update_texture`（把贴图重命名为 **`astral_dice:block/card_shop`**，⚠️ **必须显式传 `material: null`**，否则报 `No material named or identified ""`）→ `bbmodel_export_java_block`（⇒ `models/block/card_shop.json`：`textures {"1":"astral_dice:block/card_shop"}`、`texture_size [32,32]`、6 element、含 `display`）→ 从 bbmodel 内嵌 data URI **提取 64×64 贴图** ⇒ 两线 `textures/block/card_shop.png`（**含 1030 个全透明像素**）→ `bbmodel_render`（`three-quarter`，512²，透明）出预览。⚠️ 插件形态（Streamable HTTP `:3000/bb-mcp`，17 工具）需要 **Blockbench GUI 在跑**，本轮 GUI 未运行故走 headless；两形态工具集**零重叠**。② **透明渲染（带源码行证据）**：**1.21.1 与 1.20.1 都支持块模型 JSON 的 `render_type`** —— NeoForge `client/model/ExtendedBlockModelDeserializer.java:66-69`（`render_type` → `setRenderTypeHint`）+ `SimpleUnbakedGeometry.java:28-31` + `NamedRenderTypeManager.java:46`（预注册 `cutout`）；Forge 同名子类 `net/minecraftforge/client/model/ExtendedBlockModelDeserializer` 同款，且 `ChunkRenderDispatcher.java:633` 按 `BakedModel#getRenderTypes` 分派 ⇒ 世界渲染生效。⇒ 1.21.1 只写 JSON `"render_type": "minecraft:cutout"`；1.20.1 另在 `client/ModClientEvents#onClientSetup` 保留 `ItemBlockRenderTypes.setRenderLayer(CARD_SHOP, RenderType.cutout())` 作为**物品层双保险**（代价 1 条弃用告警）。③ **形状**：`private static final VoxelShape SHAPE = Shapes.box(0, 0, 0, 1, 14.5/16, 1)` 同时用于 `getShape`/`getCollisionShape`（取模型包围盒顶面：只包到 14/16 会让台面上 0.5/16 装饰「看得见、点不中」，返回满方块则多出隐形墙）；`ModBlocks` 的 `CARD_SHOP` 加 **`.noOcclusion()`**（非满格必须声明，否则相邻面被错误剔除）。④ **平台差异**：1.20.1 **无** `useWithoutItem` ⇒ 交互入口是六参 `use(...)`（两线形状表达式相同）；`models/item/card_shop.json` 继续 `parent` 到方块模型，配方/掉落**未动**。⑤ **守门**：两线 `compileJava` + `jar` `BUILD SUCCESSFUL`、`verify_resource_integrity` 两线 PASS。⑥ **未实机**：切面/透明观感与 14.5/16 碰撞手感需一次 runClient 手工确认（本轮未跑）。
+26. **「卡牌商店」方块美术改由 Blockbench MCP 导入（2026-10-08；P0 两线同批）**：用户**废弃** Hilo 版设计（`Astral Dice/astral dice 商店方块设计/**` 不再使用），改以 **`models/cardshop.bbmodel`** 为唯一美术源，并要求**经 Blockbench MCP 导入**。① **导入链（headless 形态 = 23 个 `bbmodel_*` 工具；`bun run D:\MCProject\blockbench-mcp-plugin\headless\index.ts --root <仓库根>`，MCP over stdio）**：`bbmodel_info`（`java_block` 5.0 / 32×32 / **6 cubes** / 包围盒 **[0,0,0]-[16,14.5,16]**）→ `bbmodel_validate`（通过；2 条 warning = `table` 与 `cube` 两 group **互穿 0.75**，属美术取舍，未改模型）→ `bbmodel_edit update_texture`（把贴图重命名为 **`astral_dice:block/card_shop`**，⚠️ **必须显式传 `material: null`**，否则报 `No material named or identified ""`）→ `bbmodel_export_java_block`（⇒ `models/block/card_shop.json`：`textures {"1":"astral_dice:block/card_shop"}`、`texture_size [32,32]`、6 element、含 `display`）→ 从 bbmodel 内嵌 data URI **提取 64×64 贴图** ⇒ 两线 `textures/block/card_shop.png`（**含 1030 个全透明像素**）→ `bbmodel_render`（`three-quarter`，512²，透明）出预览。⚠️ 插件形态（Streamable HTTP `:3000/bb-mcp`，17 工具）需要 **Blockbench GUI 在跑**，本轮 GUI 未运行故走 headless；两形态工具集**零重叠**。② **透明渲染（带源码行证据）**：**1.21.1 与 1.20.1 都支持块模型 JSON 的 `render_type`** —— NeoForge `client/model/ExtendedBlockModelDeserializer.java:66-69`（`render_type` → `setRenderTypeHint`）+ `SimpleUnbakedGeometry.java:28-31` + `NamedRenderTypeManager.java:46`（预注册 `cutout`）；Forge 同名子类 `net/minecraftforge/client/model/ExtendedBlockModelDeserializer` 同款，且 `ChunkRenderDispatcher.java:633` 按 `BakedModel#getRenderTypes` 分派 ⇒ 世界渲染生效。⇒ 1.21.1 只写 JSON `"render_type": "minecraft:cutout"`；1.20.1 另在 `client/ModClientEvents#onClientSetup` 保留 `ItemBlockRenderTypes.setRenderLayer(CARD_SHOP, RenderType.cutout())` 作为**物品层双保险**（代价 1 条弃用告警）。③ **形状**：`private static final VoxelShape SHAPE = Shapes.box(0, 0, 0, 1, 14.5/16, 1)` 同时用于 `getShape`/`getCollisionShape`（取模型包围盒顶面：只包到 14/16 会让台面上 0.5/16 装饰「看得见、点不中」，返回满方块则多出隐形墙）；`ModBlocks` 的 `CARD_SHOP` 加 **`.noOcclusion()`**（非满格必须声明，否则相邻面被错误剔除）。④ **平台差异**：1.20.1 **无** `useWithoutItem` ⇒ 交互入口是六参 `use(...)`（两线形状表达式相同）；`models/item/card_shop.json` 继续 `parent` 到方块模型，配方/掉落**未动**。⑤ **守门**：两线 `compileJava` + `jar` `BUILD SUCCESSFUL`、`verify_resource_integrity` 两线 PASS。⑥ **未实机**：切面/透明观感与 14.5/16 碰撞手感需一次 runClient 手工确认（本轮未跑）。
 
 27. **「转账」二级面板落地（2026-10-08；P0 两线同批）**：① **设计定稿** = `temp/t81/UI-TRANSFER-DESIGN.md`（含两轮「★ 增补」，用户三轮中途裁决）：面板原点屏幕 **(81,26)**，搜索框 (5,4) 82×12、返回 (94,0) 16×16、确认 (94,24) 32×22、金额框 (94,46) 32×14、四档 (94, 60+i*15) 24×15、滑轨 (81,20) 6×111 与滑块 x=78 12×16、列表自 y=24 起**行高 18 / 可见 6 行**；行内 = 头像 16×16 @(6,+1)、悬停**半透明灰** 0x66AAAAAA (2,+0)-(78,+18)、玩家名 @(24,+0)（**超 42px 只左右滚动 marquee、禁止缩放/截断**）、`star_coin_small` 7×7 @(24,+10) 与金色余额 @(33,+9) **顶边对齐**、**选中箭头 `shop_transfer_select.png` 原生 13×12 @(66,+1)（指向玩家名行）**。② **交互**：搜索/金额都是**原版 `EditBox`**（输入即本地过滤；金额纯数字 5..20、非法回落 5，**失焦/回车/每次输入三处兜底**），滚动条 = **`AbstractSliderButton` 子类 `TransferScrollBar`**（拖手柄/点轨道翻页/滚轮逐行，滑轨仅 6px ⇒ 控件矩形放宽到 **12px**）；三个控件**不进 renderables**（否则被面板底图盖住）⇒ 手工 render + 手工转发鼠标/键盘，**必须覆写 `keyPressed`**（否则 `AbstractContainerMenu` 会把 e / 1..9 / Q 当容器热键）。⚠️ **踩过的坑（code_review 抓到）**：`TP_*_FIELD_*` 是「相对素材矩形的内缩量」，构造时必须写 `panelX + TP_SEARCH_X + TP_SEARCH_FIELD_X` —— 漏掉素材原点会让金额框落到面板 (6,3)、与搜索框重合（输入内容看不见），并且 `TP_SEARCH_REFRESH_X` 还要补 `TP_SEARCH_X`（否则放大镜热区多吃 5px 文本区）。③ **规则（用户裁决）**：目标 = 除自己外**任意在线玩家**；**不默认选中**，点击某行才出现箭头成为目标；确认门控 = 有选中 && 冷却 0 && 5≤金额≤20 && **金额 ≤ 持有余额**；**转账成功后自动退回商店主界面**并用**第 9 个 DataSlot**「本店会话已用过转账」锁住本店会话（`showTransferDisabledHint` 按真实原因分档：冷却 → 会话已用 → 星币门槛）；**冷却 = 转账即写 `now+60s`，并在菜单关闭（服务端 `removed(Player)`）时顺延为「出店时刻 + 60s」** ⇒ 掉线也拿不到白送的转账。④ **载荷**：S2C 名单每项 = **UUID + 名 + 余额**；C2S 发**完整名单下标**（客户端维护「过滤行号 → 完整下标」映射，`transferOriginalIndex`）。⑤ **顺带修复既有缺口**：`clickMenuButton` 原先不处理 `BUTTON_TRANSFER(16)` ⇒ 打开面板名单恒空。⑥ **平台差异（1.20.1）**：无 `PlayerSkin` record ⇒ 头像用 `PlayerInfo#getSkinLocation()` + `PlayerFaceRenderer.draw(GuiGraphics, ResourceLocation, int,int,int)`，离线回落 `DefaultPlayerSkin.getDefaultSkin(uuid)`；`new ResourceLocation`、`mouseScrolled` 三参、`ModNetwork`（沿用既有 id 12 的 `CardShopTransferListMessage`，`List<String>` → `List<Entry>`）；`EditBox`/`AbstractSliderButton`/10 参 `blit`/`containerTick()` 两线同形。⑦ **判据**：两线 `.55` 产物 `MT_BUILD: OK`、两线 lang **876** 键、`verify_resource_integrity` 两线 PASS、两线 `compileJava` SUCCESSFUL；**复核** = DSH `code_review` run `7a8548d9…`（R1–R11 逐条，判 neo 全成立；抓出 forge 两处 EditBox 漏加素材原点 = P1、放大镜热区少算 = P2、会话锁提示误报「星币不足」= P2、名单重发注释与实现不符 = P3）⇒ **四处已全部修复并重编译/重跑守门**；两线 `git diff --no-index` 屏幕文件差异 63 行全部为平台项。⑧ **未实机**（皮肤头像观感 / IME / 滚动条手感待实机）。
 
@@ -3099,7 +3099,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 ## 待办交接：fengshui-sign 批（2026-09-20，更新：测试资产已清零）
 
 > **来源**：本批由 agent team `fengshui-sign` 实施；2026-09-20 用户指令终止剩余任务并解散团队（未完成项移交本文件），同日指令「完全删除所有 agent team」⇒ 团队与全部归档状态已删除。
-> **工作树**：产品改动全部在 `F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**已于 2026-09-20 按用户指令「提交所有更改」本地 commit（未 push）**。⚠️ 提交时本批**仍无游戏内证据**（测试资产已清零、探针与用例全删）。
+> **工作树**：产品改动全部在 `D:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）；**已于 2026-09-20 按用户指令「提交所有更改」本地 commit（未 push）**。⚠️ 提交时本批**仍无游戏内证据**（测试资产已清零、探针与用例全删）。
 > **⚠️ 测试资产已清零（2026-09-20 用户指令）**：本批的 4 条用例（`ZHAO-SIGN-*` / `HUO-CURSE-1.21.1` / `ZHAO-BLESSING-1.21.1`）与全部探针改动已随全仓测试项一并删除作废；历史 run1–run3 与冻结件已删除且结论全部作废。只剩产品与文档待办。
 
 ### A. 产品与文档待办（按优先级）
@@ -3149,7 +3149,7 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 
 ## 待办交接：teru-sign 批（教主立牌 / 降神 · 狐光，2026-09-27）
 
-> **工作树**：`F:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。规格文档 = `docs/features/teru-sign-spec.md`（id 表 / 注册点 / 状态机 / 防刷守卫 / 生命周期 / 26.1.2 待迁移 / 验收）。
+> **工作树**：`D:\MCProject\astral_dice_multiloader-next`（分支 `multi-dev-next`）。规格文档 = `docs/features/teru-sign-spec.md`（id 表 / 注册点 / 状态机 / 防刷守卫 / 生命周期 / 26.1.2 待迁移 / 验收）。
 > **范围**：发布线双版本（`neoforge-1.21.1` + `forge-1.20.1`）功能对等；`neoforge-26.1.2` **零改动**（只登记待迁移）。
 
 ### 关键口径（实现按此，勿再改）
@@ -3554,8 +3554,8 @@ pwsh -NoProfile -File scripts/test/mt.ps1 --version 1.21.1 --new <注册id>
 |---|---|
 | `/etc/profile.d` 代理注入（`99-wsl-proxy.sh`、`99-wsl-github.sh`）、`wsl-env-restore.sh` | Windows 侧代理走系统环境变量（Clash `http://127.0.0.1:7897`）；**无注入脚本、无需恢复** |
 | `/opt/zulu` + `use-jdk` 切换 JDK | JDK = `C:\Program Files\Zulu\zulu-21`（21.0.12）；`forge-1.20.1` 的 toolchain 17 由 Gradle 从 `%USERPROFILE%\.gradle\jdks` 取（已缓存 Adoptium 17.0.20），不要手改 |
-| `rsync` 到 `~/work/adm-*` 副本再编译 | 副本口径**作废**：直接在 `F:\MCProject\astral_dice_multiloader` 工作树跑 `gradlew.bat :<线>:classes|jar`，产物与提交同源 |
-| WSL git 对 worktree 报 `not a git repository` 的变通（`--git-dir=` / 改走 `cmd.exe`） | **该问题不存在**：git 一律用 git bash 的 `git`，写 `git -C F:\MCProject\<工作树> <子命令>` 或先 `cd` 进工作树 |
+| `rsync` 到 `~/work/adm-*` 副本再编译 | 副本口径**作废**：直接在 `D:\MCProject\astral_dice_multiloader` 工作树跑 `gradlew.bat :<线>:classes|jar`，产物与提交同源 |
+| WSL git 对 worktree 报 `not a git repository` 的变通（`--git-dir=` / 改走 `cmd.exe`） | **该问题不存在**：git 一律用 git bash 的 `git`，写 `git -C D:\MCProject\<工作树> <子命令>` 或先 `cd` 进工作树 |
 | 「bash 里没有 pwsh / 只能 `sh` 跑测试」类兼容说明 | **作废**：测试台一律 `pwsh -NoProfile -File <绝对路径>.ps1`；bash 只承担 git |
 
 补充说明：
@@ -3865,11 +3865,11 @@ pwsh -NoProfile -File scripts\test\mt.ps1 --version 1.20.1 --phase stop --force 
 
 ```powershell
 # LICENSE 正文自证（应回显 GNU GENERAL PUBLIC LICENSE / Version 3, 29 June 2007 / END OF TERMS AND CONDITIONS）
-Select-String -Path F:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','Version 3, 29 June 2007','END OF TERMS AND CONDITIONS'
+Select-String -Path D:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','Version 3, 29 June 2007','END OF TERMS AND CONDITIONS'
 # 换行归一（bareLF 必须 0）
-python -c "d=open(r'F:\MCProject\astral_dice_multiloader\LICENSE','rb').read(); print('crlf',d.count(b'\r\n'),'bareLF',d.count(b'\n')-d.count(b'\r\n'))"
+python -c "d=open(r'D:\MCProject\astral_dice_multiloader\LICENSE','rb').read(); print('crlf',d.count(b'\r\n'),'bareLF',d.count(b'\n')-d.count(b'\r\n'))"
 # 元数据（应只剩第三方归属的 MIT 字样）
-Select-String -Path F:\MCProject\astral_dice_multiloader\*-1.20.1\gradle.properties,F:\MCProject\astral_dice_multiloader\neoforge-1.21.1\gradle.properties,F:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\fabric.mod.json -Pattern 'MIT License'
+Select-String -Path D:\MCProject\astral_dice_multiloader\*-1.20.1\gradle.properties,D:\MCProject\astral_dice_multiloader\neoforge-1.21.1\gradle.properties,D:\MCProject\astral_dice_multiloader\fabric-1.20.1\src\main\resources\fabric.mod.json -Pattern 'MIT License'
 # 规则文件自检
 python docs/agent/verify-split.py
 ```
@@ -3880,7 +3880,7 @@ python docs/agent/verify-split.py
 
 「StarEngine库也需要重新声明为GPL-3.0。另外，LICENSE-MIT不保留，直接删除」—— 即：① 第 56 条的 GPL 化要延伸到前置库仓；② 上一批为「≤1.3.7 仍 MIT」而新建的 `LICENSE-MIT` **不保留**。
 
-### 57.2 本仓（`F:\MCProject\astral_dice_multiloader`）
+### 57.2 本仓（`D:\MCProject\astral_dice_multiloader`）
 
 - `LICENSE-MIT` **删除**（`git rm`）。该文件只存在于提交 `7e4e4f17`，需要时从该提交取回。
 - `LICENSE` §2 改为：「That grant is irrevocable and cannot be withdrawn; the MIT text for those versions is the LICENSE file at the corresponding release tag (for example the `1.3.7` or `fabric-1.3.7-alpha.2` tags of this repository). This working tree no longer ships a separate MIT file…」。
@@ -3888,7 +3888,7 @@ python docs/agent/verify-split.py
 - 引用清理 9 处：`README.md:133` / `README_ZH.md:133` / `CHANGELOG.md:693` / `CHANGELOG_ZH.md:561` 的「原文逐字保存在 [LICENSE-MIT]」改为「见对应发布 tag 的 `LICENSE`；本工作树不再单独保留 MIT 文本」；`docs/handover-1.5.0-pre.5-main.md` §0-23、§5-35 ②③⑦ 与 `docs/handover-new-session-context.md` 第 19 条同步改写。
 - **≤1.3.7 仍 MIT 的授权不变**（不可撤回），只是不再随工作树附带独立 MIT 文本。
 
-### 57.3 前置库仓（`F:\MCProject\starengine`，分支 `main`，独立仓库）
+### 57.3 前置库仓（`D:\MCProject\starengine`，分支 `main`，独立仓库）
 
 - 改造前 HEAD `6d2a96d`（`release(lib): 版本号 1.1.0-pre.1 -> 1.1.0-pre.2`），工作树干净。
 - `LICENSE`（702 行 / 37,148 字符 / 全 CRLF）= GPL-3.0 全文（与 astral 侧同源）+ 分隔线 +〈Project licensing notes〉三节：① SOURCE CODE = GPL-3.0-only；② LEGACY RELEASES = 2026-10-23 之前发布的版本仍 MIT —— `1.0.0`–`1.0.12` 全部 tag 与已分发到消费方 / mavenLocal / 整合包的 `1.1.0-pre.1` / `1.1.0-pre.2` 构建，原文见对应 tag 的 `LICENSE`；③ THIRD-PARTY = 无捆绑第三方源码，`gradlew` / `gradlew.bat` / `gradle/wrapper/**` 仍 Apache-2.0。
@@ -3900,12 +3900,12 @@ python docs/agent/verify-split.py
 
 ```powershell
 # 本仓：MIT 文件已无、引用只剩历史描述
-git -C F:\MCProject\astral_dice_multiloader ls-files LICENSE-MIT   # 应为空
-Select-String -Path F:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'corresponding release tag','no longer ships a separate MIT file'
+git -C D:\MCProject\astral_dice_multiloader ls-files LICENSE-MIT   # 应为空
+Select-String -Path D:\MCProject\astral_dice_multiloader\LICENSE -Pattern 'corresponding release tag','no longer ships a separate MIT file'
 # 前置库：许可与元数据
-git -C F:\MCProject\starengine log --oneline -1              # c545b75
-Select-String -Path F:\MCProject\starengine\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','LEGACY RELEASES'
-Select-String -Path F:\MCProject\starengine\*-1.20.1\gradle.properties,F:\MCProject\starengine\neoforge-*\gradle.properties -Pattern 'mod_license'
+git -C D:\MCProject\starengine log --oneline -1              # c545b75
+Select-String -Path D:\MCProject\starengine\LICENSE -Pattern 'GNU GENERAL PUBLIC LICENSE','LEGACY RELEASES'
+Select-String -Path D:\MCProject\starengine\*-1.20.1\gradle.properties,D:\MCProject\starengine\neoforge-*\gradle.properties -Pattern 'mod_license'
 # 规则文件自检
 python docs/agent/verify-split.py
 ```
@@ -3914,7 +3914,7 @@ python docs/agent/verify-split.py
 
 - 两仓都**未重建产物**：本仓 pre.5 jar 与前置库 1.1.0-pre.2 jar 的元数据仍是旧串，对外发布前必须重建并成对重投。
 - 前置库的「历史版本仍 MIT」边界按**发布时间**（2026-10-23 之前）划，不按版本号；若用户要按版本号划（例如「≤1.1.0-pre.2 仍 MIT，之后全部 GPL」），改 `LICENSE` §2 一句即可。
-- `F:\MCProject\starengine_next` 是**坏掉的 worktree**：其 `.git` 文件指向 WSL 路径 `gitdir: /mnt/f/MCProject/starengine/.git/worktrees/starengine_lib_next`，Windows 侧 `git` 解析不了（`fatal: not a git repository: (NULL)`），本批未动它，也未改其 `LICENSE`（2.0.0-SNAPSHOT 开发线文件同样还是 MIT 文本）。
+- `D:\MCProject\starengine_next` 是**坏掉的 worktree**：其 `.git` 文件指向 WSL 路径 `gitdir: /mnt/d/MCProject/starengine/.git/worktrees/starengine_lib_next`，Windows 侧 `git` 解析不了（`fatal: not a git repository: (NULL)`），本批未动它，也未改其 `LICENSE`（2.0.0-SNAPSHOT 开发线文件同样还是 MIT 文本）。
 
 ## 58. Jade 护甲图标换 8×8 留白版（2026-10-23 用户裁决）
 
@@ -3944,7 +3944,7 @@ python docs/agent/verify-split.py
 
 此前 12 个提交一直积压未推（用户 2026-10-22 的「默认不 push」口径），本轮**用户明确放行**；打 tag 仍未获指示。
 
-### 59.2 前置库仓 `F:\MCProject\starengine`（分支 `main`，HEAD `c545b75`）
+### 59.2 前置库仓 `D:\MCProject\starengine`（分支 `main`，HEAD `c545b75`）
 
 命令：`gradlew.bat build publishToMavenLocal`（`JAVA_HOME=C:\Program Files\Zulu\zulu-21`）⇒ **BUILD SUCCESSFUL in 13s / 35 actionable tasks**。四份 jar（各自 `build\libs`，由各平台 `pushToRootBuild` 汇总）：
 
@@ -3985,7 +3985,7 @@ python docs/agent/verify-split.py
 ### 59.6 push（用户本轮放行）
 
 - 本仓：`git push origin multi-main`（12 个提交）；
-- 前置库：`git -C F:\MCProject\starengine push origin main`（1 个提交 `c545b75`）；
+- 前置库：`git -C D:\MCProject\starengine push origin main`（1 个提交 `c545b75`）；
 - 网络走仓库级 `http.proxy` / `https.proxy` = `http://127.0.0.1:7897`（Git 代理规范）；
 - **均不打 tag**（`1.5.0-pre.3` / `pre.4` / `pre.5` 仍无）；后续 push / 打 tag 仍需用户逐次放行。
 
@@ -3993,9 +3993,9 @@ python docs/agent/verify-split.py
 
 ```powershell
 python docs/agent/verify-split.py                                    # 四项 [OK]
-git -C F:\MCProject\astral_dice_multiloader status --short -uall     # 只剩 ?? models/astral_anvil.bbmodel
-git -C F:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..HEAD   # 0
-git -C F:\MCProject\astral_dice_multiloader ls-remote origin refs/heads/multi-main     # 与本地 HEAD 同号
+git -C D:\MCProject\astral_dice_multiloader status --short -uall     # 只剩 ?? models/astral_anvil.bbmodel
+git -C D:\MCProject\astral_dice_multiloader rev-list --count origin/multi-main..HEAD   # 0
+git -C D:\MCProject\astral_dice_multiloader ls-remote origin refs/heads/multi-main     # 与本地 HEAD 同号
 Get-FileHash <四处投放> -Algorithm SHA256                            # 逐处对账（§59.4）
 python <zipfile 脚本>                                               # 库 jar license / jarjar 0
 ```
@@ -4041,10 +4041,10 @@ python <zipfile 脚本>                                               # 库 jar 
 ### 60.5 判据命令
 
 ```powershell
-git -C F:\MCProject\astral_dice_multiloader status --short -uall   # 只应有素材目录未跟踪项
-Test-Path F:\MCProject\astral_dice_multiloader\tools\modrinth_upload.py # 期望 False
-Test-Path F:\MCProject\astral_dice_multiloader\tools\modrinth.json       # 期望 False
-Select-String -Path F:\MCProject\astral_dice_multiloader\tools\curseforge_upload.py -Pattern 'MODRINTH_TOKEN'   # 期望无输出（`.gitignore` 内仍有 3 行 modrinth：依赖源模板 + 保留的 `.modrinth/` 忽略项）
+git -C D:\MCProject\astral_dice_multiloader status --short -uall   # 只应有素材目录未跟踪项
+Test-Path D:\MCProject\astral_dice_multiloader\tools\modrinth_upload.py # 期望 False
+Test-Path D:\MCProject\astral_dice_multiloader\tools\modrinth.json       # 期望 False
+Select-String -Path D:\MCProject\astral_dice_multiloader\tools\curseforge_upload.py -Pattern 'MODRINTH_TOKEN'   # 期望无输出（`.gitignore` 内仍有 3 行 modrinth：依赖源模板 + 保留的 `.modrinth/` 忽略项）
 python docs/agent/verify-split.py   # 四项 [OK]
 ```
 
@@ -4066,8 +4066,8 @@ python docs/agent/verify-split.py   # 四项 [OK]
 
 #### 61.1 提交与推送（两仓均已同步远端）
 
-- **本体** `F:\MCProject\astral_dice_multiloader`：玩家日志提交 `6ee75a34`「docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460）」；此前累计的 28 个未推送提交一并推送 —— `git push origin multi-main` 后远端 `origin/multi-main` = `6ee75a34b…`，`git rev-list --count origin/multi-main..HEAD` = **0**。
-- **前置库** `F:\MCProject\starengine`：`16b48c4`「release(lib)：1.1.0（1.1.0-pre.2 定版；四平台版本号/README/CHANGELOG 同步）」⇒ `git push origin main` 得 `413cc39..16b48c4  main -> main`，`rev-list --count origin/main..HEAD` = **0**。
+- **本体** `D:\MCProject\astral_dice_multiloader`：玩家日志提交 `6ee75a34`「docs(release)：1.5.0-rc.1 玩家更新日志（中英，2 文件 +460）」；此前累计的 28 个未推送提交一并推送 —— `git push origin multi-main` 后远端 `origin/multi-main` = `6ee75a34b…`，`git rev-list --count origin/multi-main..HEAD` = **0**。
+- **前置库** `D:\MCProject\starengine`：`16b48c4`「release(lib)：1.1.0（1.1.0-pre.2 定版；四平台版本号/README/CHANGELOG 同步）」⇒ `git push origin main` 得 `413cc39..16b48c4  main -> main`，`rev-list --count origin/main..HEAD` = **0**。
 - 版本号实测（`lib_version` / `mod_version` 全为 1.1.0）：`neoforge-1.21.1\gradle.properties:196`（`1.1.0`）/ `:198`（`1.1.0+neoforge_1.21.1`）、`forge-1.20.1\gradle.properties:82` / `:83`（`1.1.0+forge_1.20.1`）、`neoforge-26.1.2\gradle.properties:68` / `:70`（`1.1.0+neoforge_26.1.2`）、`fabric-1.20.1\gradle.properties:52` / `:53`（`1.1.0+fabric_1.20.1`）。
 - **未打 tag**、**未建 GitHub Release**（用户未下达）。
 
@@ -4101,7 +4101,7 @@ python docs/agent/verify-split.py   # 四项 [OK]
 
 #### 61.5 库「1.1.0 是否已改号并重编译」复核（2026-10-25 18:37）
 
-- 重编译：`F:\MCProject\starengine` 跑 `gradlew.bat build --console=plain`（JAVA_HOME=Zulu 21）⇒ **BUILD SUCCESSFUL in 6s**，`25 actionable tasks: 4 executed, 21 up-to-date`；四线 `jar` / `forge:reobfJar` / `fabric:remapJar` **全 UP-TO-DATE** ⇒ 与 15:30 那批产物逐字节相同（本次只由 `pushToRootBuild` 重新拷到 `F:\MCProject\starengine\build\libs`）。
+- 重编译：`D:\MCProject\starengine` 跑 `gradlew.bat build --console=plain`（JAVA_HOME=Zulu 21）⇒ **BUILD SUCCESSFUL in 6s**，`25 actionable tasks: 4 executed, 21 up-to-date`；四线 `jar` / `forge:reobfJar` / `fabric:remapJar` **全 UP-TO-DATE** ⇒ 与 15:30 那批产物逐字节相同（本次只由 `pushToRootBuild` 重新拷到 `D:\MCProject\starengine\build\libs`）。
 - 产物（`build\libs`，mtime 2026-10-25 18:37:30）：`starengine-neoforge-1.21.1-1.1.0.jar` 98,734 B sha256 `62C92595B012929D2FBA6098CC2D71E6AB2A9A14DDAAC52869E2BBEC6B476AC8`；`starengine-forge-1.20.1-1.1.0.jar` 103,605 B `73DA2E599E60DAB047E3640EB396F1DB6F6EEDD5A0DD95494AFDE471F43AF304`；`starengine-neoforge-26.1.2-1.1.0.jar` 98,970 B `625057E19C114F7F1F452BA176A588D8E58A303B9D48002B6438C031B7DFF8C8`；`starengine-fabric-1.20.1-1.1.0.jar` 112,634 B `4F5CB0ECA44C48840355ECACA4A752F0DE1C3D0D89C8363B46C3A0283F3E6955`。
 - jar 内版本字符串实测：`META-INF/neoforge.mods.toml` `version="1.1.0+neoforge_1.21.1"` / `1.1.0+neoforge_26.1.2`、`META-INF/mods.toml` `version="1.1.0+forge_1.20.1"`、`fabric.mod.json` `"version": "1.1.0"`。
 - mavenLocal 同步存在：`%USERPROFILE%\.m2\repository\com\merlinkitsune\starengine\starengine-<line>\1.1.0\*.jar` 四件（15:30–15:31，尺寸与 build/libs 相同），消费方按 `starengine_version=1.1.0` 可解析。

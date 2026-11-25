@@ -379,7 +379,7 @@ cp forge-1.20.1/build/devlibs/astral_dice-*.jar  run/1.20.1/mods/
 **同步断言命令**（forge 线把 `.get()` 去掉后，应与 1.21.1 线逐字相同）：
 
 ```bash
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 for f in client/ClientAlpha.java mixin/client/DispatcherAlphaMixin.java mixin/client/RenderTypeAlphaMixin.java; do
   echo "== $f"
   diff <(sed 's/\.get()//g' "forge-1.20.1/src/main/java/com/merlinkitsune/astral_dice/$f") \

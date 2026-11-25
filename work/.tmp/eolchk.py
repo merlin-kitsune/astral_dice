@@ -1,6 +1,6 @@
 
 import os
-base = r"F:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice"
+base = r"D:/MCProject/astral_dice_multiloader/fabric-1.20.1/src/main/java/com/merlinkitsune/astral_dice"
 files = [
  "client/CombatPowerHud.java",
  "platform/client/FabricClientBridges.java",

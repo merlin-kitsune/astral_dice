@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-cd /f/MCProject/astral_dice_multiloader
+cd /d/MCProject/astral_dice_multiloader
 mkdir -p work/fix/bc
 J=$(ls .gradle/loom-cache/minecraftMaven/net/minecraft/minecraft-merged-*/*/*.jar | head -1)
 echo "JAR=$J"

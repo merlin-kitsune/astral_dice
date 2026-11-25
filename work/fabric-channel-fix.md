@@ -1,7 +1,7 @@
 # fabric-1.20.1 AutoJS 通道：部署证据与就绪判据修复
 
 - 时间：2026-11-02 03:20–03:40 +08:00
-- 仓库：`F:\MCProject\astral_dice_multiloader`（git 只读：未 add/commit/push/tag/checkout/stash）
+- 仓库：`D:\MCProject\astral_dice_multiloader`（git 只读：未 add/commit/push/tag/checkout/stash）
 - 约束遵守：未启动任何 Minecraft 进程、未跑 Gradle、未占用 25565/25585/25575（实测全 free）
 - 配套：开跑命令序列 `work/fabric-test-runplan.md`
 
@@ -127,7 +127,7 @@ bash scripts/test/win/launch.sh --version fabric-1.20.1 --side client --disable-
 | D | 删除 | deployed=False，全 delegated |
 | E | 对照 1.21.1 | deployed=True（`run/1.21.1/mods` 里有 AutoJS jar）⇒ 另三线行为未受影响 |
 
-路径确认：`mods_dir=F:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\mods`、`run_dir=…\run\client`、`latest_log=…\run\client\logs\latest.log`（即 client 用例读的就是 client 的日志，不会串到 server）。
+路径确认：`mods_dir=D:\MCProject\astral_dice_multiloader\fabric-1.20.1\run\client\mods`、`run_dir=…\run\client`、`latest_log=…\run\client\logs\latest.log`（即 client 用例读的就是 client 的日志，不会串到 server）。
 
 ### 2.4 判据结论（回答问题：“放 jar 后能不能探到 25585”）
 

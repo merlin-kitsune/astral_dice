@@ -2,9 +2,9 @@
 
 - 执行时间：2026-11-02 20:07–20:20 (Asia/Hong_Kong)
 - 宿主：Windows 原生，pwsh 7 可用；DSH 命令通道实际落在 MINGW64 bash（/usr/bin/bash，盘符映射 F: → /f/），因此 Windows 专属操作统一加 pwsh -NoProfile -Command 前缀
-- 仓库：`F:/MCProject/astral_dice_multiloader`，分支 `multi-main`，HEAD `9adfd9f3bb61bfac8ce686724aaad0d839d1e25b`
+- 仓库：`D:/MCProject/astral_dice_multiloader`，分支 `multi-main`，HEAD `9adfd9f3bb61bfac8ce686724aaad0d839d1e25b`
 - JAVA_HOME：`C:\Program Files\Zulu\zulu-21\`
-- 互斥锁：`F:/MCProject/.agent-locks/` 中无 `kimi.lock` / `dsh.lock` 活跃锁（仅有 2 个历史 .py 文件）
+- 互斥锁：`D:/MCProject/.agent-locks/` 中无 `kimi.lock` / `dsh.lock` 活跃锁（仅有 2 个历史 .py 文件）
 
 ## 步骤 1 — 重建并核对产物
 
@@ -43,10 +43,10 @@ Reusing configuration cache.
 > Task :fabric-1.20.1:build UP-TO-DATE
 
 > Task :fabric-1.20.1:pushToDevRun
-pushToDevRun: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
+pushToDevRun: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\run\fabric-1.20.1\mods
 
 > Task :fabric-1.20.1:pushToRootBuild
-pushToRootBuild: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> F:\MCProject\astral_dice_multiloader\build\libs
+pushToRootBuild: pushed astral_dice-1.5.0-hotfix+fabric_1.20.1.jar -> D:\MCProject\astral_dice_multiloader\build\libs
 
 BUILD SUCCESSFUL in 565ms
 8 actionable tasks: 2 executed, 6 up-to-date
@@ -79,7 +79,7 @@ SHA256 = A8AFE4D3268728095CEA819123E194ABE3416229C704913AF3262E9194D403E0
 命令（无 `--force`、无 tag、无 `gh release`）：
 
 ```
-git -C F:/MCProject/astral_dice_multiloader push origin multi-main
+git -C D:/MCProject/astral_dice_multiloader push origin multi-main
 ```
 
 原始输出：

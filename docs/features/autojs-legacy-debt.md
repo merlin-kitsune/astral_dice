@@ -108,7 +108,7 @@
 ## 8. 复算命令（只读，可重跑）
 
 ~~~bash
-d='F:/MCProject/astral_dice_multiloader-next/scripts/test/cases'
+d='D:/MCProject/astral_dice_multiloader-next/scripts/test/cases'
 # 按线统计顶层用例数（排除运行时产物 .mt_*）
 ls "$d"/*.json | grep -v '/\.mt_' | sed -E 's#.*-(1\.21\.1|1\.20\.1|26\.1\.2)\.json#\1#; t; s#.*#other#' | sort | uniq -c
 # blocked 子目录

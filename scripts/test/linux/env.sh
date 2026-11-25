@@ -329,7 +329,7 @@ else
     fi
 fi
 
-lock_dir="/mnt/f/MCProject/.agent-locks"
+lock_dir="/mnt/d/MCProject/.agent-locks"
 if [ -d "$lock_dir" ]; then
     others=""
     stale=""

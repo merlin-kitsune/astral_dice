@@ -1,6 +1,6 @@
 # B22 · Fabric 1.20.1 版本握手接入报告（VersionGate 接上真实运行时调用点）
 
-- 仓库：`F:\MCProject\astral_dice_multiloader`，分支 `multi-main`
+- 仓库：`D:\MCProject\astral_dice_multiloader`，分支 `multi-main`
 - 范围：只动 `fabric-1.20.1/src/main/java/**` 下 `network/VersionGate.java`、`network/ModNetwork.java`、`platform/network/{NetworkRegistry,SimpleChannel}.java`，新增 `network/VersionHandshake.java`、`network/VersionProbeMessage.java`、`network/VersionReplyMessage.java`
 - 未触碰：lang / recipes / patchouli / tools/**（其他批次在写）；未 commit / push / stash / add / checkout；未跑 gradle、未启动游戏
 - 日期：2026-11-01

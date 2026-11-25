@@ -1,7 +1,7 @@
 # Astral Dice multi-dev-next 交接文档（2026-11-14，26.4-SNAPSHOT.32）
 
 > 交接时间：2026-11-14 01:2x（Asia/Hong_Kong）
-> 工作树：F:/MCProject/astral_dice_multiloader-next
+> 工作树：D:/MCProject/astral_dice_multiloader-next
 > 本文件取代 docs/handover-2026-11-12-new-session-prompt.md 的 .13 快照；旧文只作历史参考。
 > 当前任务来源：用户 m09378「总结工作，纪录所有欠账项，并写入交接文档和创建交接 prompt」。
 
@@ -53,7 +53,7 @@ diff     +2024 / -1197（tracked）
 2026-11-14 01:2x 实读：
 
 - 25565 / 25575 / 25585 均无 LISTENING。
-- F:/MCProject/.agent-locks/ 不存在。
+- D:/MCProject/.agent-locks/ 不存在。
 - 只剩 3 个 Gradle daemon java：PID 22368 / 22392 / 31780。
 - 没有游戏客户端、AutoJS、RCON 或 Fabric 服务端在跑。
 
@@ -240,7 +240,7 @@ Fabric 两线没有 Z3000：只有版本号同步，没有代码、资源、语�
 
 1. 读根 AGENTS.md、docs/agent/AGENTS-dsh.md、本文。
 2. 实读 git status --short、git rev-parse HEAD、五线 gradle.properties。
-3. 复核 25565 / 25575 / 25585 与 F:/MCProject/.agent-locks/。
+3. 复核 25565 / 25575 / 25585 与 D:/MCProject/.agent-locks/。
 4. 确认工作树里 39 个未跟踪产品文件、models/ 与 work/audit / work/souri 的边界。
 
 ### 第 1 步（需用户授权）：先做 checkpoint
@@ -289,7 +289,7 @@ git rev-parse HEAD
 git status --short
 grep -H '^mod_version' */gradle.properties
 netstat -ano | grep -E ':(25565|25575|25585) .*LISTENING'
-ls -la F:/MCProject/.agent-locks 2>&1
+ls -la D:/MCProject/.agent-locks 2>&1
 ~~~
 
 ### 8.2 构建

@@ -1,6 +1,6 @@
 # Agent Instructions
 
-**本仓**：`F:\MCProject\astral_dice_multiloader`（**Windows 原生宿主**，命令走 MSYS bash，同一路径写作 `/f/MCProject/astral_dice_multiloader`；Linux 原生挂载口径见 `docs/agent/AGENTS-dsh-linux.md`，本机不适用）—— Minecraft 模组「Astral Dice」的多加载器工作树：主线分支 **`multi-main`**（HEAD／版本一律以实读为准），**五条线同树**（P0 = `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 = `fabric-1.20.1` / `fabric-1.21.1`）。
+**本仓**：`D:\MCProject\astral_dice_multiloader`（**Windows 原生宿主**，命令走 MSYS bash，同一路径写作 `/d/MCProject/astral_dice_multiloader`；Linux 原生挂载口径见 `docs/agent/AGENTS-dsh-linux.md`，本机不适用）—— Minecraft 模组「Astral Dice」的多加载器工作树：主线分支 **`multi-main`**（HEAD／版本一律以实读为准），**五条线同树**（P0 = `neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`；P1 = `fabric-1.20.1` / `fabric-1.21.1`）。
 
 **本文件只是公共入口**：先按下面的分派认领自己的规则文件，再读共同红线，最后按需查索引。
 
@@ -15,7 +15,7 @@
 | **Codex** | `docs/agent/AGENT-SPLIT.md` | 维持原**只读验证**分工：可读、可 `grep`、可写 `docs/**`；不写源码、不跑构建、不跑实机 |
 | **其他宿主** | 先向用户确认 | **不得**把 `AGENTS-kimi.md` 或 `AGENTS-dsh.md` 当成自己的规则 |
 
-- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `f87ef8227c3063b2896b7d8961da8e333506cb7871422f99cd9410b53f865154`（纯 LF，351 行 / 62,730 B；2026-11-23 实读复核，算法 SHA-256、范围整文件字节 —— 复核命令 `sha256sum docs/agent/AGENTS-dsh.md`）。
+- `docs/agent/AGENTS-dsh.md` = **DSH 的规则正本**（2026-10-24 起从旧根规则文件迁入；同日按用户裁决清掉非 DSH 内容 —— WSL 口径、路径转译、跨宿主的派活工具说明一律删除，只留实际工作流裁决）。目录内另有历史留存：原根规则文件备份 `AGENTS.md.bak-a-plan-183829` 经 `docs/agent/AGENTS-full.md` 逐字留存。当前 `AGENTS-dsh.md` SHA-256 `e625579efa261d42854ccfe0a8b8884f2120d5881048b989591399192d2e542c`（纯 LF，351 行 / 62,730 B；2026-11-25 实读复核，算法 SHA-256、范围整文件字节 —— 复核命令 `sha256sum docs/agent/AGENTS-dsh.md`）。
 - `docs/agent/AGENTS-dsh-linux.md` = **DSH 在 Linux 原生宿主的规则正本**（2026-10-31 起；逐条 Linux 化，Windows 口径保留在 `AGENTS-dsh.md` 作历史正本）。Linux 与 Windows 冲突时各读自己的正本；共同红线与索引仍以本文件为准。
 - Kimi 当前接手文档：`docs/handover-2026-10-24-kimi-takeover.md`；Kimi 当前工程参考：`docs/agent/PROJECT-REFERENCE.md`。
 
@@ -25,7 +25,7 @@
 2. **默认不部署**：不复制 jar 到整合包、不上传 CurseForge、不改发布配置。
 3. **默认不 push / 打 tag / 发布**：远程 git 写操作（push、推送 tag、Release、上传）仅在用户明确要求时执行，且一律走本地代理 `http://127.0.0.1:7897`（**Linux 真机例外**：clash-verge-rev 以 TUN 全局接管路由，直连即可，见 `docs/agent/AGENTS-dsh-linux.md`）。**本地 commit 默认允许**，按第 8 条「早提交、勤提交」执行（2026-11-22 用户裁决：撤销「不擅自提交」，只限制推送）。
 4. **保护素材与他人改动**：`models/`、`images/`、`sound/` 属随时更新的素材目录；`git status` 里出现不属于自己的改动（含未跟踪文件）⇒ 立即停手并报告，不 `add` / `commit` / `stash` / `checkout`、不删文件。
-5. **互斥锁**：写文件或启动 Gradle 前检查 `F:/MCProject/.agent-locks/`（Linux：`/mnt/f/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
+5. **互斥锁**：写文件或启动 Gradle 前检查 `D:/MCProject/.agent-locks/`（Linux：`/mnt/d/MCProject/.agent-locks/`）；Kimi 用 `kimi.lock`、DSH 用 `dsh.lock`；尊重对方的活跃锁，结束只清理自己的锁。
 6. **不代改他人职责**：模组源码 / 资源 / 版本号 / 依赖 / 发布配置的改动，按所属宿主的规则文件走。
 7. **没有详细测试就没有发布版本**：未完成本地详细测试与实机冒烟取证的版本一律不得作为发布版本；生产版本的 push / tag / Release / CurseForge 上传必须是整条流程的最后一步（2026-11-02 用户裁决）。
 8. **早提交、勤提交**：每完成一个可独立验证的改动单元（功能 / 修复 / 文档 / 规则 / 版本号），**立即本地提交**，不得把多轮改动堆在工作树里等批量提交；一个提交只做一个可描述、可回滚的变更，提交信息必须如实写明改动面与验证读数；默认仍**不 push**（见第 3 条）。（2026-11-07 用户裁决）
@@ -52,7 +52,7 @@
 ## 四、工具约定（图片 / 脚本）
 
 - 图片处理一律用 ImageMagick 7：`C:/Program Files/ImageMagick-7.1.2-Q16-HDRI/magick.exe`（PATH 里有 `magick` 也可）；裁剪、拼图、缩放、格式转换都走它，不要改用 Python/PIL 或系统画图工具。
-- **严格禁用 Windows PowerShell**（含 `powershell.exe` / `pwsh` / `Start-Process` / `Get-Process` 等）；命令一律走 bash（MSYS）或 DSH 的专用工具。MSYS 下引用 Windows 路径用 `/f/...`；需要原样传 `/PID` 这类参数时加 `MSYS_NO_PATHCONV=1`。
+- **严格禁用 Windows PowerShell**（含 `powershell.exe` / `pwsh` / `Start-Process` / `Get-Process` 等）；命令一律走 bash（MSYS）或 DSH 的专用工具。MSYS 下引用 Windows 路径用 `/d/...`；需要原样传 `/PID` 这类参数时加 `MSYS_NO_PATHCONV=1`。
 - 例：`magick in.png -crop 560x520+600+120 +repage out.png`；`magick montage a.png b.png -tile 2x2 -geometry +4+4 sheet.png`；`magick identify out.png`。
 
 > 本文件只放「分派 + 共同红线 + 索引 + 工具约定」。宿主专用的工作方式（额度口径、委派细节、角色设定）、逐批历史与完整领域规格**都不放在这里**，一律留在各自的规则文件里，按需读取。
