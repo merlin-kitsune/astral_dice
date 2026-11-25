@@ -152,10 +152,11 @@ mt_conf_get() {
 mt_ok()   { MT_OKS=$(( ${MT_OKS:-0} + 1 ));         printf 'CHECK: %s=OK — %s\n' "$1" "$2"; }
 mt_warn() { MT_WARNS=$(( ${MT_WARNS:-0} + 1 ));     printf 'CHECK: %s=WARN — %s\n' "$1" "$2"; }
 mt_fail() { MT_FAILS=$(( ${MT_FAILS:-0} + 1 ));     printf 'CHECK: %s=FAIL — %s\n' "$1" "$2" >&2; }
-# cmd.exe launcher: MSYS arg conversion may rewrite /c to a path, or else leave //c unrecognized.
-# Excluding only the /c prefix makes the literal /c reach cmd.exe in both forms (verified 2026-11-06).
+# cmd.exe launcher: bash 的 MSYS 参数转换会把 /c 当 POSIX 路径改写（换机后 UCRT64 bash 实测：写成 /c 时
+# cmd 进入交互模式、只回显横幅，gradlew 根本没跑）。//c 由 bash 折成 /c 交给 cmd.exe，
+# 不再依赖调用方是否设置 MSYS2_ARG_CONV_EXCL（2026-11-26 新机实机验证）。
 mt_cmdwin() {
-    cmd.exe /c "$@"
+    cmd.exe //c "$@"
 }
 
 mt_info() { [ "${MT_QUIET:-0}" = 1 ] || printf 'INFO: %s — %s\n' "$1" "$2"; }
