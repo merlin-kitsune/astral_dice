@@ -4,6 +4,17 @@
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no “updated again” follow-ups.
 
+## 1.6.0-rc.1 (2026-11-25)
+
+### This release
+
+- The version line leaves the `pre` suffix: all five `mod_version` values go from `1.6.0-pre.5+<loader>` to `1.6.0-rc.1+<loader>`; the prerequisite `starengine_version` is pinned to the stable `1.2.0`, with the Fabric `depends.starengine` range now `>=1.2.0 <2.0.0` and NeoForge/Forge `[1.2.0,2.0.0)`.
+- Fixed the Astral Anvil playing no anvil sound on use: on all five lines `AstralAnvilMenu` now fires `levelEvent(1030)` in the same branch that pops the result item (dispatched through `this.access.execute`), distinct from the screen open/close sounds.
+- Fixed the End portal sound being far too loud: on all five lines the `InkShadowPortalEntity` sound volumes drop by 30% — `0.5→0.35`, `0.6→0.42`, `0.8→0.56`, 20 entries total.
+- Updated the Abyss Larva (`sykes_note`) sign text: across the five lines, 15 language files (`zh_cn` / `en_us` / `ja_jp`) move to the v2 wording and drop the retired retaliation-damage description.
+- Prerequisite StarEngine shipped `1.2.0` stable (no functional change from `1.2.0-pre.2`, version metadata only): `publishToMavenLocal` on all five platforms reported `BUILD SUCCESSFUL in 8m 20s` (38 actionable tasks), installing `starengine-{fabric-1.20.1,fabric-1.21.1,forge-1.20.1,neoforge-1.21.1,neoforge-26.1.2}-1.2.0.jar` into `~/.m2/repository`.
+- Migration to the D: drive: `org.gradle.java.installations.paths` in `gradle.properties:10` now points at the JDKs actually installed here — `C:/Program Files/Microsoft/jdk-17.0.21.102-hotspot`, `jdk-21.0.13.102-hotspot`, `jdk-25.0.5.102-hotspot`.
+- Verification for this batch: one five-line `compileJava` invocation passed — `BUILD SUCCESSFUL in 2m 45s`, 8 actionable tasks; main class output fabric-1.20.1 911 / fabric-1.21.1 901 / forge-1.20.1 681 / neoforge-1.21.1 657 / neoforge-26.1.2 665 classes. Builds must go through the local proxy (`-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897`); direct connections to maven.neoforged.net and maven.fabricmc.net time out. Not pushed, not tagged, not published.
 ## 1.6.0-pre.5 (2026-11-23)
 
 ### This release

@@ -218,7 +218,7 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         // 2.5) 门本身的循环音效（下界传送门环境音，每 4.5 s 一次；起始门也算「门」）
         if (this.tickCount % AMBIENT_INTERVAL_TICKS == 0 && this.tickCount > 0) {
             serverLevel.playSound(null, this.getX(), this.getY() + 0.4D, this.getZ(),
-                    SoundEvents.PORTAL_AMBIENT, SoundSource.BLOCKS, 0.5F, 1.0F);
+                    SoundEvents.PORTAL_AMBIENT, SoundSource.BLOCKS, 0.35F, 1.0F);
         }
         if (!isActive()) return;
         // 3) 每 2t 扫玩家：站定 1.5s ⇒ 传送 + 门主人首次 +1 层 + 跃迁核心过门奖励
@@ -285,7 +285,7 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
             // 进入时（本次站定的第一拍）播下界传送门「进入」音效 block.portal.trigger
             if (!this.standingTicks.containsKey(id)) {
                 serverLevel.playSound(null, this.getX(), this.getY() + 0.1D, this.getZ(),
-                        SoundEvents.PORTAL_TRIGGER, SoundSource.BLOCKS, 0.6F, 1.0F);
+                        SoundEvents.PORTAL_TRIGGER, SoundSource.BLOCKS, 0.42F, 1.0F);
             }
             int stand = this.standingTicks.getOrDefault(id, 0) + 2;
             if (stand < InkShadowSignItem.STAND_TICKS) {
@@ -321,14 +321,14 @@ public class InkShadowPortalEntity extends Entity implements GeoEntity {
         // 起点侧：跨维度时补一次「出下界传送门」音效（目标维度的声音传不过来）
         playTeleportParticles(fromLevel, from);
         if (crossDimension) {
-            playPortalSound(fromLevel, from, SoundEvents.PORTAL_TRAVEL, 0.8F);
+            playPortalSound(fromLevel, from, SoundEvents.PORTAL_TRAVEL, 0.56F);
         }
         // 26.1.2：teleportTo 增加了 Set<Relative> 与「是否保持原朝向」标记，语义按旧 6 参调用平移
         player.teleportTo(target, this.pairX, this.pairY + 0.05D, this.pairZ,
                 java.util.Set.of(), player.getYRot(), player.getXRot(), false);
         // 落点特效在传送之后播（跨维度时玩家此时才在目标维度里，包才送得到）
         playTeleportParticles(target, to);
-        playPortalSound(target, to, SoundEvents.PORTAL_TRAVEL, 0.8F);
+        playPortalSound(target, to, SoundEvents.PORTAL_TRAVEL, 0.56F);
         return true;
     }
 

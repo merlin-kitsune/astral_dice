@@ -4,6 +4,17 @@
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 
+## 1.6.0-rc.1（2026-11-25）
+
+### 本次发布
+
+- 版本线跳出 pre 后缀：五线 `mod_version` 由 `1.6.0-pre.5+<loader>` 升到 `1.6.0-rc.1+<loader>`；前置库 `starengine_version` 钉到正式版 `1.2.0`，Fabric 的 `depends.starengine` 区间改为 `>=1.2.0 <2.0.0`，NeoForge/Forge 为 `[1.2.0,2.0.0)`。
+- 修复星愿铁砧使用时没有铁砧音效：五线 `AstralAnvilMenu` 在产物弹出的同一分支补 `levelEvent(1030)`（经 `this.access.execute` 下发），与界面开合音效区分。
+- 修复末影传送门音效过大：五线 `InkShadowPortalEntity` 的音效定义整体下调 30% —— `0.5→0.35`、`0.6→0.42`、`0.8→0.56`，共 20 处。
+- 更新魔渊幼体（`sykes_note`）立牌文本：五线 `zh_cn` / `en_us` / `ja_jp` 共 15 份语言文件换成 v2 文案，删除已废弃的反伤描述。
+- 前置库 StarEngine 发布 `1.2.0` 正式版（与 `1.2.0-pre.2` 无功能差异，仅版本元数据）：`publishToMavenLocal` 五平台 `BUILD SUCCESSFUL in 8m 20s`（38 actionable tasks），产物 `starengine-{fabric-1.20.1,fabric-1.21.1,forge-1.20.1,neoforge-1.21.1,neoforge-26.1.2}-1.2.0.jar` 已落 `~/.m2/repository`。
+- 换机适配（D: 盘）：`gradle.properties:10` 的 `org.gradle.java.installations.paths` 指向本机实际 JDK —— `C:/Program Files/Microsoft/jdk-17.0.21.102-hotspot`、`jdk-21.0.13.102-hotspot`、`jdk-25.0.5.102-hotspot`。
+- 本批验收：五线 `compileJava` 一次调用全绿 —— `BUILD SUCCESSFUL in 2m 45s`，8 actionable tasks；主类产物 fabric-1.20.1 911 / fabric-1.21.1 901 / forge-1.20.1 681 / neoforge-1.21.1 657 / neoforge-26.1.2 665 个 class。构建需经本机代理（`-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897`），直连 maven.neoforged.net / maven.fabricmc.net 不通。未 push、未打 tag、未发布。
 ## 1.6.0-pre.5（2026-11-23）
 
 ### 本次发布

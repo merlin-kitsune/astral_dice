@@ -155,6 +155,8 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         if (!player.level().isClientSide()) {
             this.cost.set(0);
         }
+        // 播放原版铁砧使用音效（与 AnvilMenu#onTake 一致）
+        this.access.execute((level, pos) -> level.levelEvent(1030, pos, 0));
         this.broadcastChanges();
     }
 

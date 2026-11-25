@@ -152,7 +152,7 @@ public class AstralAnvilMenu extends ItemCombinerMenu {
         }
 
 
-        // 5) 清空输入骰子并播放铁砧音效
+        // 4) 清空输入骰子并播放铁砧音效
         this.inputSlots.setItem(INPUT_SLOT, ItemStack.EMPTY);
         this.access.execute((level, pos) -> level.levelEvent(1030, pos, 0));
         if (!player.level().isClientSide()) {
